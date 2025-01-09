@@ -1,9 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import exampleReducer from './exampleSlice';
+import tokenListReducer from './tokenListSlice';
+import userTokensReducer from './userTokensSlice';
 
 const store = configureStore({
   reducer: {
-    example: exampleReducer,
+    tokenList: tokenListReducer,
+    userTokens: userTokensReducer,
   },
 });
 

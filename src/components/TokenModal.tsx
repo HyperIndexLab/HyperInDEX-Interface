@@ -1,60 +1,243 @@
-import React, { useState } from 'react';
+/* eslint-disable @next/next/no-img-element */
+"use client"
+
+import React, { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchTokenList, selectTokens, selectTokensLoading, refreshTokenList } from '../store/tokenListSlice';
+import { fetchUserTokens, selectUserTokens, selectUserTokensLoading, refreshUserTokens } from '../store/userTokensSlice';
+import { AppDispatch } from '../store';
+import { RootState } from '../store';
+import { formatTokenBalance } from '../utils/formatTokenBalance';
+
+const DEFAULT_TOKEN_ICON = 'https://in-dex.4everland.store/indexcoin.jpg';
 
 interface Token {
-  name: string;
-  symbol: string;
-  price: string;
-  balance: string;
-  icon: string;
+  symbol: string | null;
+  name: string | null;
+  address: string;
+  icon_url: string | null;
+  decimals: string | null;
 }
 
-const tokens: Token[] = [
-  { name: 'USD Coin', symbol: 'USDC', price: '199.92', balance: '200', icon: 'https://coin-images.coingecko.com/coins/images/6319/large/usdc.png?1696506694' },
-  { name: 'Ethereum', symbol: 'ETH', price: '49.83', balance: '0.01377', icon: 'https://coin-images.coingecko.com/coins/images/6319/large/usdc.png?1696506694' },
-  // Add more tokens as needed
-];
+interface TokenModalProps {
+  address?: string;
+  onClose: () => void;
+  onSelectToken: (token: {
+    symbol: string;
+    name: string;
+    address: string;
+    icon_url: string | null;
+    balance?: string;
+    decimals?: string | null;
+  }) => void;
+  type: 'token1' | 'token2';
+}
 
-const TokenModal: React.FC = () => {
-  const [search, setSearch] = useState('');
+const TokenModal: React.FC<TokenModalProps> = ({ 
+  address, 
+  onClose, 
+  onSelectToken, 
+}) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const tokens = useSelector(selectTokens);
+  const userTokens = useSelector(selectUserTokens);
+  const tokensLoading = useSelector(selectTokensLoading);
+  const userTokensLoading = useSelector(selectUserTokensLoading);
+  const lastUpdated = useSelector((state: RootState) => state.tokenList.lastUpdated);
+  const userLastUpdated = useSelector((state: RootState) => state.userTokens.lastUpdated);
 
-  const filteredTokens = tokens.filter(token =>
-    token.name.toLowerCase().includes(search.toLowerCase()) ||
-    token.symbol.toLowerCase().includes(search.toLowerCase())
-  );
+  useEffect(() => {
+    if (tokens.length === 0 && !lastUpdated) {
+      dispatch(fetchTokenList());
+    }
+    if (address && userTokens.length === 0 && !userLastUpdated) {
+      dispatch(fetchUserTokens(address));
+    }
+  }, [dispatch, address, lastUpdated, userLastUpdated, tokens.length, userTokens.length]);
+
+  // 分别处理两个列表的刷新
+  const handleUserTokensRefresh = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (address) {
+      dispatch(refreshUserTokens(address));
+    }
+  };
+
+  const handleAllTokensRefresh = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    dispatch(refreshTokenList());
+  };
+
+  console.log('User tokens:', userTokens);
+  console.log('All tokens:', tokens);
+
+  const handleTokenSelect = (token: Token, balance?: string, decimals?: string | null) => {
+    onSelectToken({
+      symbol: token.symbol || '-',
+      name: token.name || 'Unknown Token',
+      address: token.address,
+      icon_url: token.icon_url || DEFAULT_TOKEN_ICON,
+      balance,
+      decimals
+    });
+    onClose();
+  };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-      <div className="bg-neutral p-6 rounded-lg w-[400px] max-h-[80vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg text-neutral-content">选择代币</h2>
-          <button className="text-neutral-content" onClick={() => console.log('Close modal')}>
+    <div className="fixed inset-0 flex justify-center items-center z-50">
+      <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
+      
+      <div className="relative bg-base-100 rounded-lg w-[400px] max-h-[80vh] overflow-y-auto shadow-lg">
+        <div className="flex justify-between items-center p-6">
+          <h2 className="text-lg font-semibold text-base-content">Select Token</h2>
+          <button 
+            className="text-base-content hover:text-error" 
+            onClick={onClose}
+          >
             &times;
           </button>
         </div>
-        <input
-          type="text"
-          placeholder="搜索代币"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full p-2 mb-4 bg-base-100 text-neutral-content rounded focus:outline-none"
-        />
-        <div>
-          {filteredTokens.map((token, index) => (
-            <div key={index} className="flex justify-between items-center p-2 hover:bg-base-200 rounded">
-              <div className="flex items-center">
-                <img src={token.icon} alt={token.name} className="w-6 h-6 mr-2" />
-                <div>
-                  <div className="text-neutral-content">{token.name}</div>
-                  <div className="text-sm text-neutral-content">{token.symbol}</div>
+        
+        <label className="input input-bordered flex items-center gap-2 mx-6 mb-6">
+          <input type="text" className="grow" placeholder="Search" />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 16 16"
+            fill="currentColor"
+            className="h-4 w-4 opacity-70">
+            <path
+              fillRule="evenodd"
+              d="M9.965 11.026a5 5 0 1 1 1.06-1.06l2.755 2.754a.75.75 0 1 1-1.06 1.06l-2.755-2.754ZM10.5 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z"
+              clipRule="evenodd" />
+          </svg>
+        </label>
+
+        {userTokens.length > 0 && (
+          <>
+            <div className="px-6 py-2 text-sm font-medium text-neutral flex justify-between items-center">
+              <span>Your Tokens</span>
+              <button 
+                onClick={handleUserTokensRefresh}
+                className="btn btn-ghost btn-xs"
+              >
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  strokeWidth={1.5} 
+                  stroke="currentColor" 
+                  className="w-4 h-4"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                </svg>
+              </button>
+            </div>
+            {userTokensLoading ? (
+              <div className="mb-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center space-x-4 mb-4 px-6">
+                    <div className="w-8 h-8 bg-base-300 rounded-full animate-pulse"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-base-300 rounded w-1/4 mb-2 animate-pulse"></div>
+                      <div className="h-3 bg-base-300 rounded w-1/3 animate-pulse"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mb-4">
+                {userTokens.map((userToken) => (
+                  <div 
+                    key={userToken.token.address} 
+                    className="flex justify-between items-center py-2 px-6 hover:bg-black hover:bg-opacity-20 cursor-pointer"
+                    onClick={() => handleTokenSelect(
+                      userToken.token, 
+                      userToken.value,
+                      userToken.token.decimals
+                    )}
+                  >
+                    <div className="flex items-center">
+                      <img 
+                        src={userToken.token.icon_url || DEFAULT_TOKEN_ICON} 
+                        alt={userToken.token.name || 'Token'} 
+                        className="w-8 h-8 mr-3 rounded-full" 
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = DEFAULT_TOKEN_ICON;
+                        }}
+                      />
+                      <div>
+                        <div className="text-base-content font-medium">{userToken.token.symbol || '-'}</div>
+                        <div className="text-xs text-neutral">{userToken.token.name || 'Unknown Token'}</div>
+                      </div>
+                    </div>
+                    <div className="text-right text-sm text-neutral">
+                      {formatTokenBalance(userToken.value, userToken.token.decimals)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="px-6 py-2 text-sm font-medium text-neutral flex justify-between items-center">
+          <span>All Tokens</span>
+          <button 
+            onClick={handleAllTokensRefresh}
+            className="btn btn-ghost btn-xs"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              strokeWidth={1.5} 
+              stroke="currentColor" 
+              className="w-4 h-4"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+            </svg>
+          </button>
+        </div>
+        {tokensLoading ? (
+          <div>
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center space-x-4 mb-4 px-6">
+                <div className="w-8 h-8 bg-base-300 rounded-full animate-pulse"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-base-300 rounded w-1/4 mb-2 animate-pulse"></div>
+                  <div className="h-3 bg-base-300 rounded w-1/3 animate-pulse"></div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-neutral-content">US${token.price}</div>
-                <div className="text-sm text-neutral-content">{token.balance}</div>
+            ))}
+          </div>
+        ) : (
+          <div>
+            {tokens.map((token) => (
+              <div 
+                key={token.address} 
+                className="flex justify-between items-center py-2 px-6 hover:bg-black hover:bg-opacity-20 cursor-pointer"
+                onClick={() => handleTokenSelect(token)}
+              >
+                <div className="flex items-center">
+                  <img 
+                    src={token.icon_url || DEFAULT_TOKEN_ICON} 
+                    alt={token.name || 'Token'} 
+                    className="w-8 h-8 mr-3 rounded-full" 
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = DEFAULT_TOKEN_ICON;
+                    }}
+                  />
+                  <div>
+                    <div className="text-base-content font-medium">{token.symbol || '-'}</div>
+                    <div className="text-xs text-neutral">{token.name || 'Unknown Token'}</div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
