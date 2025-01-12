@@ -5,7 +5,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 
 export default function Header() {
-	const { isConnected, address } = useAccount();
+	const { address } = useAccount();
 
 	// 测试下wagmi是否好用
 	useEffect(() => {

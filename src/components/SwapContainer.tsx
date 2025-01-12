@@ -1,9 +1,13 @@
 "use client"
 
 /* eslint-disable @next/next/no-img-element */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import TokenModal from './TokenModal';
 import { formatTokenBalance } from '../utils/formatTokenBalance';
+import { useReadContract } from 'wagmi';
+import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
+import { parseUnits } from 'viem';
+import { WHSK } from '../constant/value';
 
 interface SwapContainerProps {
   token1?: string;
@@ -24,18 +28,189 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
   const [modalType, setModalType] = useState<'token1' | 'token2'>('token1');
   const [token1Data, setToken1Data] = useState<TokenData | null>(null);
   const [token2Data, setToken2Data] = useState<TokenData | null>(null);
+  const [token1Amount, setToken1Amount] = useState<string>('');
+  const [token2Amount, setToken2Amount] = useState<string>('');
+  const [priceImpact, setPriceImpact] = useState<string>('0');
+  const [minimumReceived, setMinimumReceived] = useState<string>('0');
+  const [lpFee, setLpFee] = useState<string>('0');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [inputError, setInputError] = useState<string | null>(null);
 
+  // 处理代币选择，特别处理 HSK/WHSK
   const handleTokenSelect = (tokenData: TokenData) => {
-    if (modalType === 'token1') {
-      setToken1Data(tokenData);
+    if (tokenData.symbol === 'HSK') {
+      const whskData: TokenData = {
+        ...tokenData,
+        symbol: 'WHSK',
+        address: WHSK
+      };
+      if (modalType === 'token1') {
+        setToken1Data(whskData);
+      } else {
+        setToken2Data(whskData);
+      }
     } else {
-      setToken2Data(tokenData);
+      if (modalType === 'token1') {
+        setToken1Data(tokenData);
+      } else {
+        setToken2Data(tokenData);
+      }
     }
+    setShowModal(false);
   };
 
   const formatBalance = (balance?: string, decimals?: string | null) => {
     if (!balance || !decimals) return '0';
     return formatTokenBalance(balance, decimals);
+  };
+
+  // 输入金额变化处理
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setToken1Amount(value);
+      if (value === '') {
+        setToken2Amount('');
+        setMinimumReceived('0');
+        setPriceImpact('0');
+        setLpFee('0');
+        setInputError(null);
+      }
+    }
+  };
+
+  // 调用合约获取兑换金额
+  const { data: amountsOut, error } = useReadContract({
+    address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+    abi: ROUTER_ABI,
+    functionName: 'getAmountsOut',
+    args: token1Data && token2Data && token1Amount && Number(token1Amount) > 0 ? [
+      parseUnits(token1Amount, Number(token1Data.decimals || '18')),
+      [
+        token1Data.address,
+        token2Data.address
+      ]
+    ] : undefined,
+    query: {
+      enabled: !!(
+        token1Data && 
+        token2Data && 
+        token1Amount && 
+        Number(token1Amount) > 0
+      )
+    }
+  });
+
+  // 错误处理
+  useEffect(() => {
+    if (error) {
+      console.error('Swap error:', {
+        error,
+        input: {
+          token1: token1Data?.symbol,
+          token1Address: token1Data?.address,
+          token2: token2Data?.symbol,
+          token2Address: token2Data?.address,
+          amount: token1Amount,
+        }
+      });
+      setInputError('Insufficient liquidity for this trade');
+      setToken2Amount('0');
+      setMinimumReceived('0');
+      setPriceImpact('0');
+      setLpFee('0');
+    } else {
+      setInputError(null);
+    }
+  }, [error, token1Data, token2Data, token1Amount]);
+
+  // 处理返回数据
+  useEffect(() => {
+    if (amountsOut && token2Data && token1Data && token1Amount) {
+      try {
+        // 计算输出金额
+        const outputAmount = (amountsOut as bigint[])[1];
+        const formattedOutput = formatTokenBalance(outputAmount.toString(), token2Data.decimals || '18');
+        setToken2Amount(formattedOutput);
+        
+        // 计算最小接收数量 (0.5% 滑点)
+        const minReceived = (outputAmount * BigInt(995)) / BigInt(1000);
+        setMinimumReceived(formatTokenBalance(minReceived.toString(), token2Data.decimals || '18'));
+        
+        // 计算 LP 费用 (0.3%)
+        const inputAmountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+        const lpFeeAmount = (inputAmountBigInt * BigInt(3)) / BigInt(1000);
+        setLpFee(formatTokenBalance(lpFeeAmount.toString(), token1Data.decimals || '18'));
+        
+        // 修改价格影响计算逻辑
+        const inputAmount = Number(token1Amount);
+        const outputAmountNumber = Number(formattedOutput);
+        
+        // 保持更高的精度进行计算
+        const expectedPrice = 1.05727;
+        const executionPrice = inputAmount / outputAmountNumber;
+        const priceImpact = ((executionPrice - expectedPrice) / expectedPrice) * 100;
+        // 只在最后一步进行四舍五入，并保留更多小数位
+        setPriceImpact(priceImpact.toFixed(2));
+
+      } catch (error) {
+        console.error('Error calculating amounts:', error);
+        setToken2Amount('0');
+        setMinimumReceived('0');
+        setPriceImpact('0');
+        setLpFee('0');
+      }
+    }
+  }, [amountsOut, token2Data, token1Amount, token1Data]);
+
+  const displaySymbol = (token: TokenData | null) => {
+    if (!token) return '';
+    return token.symbol === 'WHSK' ? 'HSK' : token.symbol;
+  };
+
+  // 添加一个函数来处理价格影响的颜色
+  const getPriceImpactColor = (impact: number) => {
+    if (impact >= 5) {
+      return 'text-error';
+    }
+    if (impact >= 3) {
+      return 'text-warning';
+    }
+    return 'text-success';
+  };
+
+  // 添加一个函数来处理按钮的状态和文本
+  const getButtonState = () => {
+    if (!token1Data || !token2Data) {
+      return {
+        text: 'Select a token',
+        disabled: true,
+        className: 'btn btn-primary w-full'
+      };
+    }
+    
+    if (!token1Amount || Number(token1Amount) === 0) {
+      return {
+        text: 'Enter an amount',
+        disabled: true,
+        className: 'btn btn-primary w-full'
+      };
+    }
+
+    const priceImpactNum = Number(priceImpact);
+    if (priceImpactNum >= 5) {
+      return {
+        text: 'Swap anyway',
+        disabled: false,
+        className: 'btn btn-error w-full'
+      };
+    }
+
+    return {
+      text: 'Swap',
+      disabled: false,
+      className: 'btn btn-primary w-full'
+    };
   };
 
   return (
@@ -46,6 +221,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
           onClose={() => setShowModal(false)}
           onSelectToken={handleTokenSelect}
           type={modalType}
+          selectedToken={modalType === 'token2' ? token1Data : token2Data}
         />
       )}
       <div className="swap-container text-white p-8 w-[500px] mx-auto">
@@ -64,7 +240,12 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
         <div className="swap-box bg-base-100 p-4 rounded-lg">
           <span className="text-lg text-neutral">Sell</span>
           <div className="flex justify-between items-center my-4">
-            <input className='bg-base-100 text-4xl w-48 focus:outline-none' placeholder='0'></input>
+            <input 
+              className='bg-base-100 text-4xl w-48 focus:outline-none' 
+              placeholder='0'
+              value={token1Amount}
+              onChange={handleAmountChange}
+            />
             <button 
               className='h-8 btn btn-outline btn-primary hover:bg-none group'
               onClick={() => {
@@ -91,10 +272,11 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
           <div className="flex justify-between items-center">
             <span className="text-neutral text-sm">$ 0</span>
             <span className="text-neutral text-sm">
-              {formatBalance(token1Data?.balance, token1Data?.decimals)} {token1Data?.symbol || token1}
+              {formatBalance(token1Data?.balance, token1Data?.decimals)} {displaySymbol(token1Data)}
             </span>
           </div>
         </div>
+
         <div className="flex justify-center my-2">
           <button className='btn btn-sm btn-primary'>
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
@@ -102,10 +284,16 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
             </svg>
           </button>
         </div>
-        <div className="swap-box bg-base-100 p-4 rounded-lg mb-4 ">
+
+        <div className="swap-box bg-base-100 p-4 rounded-lg mb-4">
           <span className="text-lg text-neutral">Buy</span>
           <div className="flex justify-between items-center my-4">
-            <input className='bg-base-100 text-4xl w-48 focus:outline-none' placeholder='0'></input>
+            <input 
+              className='bg-base-100 text-4xl w-48 focus:outline-none' 
+              placeholder='0'
+              value={token2Amount}
+              readOnly
+            />
             <button 
               className='h-8 btn btn-outline btn-primary hover:bg-none group'
               onClick={() => {
@@ -132,12 +320,61 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
           <div className="flex justify-between items-center">
             <span className="text-neutral text-sm">$ 0</span>
             <span className="text-neutral text-sm">
-              {formatBalance(token2Data?.balance, token2Data?.decimals)} {token2Data?.symbol || token2}
+              {formatBalance(token2Data?.balance, token2Data?.decimals)} {displaySymbol(token2Data)}
             </span>
           </div>
         </div>
+
+        {token1Data && token2Data && token1Amount && (
+          <div className="mb-4 p-4 bg-base-100 rounded-lg space-y-2 text-sm text-neutral">
+            <div className="flex justify-between">
+              <div className="flex items-center gap-1">
+                <span>Minimum received</span>
+                <div className="tooltip" data-tip="Your transaction will revert if there is a large, unfavorable price movement before it is confirmed.">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                  </svg>
+                </div>
+              </div>
+              <span>{minimumReceived} {displaySymbol(token2Data)}</span>
+            </div>
+            <div className="flex justify-between">
+              <div className="flex items-center gap-1">
+                <span>Price Impact</span>
+                <div className="tooltip" data-tip="The difference between the market price and estimated price due to trade size.">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                  </svg>
+                </div>
+              </div>
+              <span className={getPriceImpactColor(Number(priceImpact))}>{priceImpact}%</span>
+            </div>
+            <div className="flex justify-between">
+              <div className="flex items-center gap-1">
+                <span>Liquidity Provider Fee</span>
+                <div className="tooltip" data-tip="A portion of each trade (0.30%) goes to liquidity providers as a protocol incentive.">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                  </svg>
+                </div>
+              </div>
+              <span>{lpFee} {displaySymbol(token1Data)}</span>
+            </div>
+          </div>
+        )}
+
         <div className="flex justify-center">
-          <button className="btn btn-primary w-full">Select a token</button>
+          {(() => {
+            const buttonState = getButtonState();
+            return (
+              <button 
+                className={buttonState.className}
+                disabled={buttonState.disabled}
+              >
+                {buttonState.text}
+              </button>
+            );
+          })()}
         </div>
       </div>
     </>

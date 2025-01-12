@@ -7,7 +7,7 @@ import {
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider } from 'wagmi'
 
-import { getDefaultConfig, Chain } from '@rainbow-me/rainbowkit';
+import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import {
 	hashkeyTestnet,
 } from 'wagmi/chains';

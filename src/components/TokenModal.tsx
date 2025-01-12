@@ -19,18 +19,27 @@ interface Token {
   decimals: string | null;
 }
 
+interface TokenData {
+  symbol: string;
+  name: string;
+  address: string;
+  icon_url: string | null;
+  balance?: string;
+  decimals?: string | null;
+}
+
+interface PairInfo {
+  pairAddress: string;
+  exists: boolean;
+}
+
 interface TokenModalProps {
-  address?: string;
+  address: string;
   onClose: () => void;
-  onSelectToken: (token: {
-    symbol: string;
-    name: string;
-    address: string;
-    icon_url: string | null;
-    balance?: string;
-    decimals?: string | null;
-  }) => void;
+  onSelectToken: (token: TokenData) => void;
   type: 'token1' | 'token2';
+  availablePairs?: PairInfo[];
+  selectedToken?: TokenData | null;
 }
 
 const TokenModal: React.FC<TokenModalProps> = ({ 
@@ -67,9 +76,6 @@ const TokenModal: React.FC<TokenModalProps> = ({
     e.stopPropagation();
     dispatch(refreshTokenList());
   };
-
-  console.log('User tokens:', userTokens);
-  console.log('All tokens:', tokens);
 
   const handleTokenSelect = (token: Token, balance?: string, decimals?: string | null) => {
     onSelectToken({
