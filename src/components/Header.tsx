@@ -3,6 +3,9 @@
 import { useEffect } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
+import logo from '../assets/img/logo.png';
+import Image from 'next/image';
+import Link from 'next/link';
 
 export default function Header() {
 	const { address } = useAccount();
@@ -14,9 +17,12 @@ export default function Header() {
 
   return (
 		<>
-			<label className="flex cursor-pointer gap-2 justify-between">
+			<label className="flex cursor-pointer gap-2 justify-between py-3 px-8 sticky top-0 bg-base-300 h-16 items-center">
 				<div className="flex items-center gap-2">
-					<svg
+					<Link href="/">
+						<Image src={logo} alt="logo" width={60} height={24} />
+					</Link>
+					{/* <svg
 						xmlns="http://www.w3.org/2000/svg"
 						width="20"
 						height="20"
@@ -42,7 +48,19 @@ export default function Header() {
 						strokeLinecap="round"
 						strokeLinejoin="round">
 						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-					</svg>
+					</svg> */}
+					<Link href="/">
+						<span className="text-sm">Trade</span>
+					</Link>
+					<Link href="/explore">
+						<span className="text-sm">Explore</span>
+					</Link>
+					<Link href="https://news.hyperindex.trade/">
+						<span className="text-sm">News</span>
+					</Link>
+					<Link href="/activity">
+						<span className="text-sm">Gift</span>
+					</Link>
 				</div>
 				<ConnectButton.Custom>
 					{({ openConnectModal, account, chain, authenticationStatus, openAccountModal, mounted }) => {
