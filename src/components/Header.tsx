@@ -6,9 +6,11 @@ import { useAccount } from 'wagmi';
 import logo from '../assets/img/logo.png';
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function Header() {
 	const { address } = useAccount();
+	const pathname = usePathname();
 
 	// 测试下wagmi是否好用
 	useEffect(() => {
@@ -18,7 +20,7 @@ export default function Header() {
   return (
 		<>
 			<label className="flex cursor-pointer gap-2 justify-between py-3 px-8 sticky top-0 bg-base-300 h-16 items-center">
-				<div className="flex items-center gap-2">
+				<div className="flex items-center gap-6">
 					<Link href="/">
 						<Image src={logo} alt="logo" width={60} height={24} />
 					</Link>
@@ -49,17 +51,17 @@ export default function Header() {
 						strokeLinejoin="round">
 						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
 					</svg> */}
-					<Link href="/">
-						<span className="text-sm">Trade</span>
+					<Link href="/" className='h-[40px] leading-[45px]'>
+						<span className={`text-base ${pathname === '/' ? '' : 'text-neutral'}`}>Trade</span>
 					</Link>
-					<Link href="/explore">
-						<span className="text-sm">Explore</span>
+					<Link href="/explore" className='h-[40px] leading-[45px]'	>
+						<span className={`text-base  ${pathname === '/explore' ? '' : 'text-neutral'}`}>Explore</span>
 					</Link>
-					<Link href="https://news.hyperindex.trade/">
-						<span className="text-sm">News</span>
+					<Link href="https://news.hyperindex.trade/" target="_blank"   className='h-[40px] leading-[45px]'>
+						<span className={`text-base  ${pathname === '/news' ? '' : 'text-neutral'}`}>News</span>
 					</Link>
-					<Link href="/activity">
-						<span className="text-sm">Gift</span>
+					<Link href="/activity" className='h-[40px] leading-[45px]'>
+						<span className={`text-base  ${pathname === '/activity' ? '' : 'text-neutral'}`}>Gift</span>
 					</Link>
 				</div>
 				<ConnectButton.Custom>
