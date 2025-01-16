@@ -4,38 +4,31 @@
 
 import Link from 'next/link'
 import React, { useEffect, useMemo, useState } from 'react'
+import { getPools, getTokens, Pool, Token } from '@/request/explore'
+import Loader from '@/components/Loading'
+import { formatUnits } from 'viem'
 
+export const formatNumber = (value: number | string, decimals: number = 2): string => {
+  if (value === 0 || isNaN(Number(value))) {
+    return '0.00'
+  }
+  const fixedValue = Number(value).toFixed(decimals)
 
-// import './index.css'
-// import { useTranslation } from 'react-i18next'
-// import fetchWrapper from '../../utils/fetch'
-// import { NavLink } from 'react-router-dom'
-// import Loader from '../../components/Loader'
-// import { useIsDarkMode } from '../../state/user/hooks'
-// import { ethers } from 'ethers';
-// import stablePool2Abi from '../../constants/abis/stablePool2.json';
+  return fixedValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
 
-// export const formatNumber = (value: number | string, decimals: number = 2): string => {
-//   if (value === 0 || isNaN(Number(value))) {
-//     return '0.00'
-//   }
-//   const fixedValue = Number(value).toFixed(decimals)
+const formatTradeVolume = (value: any, symbol: string, decimals: number): string => {
+  let formatUnit
+  if (symbol === 'USDT') {
+    formatUnit = formatUnits(value, 6)
+  } else {
+    formatUnit = formatUnits(value, decimals)
+  }
 
-//   return fixedValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
-// }
-
-// const formatTradeVolume = (value: any, symbol: string, decimals: number): string => {
-//   let formatUnit
-//   if (symbol === 'USDT') {
-//     formatUnit = ethers.utils.formatUnits(value, 6)
-//   } else {
-//     formatUnit = ethers.utils.formatUnits(value, decimals)
-//   }
-
-//   //保存小数点后5位
-//   const volume = Number(formatUnit).toFixed(5)
-//   return `${volume} ${symbol}`
-// }
+  //保存小数点后5位
+  const volume = Number(formatUnit).toFixed(5)
+  return `${volume} ${symbol}`
+}
 
 export default function Explore() {
   const [activeTab, setActiveTab] = useState(1)
@@ -43,8 +36,8 @@ export default function Explore() {
   const [loading, setLoading] = useState(true)
 
 
-  const [tokenData, setTokenData] = useState<any[]>([])
-  const [poolData, setPoolData] = useState<any[]>([])
+  const [tokenData, setTokenData] = useState<Token[]>([])
+  const [poolData, setPoolData] = useState<Pool[]>([])
 
   const [, setSortConfig] = useState({ key: '', direction: '' })
 
@@ -127,6 +120,8 @@ export default function Explore() {
   const fetchTokens = async () => {
     setLoading(true)
     try {
+			const tokens = await getTokens()
+			setTokenData(tokens)
       // const tokens = await fetchWrapper('/api/explore/tokens')
       // setTokenData(tokens)
     } catch (error) {
@@ -139,9 +134,8 @@ export default function Explore() {
   const fetchPools = async () => {
     setLoading(true)
     try {
-      // const pools = await fetchWrapper('/api/explore/pools')
-
-      // setPoolData(pools)
+      const pools = await getPools()
+      setPoolData(pools)
     } catch (error) {
       console.error('Failed to fetch pool list:', error)
     } finally {
@@ -172,16 +166,17 @@ export default function Explore() {
 					{tabs.map(tab => (
 						<div
 							key={tab.id}
-							className={`font-bold text-base font-bold text-3xl cursor-pointer ${activeTab === tab.id ? '' : 'text-neutral'}`}
+							className={`font-bold text-base font-bold text-xl cursor-pointer ${activeTab === tab.id ? '' : 'text-neutral'}`}
 							onClick={() => {
-								// loading || setActiveTab(tab.id)
+								if (loading) return
+								setActiveTab(tab.id)
 							}}
 						>
 							{tab.label}
 						</div>
 					))}
 				</div>
-				<div className="flex justify-between items-center">
+				<div className="flex flex-col ">
 					{/* 表头 */}
 					<div className="flex w-full bg-primary-content p-4 border-2 border-primary-focus rounded-lg">
 						{tableTitleData.map((item: any) => (
@@ -194,7 +189,6 @@ export default function Explore() {
 							</div>
 						))}
 					</div>
-
 					{tokenData.length > 0 && activeTab === 1 ? (
 						tokenData.map(row => (
 							<Link href={`/swap/${row.address}`} key={row.id} style={{ textDecoration: 'none' }}>
@@ -211,7 +205,7 @@ export default function Explore() {
 										{row.change24H}
 									</div>
 									<div className="table-cell">{row.FDV} USD</div>
-									{/* <div className="table-cell">{formatTradeVolume(row.tradingVolume, row.symbol, row.decimals)}</div> */}
+									<div className="table-cell">{formatTradeVolume(row.tradingVolume, row.symbol, row.decimals)}</div>
 								</div>
 							</Link>
 						))
@@ -219,7 +213,7 @@ export default function Explore() {
 						<></>
 					)}
 
-					{/* {poolData.length > 0 && activeTab === 2 ? (
+					{poolData.length > 0 && activeTab === 2 ? (
 						poolData.map(row => (
 							<div className="table-row body" key={row.id}>
 								<div className="table-cell">{row.id}</div>
@@ -231,28 +225,27 @@ export default function Explore() {
 								<div className="table-cell">{formatNumber(row.tradingVolume1D, 2)} USD</div>
 								<div className="table-cell">{formatNumber(row.tradingVolume30D, 2)} USD</div>
 								<div className="table-cell control">
-									<NavLink
-										to={`/swap?inputCurrency=${row.token0}&outputCurrency=${row.token1}`}
+									<Link
+										href={`/swap?inputCurrency=${row.token0}&outputCurrency=${row.token1}`}
 										style={{ textDecoration: 'none' }}
 									>
-										<span>{t('swap')}</span>
-									</NavLink>
-									<NavLink to={`/add/${row.token0}/${row.token1}`} style={{ textDecoration: 'none' }}>
-										<span>{t('addLiquidity')}</span>
-									</NavLink>
+										<span>Swap</span>
+									</Link>
+									<Link
+										href={`/add/${row.token0}/${row.token1}`}
+										style={{ textDecoration: 'none' }}
+									>
+										<span>Add Liquidity</span>
+									</Link>
 								</div>
 							</div>
 						))
 					) : (
 						<></>
-					)} */}
+					)}
 
 					{loading && (
-						<div className="table-row body">
-							<div className="table-cell loader">
-								{/* <Loader /> */}
-							</div>
-						</div>
+						<Loader className='mt-6'/>
 					)}
 				</div>
 			</div>

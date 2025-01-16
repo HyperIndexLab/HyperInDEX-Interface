@@ -17,6 +17,7 @@
     "@rainbow-me/rainbowkit": "^2.2.1",
     "@reduxjs/toolkit": "^2.5.0",
     "@tanstack/react-query": "^5.63.0",
+    "axios": "^1.7.9",
     "next": "15.1.3",
     "react": "^19.0.0",
     "react-daisyui": "^5.0.5",
