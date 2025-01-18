@@ -162,11 +162,14 @@ export default function Explore() {
   return (
     <div className='min-h-screen bg-base-300 pt-12'>
 			<div className='flex flex-col max-w-[1000px] mx-auto  h-16'>
-				<div className="tabs flex gap-6 mb-4">
+				<div className="tabs flex gap-6 mb-6">
 					{tabs.map(tab => (
 						<div
 							key={tab.id}
-							className={`font-bold text-base font-bold text-xl cursor-pointer ${activeTab === tab.id ? '' : 'text-neutral'}`}
+							style={{
+								fontSize: '32px',
+							}}
+							className={`font-bold text-base font-bold cursor-pointer ${activeTab === tab.id ? '' : 'text-neutral'}`}
 							onClick={() => {
 								if (loading) return
 								setActiveTab(tab.id)
@@ -176,9 +179,9 @@ export default function Explore() {
 						</div>
 					))}
 				</div>
-				<div className="flex flex-col ">
+				<div className="flex flex-col border-2 border-primary-focus rounded-lg">
 					{/* 表头 */}
-					<div className="flex w-full bg-primary-content p-4 border-2 border-primary-focus rounded-lg">
+					<div className="flex w-full bg-primary-content p-4 rounded-t-lg">
 						{tableTitleData.map((item: any) => (
 							<div
 								className={`flex-1 ${item.value === 'id' ? 'w-[40px] flex-none' : ''}`}
@@ -191,21 +194,21 @@ export default function Explore() {
 					</div>
 					{tokenData.length > 0 && activeTab === 1 ? (
 						tokenData.map(row => (
-							<Link href={`/swap/${row.address}`} key={row.id} style={{ textDecoration: 'none' }}>
-								<div className="table-row body" key={row.id}>
-									<div className="table-cell w-[40px]">{row.id}</div>
-									<div className="table-cell">{row.symbol}</div>
-									<div className="table-cell">{row.price} USD</div>
-									<div className={`table-cell change ${row.change1H.includes('-') ? 'red' : 'green'}`}>
+							<Link href={`/?outputCurrency=${row.address}`} key={row.id} style={{ textDecoration: 'none' }}>
+								<div className="flex flex-row p-4" key={row.id}>
+									<div className="w-[40px]">{row.id}</div>
+									<div className="flex-1">{row.symbol}</div>
+									<div className="flex-1">{row.price} USD</div>
+									<div className={`flex-1 change ${row.change1H.includes('-') ? 'text-red-500' : 'text-green-500'}`}>
 										<div className="triangle"></div>
 										{row.change1H}
 									</div>
-									<div className={`table-cell change ${row.change24H.includes('-') ? 'red' : 'green'}`}>
+									<div className={`flex-1 change ${row.change24H.includes('-') ? 'text-red-500' : 'text-green-500'}`}>
 										<div className="triangle"></div>
 										{row.change24H}
 									</div>
-									<div className="table-cell">{row.FDV} USD</div>
-									<div className="table-cell">{formatTradeVolume(row.tradingVolume, row.symbol, row.decimals)}</div>
+									<div className="flex-1">{row.FDV} USD</div>
+									<div className="flex-1">{formatTradeVolume(row.tradingVolume, row.symbol, row.decimals)}</div>
 								</div>
 							</Link>
 						))
@@ -215,27 +218,27 @@ export default function Explore() {
 
 					{poolData.length > 0 && activeTab === 2 ? (
 						poolData.map(row => (
-							<div className="table-row body" key={row.id}>
-								<div className="table-cell">{row.id}</div>
-								<div className="table-cell">{row.pairsName}</div>
-								<div className="table-cell">{row.TVL} USD</div>
-								<div className="table-cell" style={{ color: row.APY > 100 ? 'red' : 'inherit' }}>
+							<div className="flex flex-row p-4" key={row.id}>
+								<div className="w-[40px]">{row.id}</div>
+								<div className="flex-1">{row.pairsName}</div>
+								<div className="flex-1">{row.TVL} USD</div>
+								<div className="flex-1" style={{ color: row.APY > 100 ? 'red' : 'inherit' }}>
 									{formatNumber(row.APY, 3)}%
 								</div>
-								<div className="table-cell">{formatNumber(row.tradingVolume1D, 2)} USD</div>
-								<div className="table-cell">{formatNumber(row.tradingVolume30D, 2)} USD</div>
-								<div className="table-cell control">
+								<div className="flex-1">{formatNumber(row.tradingVolume1D, 2)} USD</div>
+								<div className="flex-1">{formatNumber(row.tradingVolume30D, 2)} USD</div>
+								<div className="flex-1 flex gap-4">
 									<Link
-										href={`/swap?inputCurrency=${row.token0}&outputCurrency=${row.token1}`}
+										href={`/?inputCurrency=${row.token0}&outputCurrency=${row.token1}`}
 										style={{ textDecoration: 'none' }}
 									>
-										<span>Swap</span>
+										<span className='text-primary'>Swap</span>
 									</Link>
 									<Link
 										href={`/add/${row.token0}/${row.token1}`}
 										style={{ textDecoration: 'none' }}
 									>
-										<span>Add Liquidity</span>
+										<span className='text-primary'>Add Liquidity</span>
 									</Link>
 								</div>
 							</div>
