@@ -25,7 +25,6 @@ export interface Pool {
 
 export const getTokens = async (): Promise<Token[]> => {
 	const res = await api.get('/api/explore/tokens')
-	console.log(res)
 	return res.data as Token[]
 }
 

@@ -1,5 +1,3 @@
-// 重构成next
-
 'use client'
 
 import Link from 'next/link'

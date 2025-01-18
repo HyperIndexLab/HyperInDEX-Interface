@@ -61,7 +61,7 @@ export default function Header() {
 						<span className={`text-base  ${pathname === '/news' ? '' : 'text-neutral'}`}>News</span>
 					</Link>
 					<Link href="/activity" className='h-[40px] leading-[45px]'>
-						<span className={`text-base  ${pathname === '/activity' ? '' : 'text-neutral'}`}>Gift</span>
+						<span className={`text-base  ${pathname === '/activity' ? '' : 'text-neutral'}`}>Gift🎁</span>
 					</Link>
 				</div>
 				<ConnectButton.Custom>
