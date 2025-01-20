@@ -3,7 +3,8 @@
 import Link from 'next/link'
 import React, { useEffect, useMemo, useState } from 'react'
 import { getPools, getTokens, Pool, Token } from '@/request/explore'
-import Loader from '@/components/Loading'
+
+import { Loading as Loader } from 'react-daisyui'
 import { formatUnits } from 'viem'
 
 export const formatNumber = (value: number | string, decimals: number = 2): string => {
@@ -112,7 +113,6 @@ export default function Explore() {
 
   useEffect(() => {
     setTableTitleData(TABLE_TITLE[activeTab as keyof typeof TABLE_TITLE] || [])
-    // setTableData([])
   }, [activeTab, TABLE_TITLE])
 
   const fetchTokens = async () => {
@@ -120,8 +120,6 @@ export default function Explore() {
     try {
 			const tokens = await getTokens()
 			setTokenData(tokens)
-      // const tokens = await fetchWrapper('/api/explore/tokens')
-      // setTokenData(tokens)
     } catch (error) {
       console.error('Failed to fetch token list:', error)
     } finally {
@@ -178,7 +176,6 @@ export default function Explore() {
 					))}
 				</div>
 				<div className="flex flex-col border-2 border-primary-focus rounded-lg">
-					{/* 表头 */}
 					<div className="flex w-full bg-primary-content p-4 rounded-t-lg">
 						{tableTitleData.map((item: any) => (
 							<div
@@ -246,7 +243,9 @@ export default function Explore() {
 					)}
 
 					{loading && (
-						<Loader className='mt-6'/>
+            <div className='flex justify-center items-center mt-6 mb-6'>
+              <Loader size='lg'/>
+            </div>
 					)}
 				</div>
 			</div>

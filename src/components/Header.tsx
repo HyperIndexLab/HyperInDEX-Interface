@@ -19,7 +19,7 @@ export default function Header() {
 
   return (
 		<>
-			<label className="flex cursor-pointer gap-2 justify-between py-3 px-8 sticky top-0 bg-base-300 h-16 items-center">
+			<div className="flex gap-2 justify-between py-3 px-8 sticky top-0 bg-base-300 h-16 items-center">
 				<div className="flex items-center gap-6">
 					<Link href="/">
 						<Image src={logo} alt="logo" width={60} height={24} />
@@ -106,7 +106,7 @@ export default function Header() {
 						)
 					}}
 				</ConnectButton.Custom>
-			</label>
+			</div>
 		</>
   );
 }

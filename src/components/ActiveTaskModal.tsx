@@ -1,15 +1,12 @@
-// display: flex;
-//   flex-direction: column;
-//   width: 100%;
-//   padding: 20px;
-//   background-color: ${({ theme }) => theme.bg1};
-//   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-//   border-radius: 12px;
-//   margin-bottom: 20px;
+'use client'
 
 import { useEffect, useState } from "react"
 import { useAccount } from "wagmi"
 import { getActivityStatus, claimActivity, IStatus } from "@/request/activity"
+import Link from "next/link"
+import { getEtherscanLink } from "@/utils"
+import { useChainId } from 'wagmi'
+import { CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/outline"
 
 
 export default function ActiveTaskModal() {
@@ -17,6 +14,7 @@ export default function ActiveTaskModal() {
   const [status, setStatus] = useState<IStatus | null>(null)
 	const { address } = useAccount()
   const [isClaiming, setIsClaiming] = useState(false)
+  const chainId = useChainId()
 
   useEffect(() => {
     if (!address) return
@@ -87,10 +85,18 @@ export default function ActiveTaskModal() {
 					</button>
         )}
 			</div>
-      {/* 
-      {showPopup && status?.txHash && (
-        <TransactionPopup summary="Claimed Successfully 🎉" hash={status.txHash} success={status?.is_claim_success} />
-      )} */}
+    
+      {showPopup && status?.txHash &&  (
+        <div className='flex w-full p-4 mt-4 bg-background rounded-lg shadow-md mb-4 max-w-[800px]'>
+          <div style={{ paddingRight: 16 }}>
+            {!status?.is_claim_success ? <CheckCircleIcon className='text-green-500 size-6' /> : <ExclamationCircleIcon className='text-red-500 size-6'  />}
+          </div>
+          <div className='flex flex-col gap-2'>
+            <div className='font-bold'>{status?.txHash ?? 'Hash: ' + status?.txHash?.slice(0, 8) + '...' + status?.txHash?.slice(58, 65)}</div>
+            <Link className='text-primary' target='_blank' href={getEtherscanLink(chainId, status?.txHash ?? '', 'transaction')}>View on HashKey Chain Scan</Link>
+          </div>
+        </div>
+      )}
 			</>
 			}
     </div>
