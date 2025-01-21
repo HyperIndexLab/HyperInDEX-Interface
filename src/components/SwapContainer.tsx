@@ -10,6 +10,9 @@ import { parseUnits } from 'viem';
 import { WHSK } from '../constant/value';
 import { useAccount } from 'wagmi';
 import { erc20Abi } from 'viem';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchTokenList, selectTokens } from '@/store/tokenListSlice';
+import { AppDispatch } from '@/store';
 
 interface SwapContainerProps {
   token1?: string;
@@ -26,6 +29,8 @@ interface TokenData {
 }
 
 const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 'Select token' }) => {
+  const tokens = useSelector(selectTokens);
+  const dispatch = useDispatch<AppDispatch>();
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<'token1' | 'token2'>('token1');
   const [token1Data, setToken1Data] = useState<TokenData | null>(null);
@@ -227,6 +232,40 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
       }
     }
   }, [amountsOut, token2Data, token1Amount, token1Data]);
+
+  // 根据url中的参数设置初始化的token
+  useEffect(() => {
+    if (tokens.length === 0) {
+      return;
+    }
+    tokens.forEach(token => {
+      if (token.address === token1) {
+        const tokenData: TokenData = {
+          symbol: token.symbol || '',
+          name: token.name || '',
+          address: token.address,
+          icon_url: token.icon_url,
+          decimals: token.decimals,
+        };
+        setToken1Data(tokenData);
+      }
+      if (token.address === token2) {
+        const tokenData: TokenData = {
+          symbol: token.symbol || '',
+          name: token.name || '',
+          address: token.address,
+          icon_url: token.icon_url,
+          decimals: token.decimals,
+        };
+        setToken2Data(tokenData);
+      }
+    });
+  }, [tokens, token1, token2]);
+
+  // 需要拉取一下tokenList，才能获取到token1和token2的详细数据
+  useEffect(() => {
+    dispatch(fetchTokenList());
+  }, []);
 
   const displaySymbol = (token: TokenData | null) => {
     if (!token) return '';
@@ -534,3 +573,4 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
 };
 
 export default SwapContainer; 
+
