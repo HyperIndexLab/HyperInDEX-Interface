@@ -48,6 +48,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
   const [txStatus, setTxStatus] = useState<'none' | 'pending' | 'success' | 'failed'>('none');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [inputError, setInputError] = useState<string | null>(null);
+  const [currentTx, setCurrentTx] = useState<'none' | 'approve' | 'swap'>('none');
 
   const { address: userAddress } = useAccount();
   const { writeContract, data: hash } = useWriteContract();
@@ -55,24 +56,57 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     hash,
   });
 
+  console.log(userAddress);
+  console.log(token1Data?.address);
   // 检查授权额度
-  const { data: allowance } = useReadContract({
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: token1Data?.address as `0x${string}`,
     abi: erc20Abi,
     functionName: 'allowance',
-    args: userAddress && token1Data ? [userAddress, ROUTER_CONTRACT_ADDRESS] : undefined,
+    args: userAddress && token1Data ? [
+      userAddress,                  // owner (用户地址)
+      '0x89491dd50EdbEE8CaAE912cbA162a6b2C6aC69ce'  // spender (Router 合约地址)
+    ] : undefined,
     query: {
-      enabled: !!(userAddress && token1Data && token1Data.symbol !== 'ETH'),
+      enabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
     },
   });
+  
+  useEffect(() => {
+    console.log('Contract read conditions:', {
+        userAddress,
+        token1Data,
+        isEnabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
+        tokenAddress: token1Data?.address,
+        routerAddress: ROUTER_CONTRACT_ADDRESS
+    });
+}, [userAddress, token1Data]);
+
+  // 在代币选择或金额变化时检查授权
+  useEffect(() => {
+    if (token1Data && token1Data.symbol !== 'HSK') {
+      refetchAllowance();
+      console.log('allowance', allowance);
+    }
+  }, [token1Data, token1Amount]);
 
   // 更新授权状态
   useEffect(() => {
     if (allowance && token1Amount && token1Data) {
       const amountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-      setIsApproved(allowance >= amountBigInt);
+      const isApprovedNow = allowance >= amountBigInt;
+      console.log('Checking allowance:', {
+        token: token1Data.symbol,
+        tokenAddress: token1Data.address,
+        owner: userAddress,
+        spender: '0x89491dd50EdbEE8CaAE912cbA162a6b2C6aC69ce',
+        allowance: allowance.toString(),
+        requiredAmount: amountBigInt.toString(),
+        isApproved: isApprovedNow
+      });
+      setIsApproved(isApprovedNow);
     }
-  }, [allowance, token1Amount, token1Data]);
+  }, [allowance, token1Amount, token1Data, userAddress]);
 
   // 处理授权
   const handleApprove = async () => {
@@ -91,6 +125,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
         args: [ROUTER_CONTRACT_ADDRESS, amountToApprove],
       });
       
+      setCurrentTx('approve');
       setTxStatus('pending');
     } catch (err) {
       console.error('Approve error:', err);
@@ -103,23 +138,17 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
 
   // 处理代币选择，特别处理 HSK/WHSK
   const handleTokenSelect = (tokenData: TokenData) => {
-    if (tokenData.symbol === 'HSK') {
-      const whskData: TokenData = {
-        ...tokenData,
-        symbol: 'WHSK',
-        address: WHSK
-      };
-      if (modalType === 'token1') {
-        setToken1Data(whskData);
-      } else {
-        setToken2Data(whskData);
-      }
+    const finalTokenData = {
+      ...tokenData,
+      // 内部和显示都使用原始的符号和地址
+      symbol: tokenData.symbol,
+      address: tokenData.address
+    };
+
+    if (modalType === 'token1') {
+      setToken1Data(finalTokenData);
     } else {
-      if (modalType === 'token1') {
-        setToken1Data(tokenData);
-      } else {
-        setToken2Data(tokenData);
-      }
+      setToken2Data(finalTokenData);
     }
     setShowModal(false);
   };
@@ -144,7 +173,12 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     }
   };
 
-  // 调用合约获取兑换金额
+  // 添加一个辅助函数来获取用于查询的地址
+  const getQueryAddress = (token: TokenData) => {
+    return token.symbol === 'HSK' ? WHSK : token.address;
+  };
+
+  // 修改 useReadContract hook 调用
   const { data: amountsOut } = useReadContract({
     address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
     abi: ROUTER_ABI,
@@ -152,8 +186,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     args: token1Data && token2Data && token1Amount && Number(token1Amount) > 0 ? [
       parseUnits(token1Amount, Number(token1Data.decimals || '18')),
       [
-        token1Data.address,
-        token2Data.address
+        getQueryAddress(token1Data),
+        getQueryAddress(token2Data)
       ]
     ] : undefined,
     query: {
@@ -189,7 +223,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     }
   }, [error, token1Data, token2Data, token1Amount]);
 
-  // 处理返回数据
+  // 修改价格计算相关的 useEffect
   useEffect(() => {
     if (amountsOut && token2Data && token1Data && token1Amount) {
       try {
@@ -222,6 +256,17 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
         
         // 保留两位小数
         setPriceImpact(priceImpact.toFixed(2));
+        
+        console.log('Price calculation:', {
+          inputToken: token1Data.symbol,
+          outputToken: token2Data.symbol,
+          queryPath: [getQueryAddress(token1Data), getQueryAddress(token2Data)],
+          inputAmount,
+          outputAmount: outputAmountNumber,
+          executionPrice,
+          idealPrice,
+          priceImpact
+        });
         
       } catch (error) {
         console.error('Error calculating amounts:', error);
@@ -267,9 +312,16 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     dispatch(fetchTokenList());
   }, []);
 
+  // 修改显示相关的函数
   const displaySymbol = (token: TokenData | null) => {
     if (!token) return '';
-    return token.symbol === 'WHSK' ? 'HSK' : token.symbol;
+    return token.symbol;  // 直接显示原始符号，因为我们不再在内部转换为 WHSK
+  };
+
+  // 修改 LP Fee 显示
+  const displayLPFee = () => {
+    if (!token1Data) return '0';
+    return `${lpFee} ${displaySymbol(token1Data)}`;
   };
 
   // 添加一个函数来处理价格影响的颜色
@@ -292,26 +344,41 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
       setError(null);
       
       const amountIn = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-      // Calculate amountOutMin properly using parseUnits
       const amountOutMin = parseUnits(
         minimumReceived,
         Number(token2Data.decimals || '18')
       );
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
-      
-      const swapParams = {
-        address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-        abi: ROUTER_ABI,
-        functionName: 'swapExactTokensForTokens',
-        args: [
-          amountIn,
-          amountOutMin,
-          [token1Data.address, token2Data.address],
-          userAddress,
-          deadline,
-        ],
-      };
 
+      let swapParams;
+      if (token1Data.symbol === 'HSK') {
+        // HSK -> Token
+        swapParams = {
+          address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+          abi: ROUTER_ABI,
+          functionName: 'swapExactETHForTokens',
+          args: [amountOutMin, [WHSK, token2Data.address], userAddress, deadline],
+          value: amountIn
+        };
+      } else if (token2Data.symbol === 'HSK') {
+        // Token -> HSK
+        swapParams = {
+          address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+          abi: ROUTER_ABI,
+          functionName: 'swapExactTokensForETH',
+          args: [amountIn, amountOutMin, [token1Data.address, WHSK], userAddress, deadline]
+        };
+      } else {
+        // Token -> Token
+        swapParams = {
+          address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+          abi: ROUTER_ABI,
+          functionName: 'swapExactTokensForTokens',
+          args: [amountIn, amountOutMin, [token1Data.address, token2Data.address], userAddress, deadline]
+        };
+      }
+
+      setCurrentTx('swap');
       writeContract(swapParams);
       setTxStatus('pending');
       
@@ -334,11 +401,21 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
   useEffect(() => {
     if (isSuccess) {
       setTxStatus('success');
-      // 清理输入
-      setToken1Amount('');
-      setToken2Amount('');
+      
+      if (currentTx === 'approve') {
+        // approve 成功后刷新授权额度
+        refetchAllowance();
+      } else if (currentTx === 'swap') {
+        setToken1Amount('');
+        setToken2Amount('');
+        setMinimumReceived('0');
+        setPriceImpact('0');
+        setLpFee('0');
+      }
+      
+      setCurrentTx('none');
     }
-  }, [isSuccess]);
+  }, [isSuccess, currentTx, refetchAllowance]);
 
   // 更新按钮状态逻辑，考虑授权状态
   const getButtonState = () => {
@@ -374,8 +451,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
       };
     }
 
-    // 如果需要授权
-    if (!isApproved && token1Data.symbol !== 'ETH') {
+    // 修改授权判断：只在不是 HSK 时检查授权
+    if (token1Data.symbol !== 'HSK' && !isApproved) {
       return {
         text: 'Approve',
         disabled: false,
@@ -402,11 +479,38 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     };
   };
 
+  // 添加一个直接检查特定代币授权的 hook
+  const { data: specificAllowance } = useReadContract({
+    address: '0x1078E037046300ACD766384e2bBC8496D9885C81' as `0x${string}`,  // SNAP 代币合约地址
+    abi: erc20Abi,
+    functionName: 'allowance',
+    args: userAddress ? [
+      userAddress,                  // owner (用户地址)
+      '0x89491dd50EdbEE8CaAE912cbA162a6b2C6aC69ce'  // spender (Router 合约地址)
+    ] : undefined,
+    query: {
+      enabled: !!userAddress,
+    },
+  });
+
+  // 添加一个 useEffect 来打印结果
+  useEffect(() => {
+    if (specificAllowance) {
+      console.log('Specific token allowance:', {
+        token: 'SNAP',
+        tokenAddress: '0x1078E037046300ACD766384e2bBC8496D9885C81',
+        owner: userAddress,
+        spender: '0x89491dd50EdbEE8CaAE912cbA162a6b2C6aC69ce',
+        allowance: specificAllowance.toString()
+      });
+    }
+  }, [specificAllowance, userAddress]);
+
   return (
     <>
       {showModal && (
         <TokenModal 
-          address="0x66F75DCA1d49bD95b8579d1B16727A81839c987C"
+          address="0x19973AA0E2Db09d3FdAb5B01beF12EF15b673877"
           onClose={() => setShowModal(false)}
           onSelectToken={handleTokenSelect}
           type={modalType}
@@ -547,7 +651,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
                   </svg>
                 </div>
               </div>
-              <span>{lpFee} {displaySymbol(token1Data)}</span>
+              <span>{displayLPFee()}</span>
             </div>
           </div>
         )}
