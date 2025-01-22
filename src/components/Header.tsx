@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 import logo from '../assets/img/logo.png';
@@ -8,9 +8,31 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
+const MENU_MAP = [
+	{path: '/', label: 'Trade'}, 
+	{path: '/explore', label: 'Explore', children: [
+		{path: '/explore/tokens', label: 'Token'},
+		{path: '/explore/pools', label: 'Pool'},
+	]},
+	{path: '/news', label: 'News'},
+	{path: '/activity', label: 'Activity', children: [
+		{path: '/activity', label: 'Gift🎁'},
+	]},
+]
+
 export default function Header() {
 	const { address } = useAccount();
 	const pathname = usePathname();
+	// 有多个菜单开关
+	const [menuOpenMap, setMenuOpenMap] = useState<{ [key: string]: boolean }>({});
+
+	const handleMenuEnter = (menu: string) => {
+		setMenuOpenMap((prev) => ({ ...prev, [menu]: true }));
+	};
+
+	const handleMenuLeave = (menu: string) => {
+		setMenuOpenMap((prev) => ({ ...prev, [menu]: false }));
+	};
 
 	// 测试下wagmi是否好用
 	useEffect(() => {
@@ -51,18 +73,20 @@ export default function Header() {
 						strokeLinejoin="round">
 						<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
 					</svg> */}
-					<Link href="/" className='h-[40px] leading-[45px]'>
-						<span className={`text-base ${pathname === '/' ? '' : 'text-neutral'}`}>Trade</span>
-					</Link>
-					<Link href="/explore" className='h-[40px] leading-[45px]'	>
-						<span className={`text-base  ${pathname === '/explore' ? '' : 'text-neutral'}`}>Explore</span>
-					</Link>
-					<Link href="https://news.hyperindex.trade/" target="_blank"   className='h-[40px] leading-[45px]'>
-						<span className={`text-base  ${pathname === '/news' ? '' : 'text-neutral'}`}>News</span>
-					</Link>
-					<Link href="/activity" className='h-[40px] leading-[45px]'>
-						<span className={`text-base  ${pathname === '/activity' ? '' : 'text-neutral'}`}>Gift🎁</span>
-					</Link>
+					{MENU_MAP.map((item) => (
+						<Link key={item.path} href={item.path} className='h-[40px] leading-[45px] relative' onMouseEnter={() => handleMenuEnter(item.label)} onMouseLeave={() => handleMenuLeave(item.label)}>
+							<span className={`text-base ${pathname === item.path ? '' : 'text-neutral'}`}>
+								{item.label}
+							</span>
+							{
+								item.children && menuOpenMap[item.label] && <ul className="menu bg-base-200 rounded-box absolute top-10" style={{ right: '50%', transform: 'translateX(50%)' }}>
+									{item.children.map((child) => (
+										<li key={child.path}><Link href={child.path} className={`w-[140px] ${pathname === child.path ? 'text-primary' : ''}`}>{child.label}</Link></li>
+									))}
+								</ul>
+							}
+						</Link>
+					))}
 				</div>
 				<ConnectButton.Custom>
 					{({ openConnectModal, account, chain, authenticationStatus, openAccountModal, mounted }) => {
