@@ -3,5 +3,5 @@
 import Explore from '@/components/Explore'
 
 export default function ExplorePage() {
-	return <Explore activeTab={1} />
+	return <Explore activeTab={2} />
 }
