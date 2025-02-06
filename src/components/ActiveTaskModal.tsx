@@ -29,9 +29,8 @@ export default function ActiveTaskModal() {
     claimActivity(address).then(res => {
       setStatus(res.data)
       setIsClaiming(false)
-      if (res.message.data.is_claim_success) {
-        // 检查是否成功
-        setShowPopup(true) // 显示弹出框
+      if (res.data.is_claim_success) {
+        setShowPopup(true)
       }
     })
   }

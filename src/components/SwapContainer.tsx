@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import TokenModal from './TokenModal';
 import { formatTokenBalance } from '../utils/formatTokenBalance';
-import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
 import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
 import { parseUnits } from 'viem';
 import { WHSK } from '../constant/value';
@@ -13,6 +13,9 @@ import { erc20Abi } from 'viem';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTokenList, selectTokens } from '@/store/tokenListSlice';
 import { AppDispatch } from '@/store';
+import { ArrowDownIcon, ArrowsUpDownIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { ChevronDownIcon } from '@heroicons/react/20/solid';
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
 interface SwapContainerProps {
   token1?: string;
@@ -28,7 +31,15 @@ interface TokenData {
   decimals?: string | null;
 }
 
-const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 'Select token' }) => {
+const DEFAULT_HSK_TOKEN: TokenData = {
+  symbol: 'HSK',
+  name: 'HyperSwap Token',
+  address: '0x0000000000000000000000000000000000000000',
+  icon_url: "/img/HSK-LOGO.png",
+  decimals: '18'
+};
+
+const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 'Select token' }) => {
   const tokens = useSelector(selectTokens);
   const dispatch = useDispatch<AppDispatch>();
   const [showModal, setShowModal] = useState(false);
@@ -55,9 +66,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
-
-  console.log(userAddress);
-  console.log(token1Data?.address);
   // 检查授权额度
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: token1Data?.address as `0x${string}`,
@@ -71,22 +79,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
       enabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
     },
   });
-  
-  useEffect(() => {
-    console.log('Contract read conditions:', {
-        userAddress,
-        token1Data,
-        isEnabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
-        tokenAddress: token1Data?.address,
-        routerAddress: ROUTER_CONTRACT_ADDRESS
-    });
-}, [userAddress, token1Data]);
-
   // 在代币选择或金额变化时检查授权
   useEffect(() => {
     if (token1Data && token1Data.symbol !== 'HSK') {
       refetchAllowance();
-      console.log('allowance', allowance);
     }
   }, [token1Data, token1Amount]);
 
@@ -95,15 +91,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     if (allowance && token1Amount && token1Data) {
       const amountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
       const isApprovedNow = allowance >= amountBigInt;
-      console.log('Checking allowance:', {
-        token: token1Data.symbol,
-        tokenAddress: token1Data.address,
-        owner: userAddress,
-        spender: '0x89491dd50EdbEE8CaAE912cbA162a6b2C6aC69ce',
-        allowance: allowance.toString(),
-        requiredAmount: amountBigInt.toString(),
-        isApproved: isApprovedNow
-      });
       setIsApproved(isApprovedNow);
     }
   }, [allowance, token1Amount, token1Data, userAddress]);
@@ -128,7 +115,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
       setCurrentTx('approve');
       setTxStatus('pending');
     } catch (err) {
-      console.error('Approve error:', err);
       setError(err instanceof Error ? err.message : 'Approval failed');
       setTxStatus('failed');
     } finally {
@@ -138,18 +124,30 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
 
   // 处理代币选择，特别处理 HSK/WHSK
   const handleTokenSelect = (tokenData: TokenData) => {
-    const finalTokenData = {
-      ...tokenData,
-      // 内部和显示都使用原始的符号和地址
-      symbol: tokenData.symbol,
-      address: tokenData.address
-    };
-
     if (modalType === 'token1') {
-      setToken1Data(finalTokenData);
+      // 如果选择的代币和 token2 相同，则交换位置
+      if (token2Data && tokenData.address === token2Data.address) {
+        setToken1Data(token2Data);
+        setToken2Data(token1Data);
+      } else {
+        setToken1Data(tokenData);
+      }
     } else {
-      setToken2Data(finalTokenData);
+      // 如果选择的代币和 token1 相同，则交换位置
+      if (token1Data && tokenData.address === token1Data.address) {
+        setToken2Data(token1Data);
+        setToken1Data(token2Data);
+      } else {
+        setToken2Data(tokenData);
+      }
     }
+    
+    // 清空输入金额和相关状态
+    setToken1Amount('');
+    setToken2Amount('');
+    setMinimumReceived('0');
+    setPriceImpact('0');
+    setLpFee('0');
     setShowModal(false);
   };
 
@@ -200,19 +198,26 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     }
   });
 
+  // 获取基准价格（用很小的数量计算）
+  const { data: baseAmountOut } = useReadContract({
+    address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+    abi: ROUTER_ABI,
+    functionName: 'getAmountsOut',
+    args: token1Data && token2Data ? [
+      parseUnits('0.0001', Number(token1Data.decimals || '18')),  // 用很小的数量计算基准价格
+      [
+        getQueryAddress(token1Data),
+        getQueryAddress(token2Data)
+      ]
+    ] : undefined,
+    query: {
+      enabled: !!(token1Data && token2Data),
+    },
+  });
+
   // 错误处理
   useEffect(() => {
     if (error) {
-      console.error('Swap error:', {
-        error,
-        input: {
-          token1: token1Data?.symbol,
-          token1Address: token1Data?.address,
-          token2: token2Data?.symbol,
-          token2Address: token2Data?.address,
-          amount: token1Amount,
-        }
-      });
       setInputError('Insufficient liquidity for this trade');
       setToken2Amount('0');
       setMinimumReceived('0');
@@ -225,7 +230,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
 
   // 修改价格计算相关的 useEffect
   useEffect(() => {
-    if (amountsOut && token2Data && token1Data && token1Amount) {
+    if (amountsOut && baseAmountOut && token2Data && token1Data && token1Amount) {
       try {
         // 计算输出金额
         const outputAmount = (amountsOut as bigint[])[1];
@@ -241,42 +246,42 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
         const lpFeeAmount = (inputAmountBigInt * BigInt(3)) / BigInt(1000);
         setLpFee(formatTokenBalance(lpFeeAmount.toString(), token1Data.decimals || '18'));
         
-        // 修改价格影响计算逻辑
-        const inputAmount = Number(token1Amount);
-        const outputAmountNumber = Number(formattedOutput);
+        // 计算价格影响
+        const baseOutput = (baseAmountOut as bigint[])[1];  // 小额交易输出
+        const actualOutput = (amountsOut as bigint[])[1];   // 实际交易输出
         
-        // 计算实际执行价格
-        const executionPrice = inputAmount / outputAmountNumber;
-        
-        // 计算理想价格（使用较小金额测试得到的价格）
-        const idealPrice = 1.07767; // 从图2中可以看到这是正确的价格
+        // 计算比率
+        const baseRate = (baseOutput * BigInt(10000)) / parseUnits('0.0001', Number(token1Data.decimals || '18'));
+        const actualRate = (actualOutput * BigInt(10000)) / parseUnits(token1Amount, Number(token1Data.decimals || '18'));
         
         // 计算价格影响
-        const priceImpact = Math.abs((executionPrice - idealPrice) / idealPrice) * 100;
-        
-        // 保留两位小数
+        const priceImpact = Math.abs(Number(actualRate - baseRate) / Number(baseRate) * 100);
         setPriceImpact(priceImpact.toFixed(2));
-        
-        console.log('Price calculation:', {
-          inputToken: token1Data.symbol,
-          outputToken: token2Data.symbol,
-          queryPath: [getQueryAddress(token1Data), getQueryAddress(token2Data)],
-          inputAmount,
-          outputAmount: outputAmountNumber,
-          executionPrice,
-          idealPrice,
-          priceImpact
+
+        console.log('Price Impact Calculation:', {
+          token1: token1Data.symbol,
+          token2: token2Data.symbol,
+          baseInput: '0.0001',
+          baseOutput: baseOutput.toString(),
+          baseRate: baseRate.toString(),
+          actualInput: token1Amount,
+          actualOutput: actualOutput.toString(),
+          actualRate: actualRate.toString(),
+          priceImpact: priceImpact,
+          decimals: {
+            input: token1Data.decimals,
+            output: token2Data.decimals
+          }
         });
-        
+
       } catch (error) {
-        console.error('Error calculating amounts:', error);
         setToken2Amount('0');
         setMinimumReceived('0');
         setPriceImpact('0');
         setLpFee('0');
       }
     }
-  }, [amountsOut, token2Data, token1Amount, token1Data]);
+  }, [amountsOut, baseAmountOut, token2Data, token1Amount, token1Data]);
 
   // 根据url中的参数设置初始化的token
   useEffect(() => {
@@ -315,7 +320,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
   // 修改显示相关的函数
   const displaySymbol = (token: TokenData | null) => {
     if (!token) return '';
-    return token.symbol;  // 直接显示原始符号，因为我们不再在内部转换为 WHSK
+    return token.symbol; 
   };
 
   // 修改 LP Fee 显示
@@ -383,7 +388,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
       setTxStatus('pending');
       
     } catch (err) {
-      console.error('Swap error:', err);
       setError(err instanceof Error ? err.message : 'Swap failed');
       setTxStatus('failed');
     } finally {
@@ -417,37 +421,52 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     }
   }, [isSuccess, currentTx, refetchAllowance]);
 
-  // 更新按钮状态逻辑，考虑授权状态
-  const getButtonState = () => {
-    if (isLoading || isConfirming) {
-      return {
-        text: isConfirming ? 'Confirming...' : 'Loading...',
-        disabled: true,
-        className: 'btn btn-primary w-full loading'
-      };
-    }
+  // 获取 HSK 余额
+  const { data: hskBalance } = useBalance({
+    address: userAddress,
+    query: {
+      enabled: !!userAddress,
+    },
+  });
 
+  console.log('-->', hskBalance);
+
+  // 添加日志来检查值
+  useEffect(() => {
+    console.log('HSK Balance:', {
+      rawBalance: hskBalance?.value?.toString(),
+      formatted: formatBalance(hskBalance?.value?.toString(), '18'),
+      decimals: '18'
+    });
+  }, [hskBalance]);
+
+  // 更新按钮状态逻辑
+  const getButtonState = () => {
     if (!token1Data || !token2Data) {
       return {
         text: 'Select tokens',
-        disabled: true,
-        className: 'btn btn-primary w-full'
+        disabled: true
       };
     }
 
     if (!token1Amount || Number(token1Amount) === 0) {
       return {
         text: 'Enter an amount',
-        disabled: true,
-        className: 'btn btn-primary w-full'
+        disabled: true
       };
     }
 
     if (error) {
       return {
         text: 'Insufficient liquidity',
-        disabled: true,
-        className: 'btn btn-error w-full'
+        disabled: true
+      };
+    }
+
+    if (txStatus === 'pending') {
+      return {
+        text: currentTx === 'approve' ? 'Approving...' : 'Swapping...',
+        disabled: true
       };
     }
 
@@ -456,7 +475,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
       return {
         text: 'Approve',
         disabled: false,
-        className: 'btn btn-primary w-full',
         onClick: handleApprove
       };
     }
@@ -466,7 +484,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
       return {
         text: 'Swap anyway',
         disabled: false,
-        className: 'btn btn-error w-full',
         onClick: handleSwap
       };
     }
@@ -474,73 +491,84 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
     return {
       text: 'Swap',
       disabled: false,
-      className: 'btn btn-primary w-full',
       onClick: handleSwap
     };
   };
 
-  // 添加一个直接检查特定代币授权的 hook
-  const { data: specificAllowance } = useReadContract({
-    address: '0x1078E037046300ACD766384e2bBC8496D9885C81' as `0x${string}`,  // SNAP 代币合约地址
-    abi: erc20Abi,
-    functionName: 'allowance',
-    args: userAddress ? [
-      userAddress,                  // owner (用户地址)
-      '0x89491dd50EdbEE8CaAE912cbA162a6b2C6aC69ce'  // spender (Router 合约地址)
-    ] : undefined,
-    query: {
-      enabled: !!userAddress,
-    },
-  });
-
-  // 添加一个 useEffect 来打印结果
-  useEffect(() => {
-    if (specificAllowance) {
-      console.log('Specific token allowance:', {
-        token: 'SNAP',
-        tokenAddress: '0x1078E037046300ACD766384e2bBC8496D9885C81',
-        owner: userAddress,
-        spender: '0x89491dd50EdbEE8CaAE912cbA162a6b2C6aC69ce',
-        allowance: specificAllowance.toString()
+  // 修改交换代币位置的函数
+  const handleSwapTokens = () => {
+    if (!token2Data) return;  // 只检查 token2Data
+    
+    if (token1Data) {
+      // 正常的两个代币交换
+      const tempToken = token1Data;
+      setToken1Data(token2Data);
+      setToken2Data(tempToken);
+    } else {
+      // token1 是默认的 HSK
+      setToken1Data(token2Data);
+      setToken2Data({
+        ...DEFAULT_HSK_TOKEN,
+        balance: hskBalance?.value?.toString(),
       });
     }
-  }, [specificAllowance, userAddress]);
+    
+    // 清空输入金额
+    setToken1Amount('');
+    setToken2Amount('');
+    setMinimumReceived('0');
+    setPriceImpact('0');
+    setLpFee('0');
+  };
+
+  // 修改初始化逻辑
+  useEffect(() => {
+    if (token1 === 'HSK') {
+      // 无论 token1Data 是否存在，都更新 HSK 余额
+      setToken1Data({
+        ...DEFAULT_HSK_TOKEN,
+        balance: hskBalance?.value?.toString(),
+      });
+    }
+  }, [hskBalance, token1]);
 
   return (
     <>
       {showModal && (
         <TokenModal 
-          address="0x19973AA0E2Db09d3FdAb5B01beF12EF15b673877"
+          address={userAddress || ''}
           onClose={() => setShowModal(false)}
           onSelectToken={handleTokenSelect}
           type={modalType}
           selectedToken={modalType === 'token2' ? token1Data : token2Data}
         />
       )}
-      <div className="swap-container text-white p-8 w-[500px] mx-auto">
+      <div className="w-[460px] mx-auto rounded-2xl bg-base-200/50 backdrop-blur-lg p-4 shadow-xl">
+        {/* 头部操作栏 */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex gap-2">
-            <button className="btn btn-sm btn-primary">Swap</button>
-            <button className="btn btn-sm btn-primary">Send</button>
+            <button className="btn btn-sm btn-primary rounded-full px-6">Swap</button>
+            <button className="btn btn-sm btn-ghost rounded-full px-6">Send</button>
           </div>
-          <div className="hover: cursor-pointer">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            </svg>
-          </div>
+          <button className="btn btn-sm btn-ghost btn-circle">
+            <Cog6ToothIcon className="w-5 h-5" />
+          </button>
         </div>
-        <div className="swap-box bg-base-100 p-4 rounded-lg">
-          <span className="text-lg text-neutral">Sell</span>
-          <div className="flex justify-between items-center my-4">
+
+        {/* Sell 输入框 */}
+        <div className="bg-base-100 rounded-xl p-4 mb-2">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-base text-base-content/60">Sell</span>
+          </div>
+          <div className="flex justify-between items-center">
             <input 
-              className='bg-base-100 text-4xl w-48 focus:outline-none' 
-              placeholder='0'
+              className="bg-transparent text-4xl w-[60%] focus:outline-none"
+              placeholder="0"
               value={token1Amount}
               onChange={handleAmountChange}
             />
             <button 
-              className='h-8 btn btn-outline btn-primary hover:bg-none group'
+              className="btn btn-ghost rounded-full h-10 px-3 hover:bg-base-200"
               onClick={() => {
                 setModalType('token1');
                 setShowModal(true);
@@ -548,47 +576,60 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
             >
               {token1Data ? (
                 <>
-                  <img src={token1Data.icon_url || "https://in-dex.4everland.store/indexcoin.jpg"} alt={token1Data.name} className="w-6 h-6 rounded-full" />
-                  <span className='text-neutral group-hover:text-base-100'>{displaySymbol(token1Data)}</span>
+                  <img src={token1Data.icon_url || "/img/HSK-LOGO.png"} alt={token1Data.name} className="w-6 h-6 rounded-full" />
+                  <span className="mx-2">{displaySymbol(token1Data)}</span>
                 </>
               ) : (
                 <>
-                  <img src="https://token-icons.s3.amazonaws.com/eth.png" alt="ETH" className="w-6 h-6" />
-                  <span className='text-neutral group-hover:text-base-100'>{token1}</span>
+                  {token1 === 'HSK' ? (
+                    <>
+                      <img src="/img/HSK-LOGO.png" alt="HSK" className="w-6 h-6 rounded-full" />
+                      <span className="mx-2">HSK</span>
+                    </>
+                  ) : (
+                    <span>{token1}</span>
+                  )}
                 </>
               )}
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
+              <ChevronDownIcon className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-neutral text-sm">$ 0</span>
-            <span className="text-neutral text-sm">
-              {formatBalance(token1Data?.balance, token1Data?.decimals)} {displaySymbol(token1Data)}
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-sm text-base-content/60">$ 0</span>
+            <span className="text-sm text-base-content/60">
+              Balance: {
+                token1 === 'HSK' ? 
+                  formatTokenBalance(hskBalance?.value?.toString() || '0', '18') :
+                  formatBalance(token1Data?.balance, token1Data?.decimals)
+              } {token1Data ? displaySymbol(token1Data) : token1}
             </span>
           </div>
         </div>
 
-        <div className="flex justify-center my-2">
-          <button className='btn btn-sm btn-primary'>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15 12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" />
-            </svg>
+        {/* 交换按钮 */}
+        <div className="relative h-0 flex justify-center">
+          <button 
+            onClick={handleSwapTokens}
+            className="absolute -top-[20px] -bottom-[20px] btn btn-circle btn-sm btn-primary shadow-lg z-10"
+          >
+            <ArrowsUpDownIcon className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="swap-box bg-base-100 p-4 rounded-lg mb-4">
-          <span className="text-lg text-neutral">Buy</span>
-          <div className="flex justify-between items-center my-4">
+        {/* Buy 输入框 */}
+        <div className="bg-base-100 rounded-xl p-4 mb-4">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-base text-base-content/60">Buy</span>
+          </div>
+          <div className="flex justify-between items-center">
             <input 
-              className='bg-base-100 text-4xl w-48 focus:outline-none' 
-              placeholder='0'
+              className="bg-transparent text-4xl w-[60%] focus:outline-none"
+              placeholder="0"
               value={token2Amount}
               readOnly
             />
             <button 
-              className='h-8 btn btn-outline btn-primary hover:bg-none group'
+              className="btn btn-ghost rounded-full h-10 px-3 hover:bg-base-200"
               onClick={() => {
                 setModalType('token2');
                 setShowModal(true);
@@ -596,59 +637,49 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
             >
               {token2Data ? (
                 <>
-                  <img src={token2Data.icon_url || "https://in-dex.4everland.store/indexcoin.jpg"} alt={token2Data.name} className="w-6 h-6 rounded-full" />
-                  <span className='text-neutral group-hover:text-base-100'>{token2Data.symbol}</span>
+                  <img src={token2Data.icon_url || "/img/HSK-LOGO.png"} alt={token2Data.name} className="w-6 h-6 rounded-full" />
+                  <span className="mx-2">{token2Data.symbol}</span>
                 </>
               ) : (
-                <>
-                  <img src="https://token-icons.s3.amazonaws.com/eth.png" alt="ETH" className="w-6 h-6" />
-                  <span className='text-neutral group-hover:text-base-100'>{token2}</span>
-                </>
+                <span>{token2}</span>
               )}
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-              </svg>
+              <ChevronDownIcon className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-neutral text-sm">$ 0</span>
-            <span className="text-neutral text-sm">
-              {formatBalance(token2Data?.balance, token2Data?.decimals)} {displaySymbol(token2Data)}
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-sm text-base-content/60">$ 0</span>
+            <span className="text-sm text-base-content/60">
+              Balance: {formatBalance(token2Data?.balance, token2Data?.decimals)} {displaySymbol(token2Data)}
             </span>
           </div>
         </div>
 
+        {/* 交易详情 */}
         {token1Data && token2Data && token1Amount && (
-          <div className="mb-4 p-4 bg-base-100 rounded-lg space-y-2 text-sm text-neutral">
-            <div className="flex justify-between">
-              <div className="flex items-center gap-1">
+          <div className="bg-base-100 rounded-xl p-4 space-y-3 text-sm mb-4">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-1 text-base-content/60">
                 <span>Minimum received</span>
                 <div className="tooltip" data-tip="Your transaction will revert if there is a large, unfavorable price movement before it is confirmed.">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                  </svg>
+                  <InformationCircleIcon className="w-4 h-4" />
                 </div>
               </div>
               <span>{minimumReceived} {displaySymbol(token2Data)}</span>
             </div>
-            <div className="flex justify-between">
-              <div className="flex items-center gap-1">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-1 text-base-content/60">
                 <span>Price Impact</span>
                 <div className="tooltip" data-tip="The difference between the market price and estimated price due to trade size.">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                  </svg>
+                  <InformationCircleIcon className="w-4 h-4" />
                 </div>
               </div>
               <span className={getPriceImpactColor(Number(priceImpact))}>{priceImpact}%</span>
             </div>
-            <div className="flex justify-between">
-              <div className="flex items-center gap-1">
-                <span>Liquidity Provider Fee</span>
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-1 text-base-content/60">
+                <span>LP Fee</span>
                 <div className="tooltip" data-tip="A portion of each trade (0.30%) goes to liquidity providers as a protocol incentive.">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                  </svg>
+                  <InformationCircleIcon className="w-4 h-4" />
                 </div>
               </div>
               <span>{displayLPFee()}</span>
@@ -656,17 +687,19 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'ETH', token2 = 
           </div>
         )}
 
+        {/* 操作按钮 */}
         <div className="flex justify-center">
           {(() => {
             const buttonState = getButtonState();
             return (
               <button 
-                className={buttonState.className}
+                className={`btn w-full h-12 rounded-xl font-medium ${
+                  buttonState.disabled ? 'btn-disabled' : 'btn-primary'
+                }`}
                 disabled={buttonState.disabled}
                 onClick={buttonState.onClick}
               >
                 {buttonState.text}
-                {txStatus === 'pending' && <span className="loading loading-spinner"></span>}
               </button>
             );
           })()}

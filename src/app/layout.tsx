@@ -7,6 +7,9 @@ import { Theme } from 'react-daisyui';
 import RainbowKitWrapper from '../components/RainbowKitProvider';
 import store from '../store';
 import Header from '../components/Header';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -34,6 +37,18 @@ export default function RootLayout({
                 {children}
               </RainbowKitWrapper>
             </Theme>
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="dark"
+            />
           </body>
         </html>
     </Provider>

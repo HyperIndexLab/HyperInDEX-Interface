@@ -46,6 +46,8 @@ const TokenModal: React.FC<TokenModalProps> = ({
   address, 
   onClose, 
   onSelectToken, 
+  type,
+  selectedToken
 }) => {
   const dispatch = useDispatch<AppDispatch>();
   const tokens = useSelector(selectTokens);
@@ -242,6 +244,31 @@ const TokenModal: React.FC<TokenModalProps> = ({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {!selectedToken && (
+          <div 
+            className="flex justify-between items-center py-2 px-6 hover:bg-black hover:bg-opacity-20 cursor-pointer"
+            onClick={() => handleTokenSelect({
+              symbol: 'HSK',
+              name: 'HyperSwap Token',
+              address: '0x0000000000000000000000000000000000000000',  // HSK 的地址
+              icon_url: "https://in-dex.4everland.store/indexcoin.jpg",
+              decimals: '18'
+            })}
+          >
+            <div className="flex items-center">
+              <img 
+                src="https://in-dex.4everland.store/indexcoin.jpg"
+                alt="HSK" 
+                className="w-8 h-8 mr-3 rounded-full" 
+              />
+              <div>
+                <div className="text-base-content font-medium">HSK</div>
+                <div className="text-xs text-neutral">HyperSwap Token</div>
+              </div>
+            </div>
           </div>
         )}
       </div>
