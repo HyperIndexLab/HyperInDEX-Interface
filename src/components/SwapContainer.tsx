@@ -13,7 +13,7 @@ import { erc20Abi } from 'viem';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTokenList, selectTokens } from '@/store/tokenListSlice';
 import { AppDispatch } from '@/store';
-import { ArrowDownIcon, ArrowsUpDownIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { ArrowsUpDownIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
 import { ChevronDownIcon } from '@heroicons/react/20/solid';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 
@@ -315,7 +315,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   // 需要拉取一下tokenList，才能获取到token1和token2的详细数据
   useEffect(() => {
     dispatch(fetchTokenList());
-  }, []);
+  }, [dispatch]);
 
   // 修改显示相关的函数
   const displaySymbol = (token: TokenData | null) => {
