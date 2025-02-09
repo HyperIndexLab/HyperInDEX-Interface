@@ -172,7 +172,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-base-300 to-base-200 p-4 lg:p-12">
+    <div className="min-h-screen p-4 lg:p-12">
       <div className="max-w-7xl mx-auto">
         {/* Tabs */}
         <div className="flex items-center justify-between mb-8">

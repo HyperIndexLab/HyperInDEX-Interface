@@ -27,30 +27,32 @@ export default function RootLayout({
 }>) {
   return (
     <Provider store={store}>
-        <html lang="en">
-          <body
-            className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-          >
-            <Theme dataTheme="dark">
-              <RainbowKitWrapper>
-                <Header  />  
-                {children}
-              </RainbowKitWrapper>
-            </Theme>
-            <ToastContainer
-              position="top-right"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="dark"
-            />
-          </body>
-        </html>
+      <html lang="en" data-theme="dark">
+        <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}>
+          <Theme dataTheme="dark">
+            <RainbowKitWrapper>
+              <div className="min-h-screen flex flex-col bg-base-300">
+                <Header />
+                <main className="flex-1">
+                  {children}
+                </main>
+              </div>
+            </RainbowKitWrapper>
+          </Theme>
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="dark"
+          />
+        </body>
+      </html>
     </Provider>
   );
 }
