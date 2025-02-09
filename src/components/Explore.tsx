@@ -1,17 +1,16 @@
 import Link from 'next/link'
 import React, { useEffect, useMemo, useState } from 'react'
 import { getPools, getTokens, Pool, Token } from '@/request/explore'
-
-import { Loading as Loader } from 'react-daisyui'
 import { formatUnits } from 'viem'
 
 export const formatNumber = (value: number | string, decimals: number = 2): string => {
   if (value === 0 || isNaN(Number(value))) {
-    return '0.00'
+    return '0'
   }
-  const fixedValue = Number(value).toFixed(decimals)
-
-  return fixedValue.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  const num = Number(value)
+  if (Math.abs(num) < 0.00001) return '< 0.00001'
+  const fixedValue = num.toFixed(decimals)
+  return fixedValue.replace(/\.?0+$/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
 const formatTradeVolume = (value: any, symbol: string, decimals: number): string => {
@@ -153,99 +152,189 @@ export default function Explore({ activeTab }: { activeTab: number }) {
     }))
   }
 
+  // 添加上升下降指示器组件
+  const PriceChangeIndicator = ({ value }: { value: string }) => {
+    const isPositive = !value.includes('-')
+    return (
+      <div className={`flex items-center gap-1 ${isPositive ? 'text-success' : 'text-error'}`}>
+        {isPositive ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <path d="M13.3021 7.7547L17.6821 14.2475C18.4182 15.3388 17.7942 17 16.6482 17L7.3518 17C6.2058 17 5.5818 15.3376 6.3179 14.2475L10.6979 7.7547C11.377 6.7484 12.623 6.7484 13.3021 7.7547Z" fill="currentColor" />
+          </svg>
+        ) : (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.6979 16.2453L6.31787 9.75247C5.58184 8.66118 6.2058 7 7.35185 7L16.6482 7C17.7942 7 18.4182 8.66243 17.6821 9.75247L13.3021 16.2453C12.623 17.2516 11.377 17.2516 10.6979 16.2453Z" fill="currentColor" />
+          </svg>
+        )}
+        {value.replace('-', '')}%
+      </div>
+    )
+  }
+
   return (
-    <div className='min-h-screen bg-base-300 pt-12'>
-			<div className='flex flex-col max-w-[1000px] mx-auto  h-16'>
-				<div className="tabs flex gap-6 mb-6">
-					{tabs.map(tab => (
-						<div
-							key={tab.id}
-							style={{
-								fontSize: '32px',
-							}}
-							className={`font-bold text-base font-bold cursor-pointer ${activeTab === tab.id ? '' : 'text-neutral'}`}
-							onClick={() => {
-								if (loading) return
-							}}
-						>
-              <Link href={`/explore/${tab.id === 1 ? 'tokens' : 'pools'}`}>{tab.label}</Link>
-						</div>
-					))}
-				</div>
-				<div className="flex flex-col border-2 border-primary-focus rounded-lg">
-					<div className="flex w-full bg-primary-content p-4 rounded-t-lg">
-						{tableTitleData.map((item: any) => (
-							<div
-								className={`flex-1 ${item.value === 'id' ? 'w-[40px] flex-none' : ''}`}
-								onClick={() => handleSort(item.value)}
-								key={item.value}
-							>
-								{item.label}
-							</div>
-						))}
-					</div>
-					{tokenData.length > 0 && activeTab === 1 ? (
-						tokenData.map(row => (
-							<Link href={`/?outputCurrency=${row.address}`} key={row.id} style={{ textDecoration: 'none' }}>
-								<div className="flex flex-row p-4" key={row.id}>
-									<div className="w-[40px]">{row.id}</div>
-									<div className="flex-1">{row.symbol}</div>
-									<div className="flex-1">{row.price} USD</div>
-									<div className={`flex-1 change ${row.change1H.includes('-') ? 'text-red-500' : 'text-green-500'}`}>
-										<div className="triangle"></div>
-										{row.change1H}
-									</div>
-									<div className={`flex-1 change ${row.change24H.includes('-') ? 'text-red-500' : 'text-green-500'}`}>
-										<div className="triangle"></div>
-										{row.change24H}
-									</div>
-									<div className="flex-1">{row.FDV} USD</div>
-									<div className="flex-1">{formatTradeVolume(row.tradingVolume, row.symbol, row.decimals)}</div>
-								</div>
-							</Link>
-						))
-					) : (
-						<></>
-					)}
+    <div className="min-h-screen bg-gradient-to-b from-base-300 to-base-200 p-4 lg:p-12">
+      <div className="max-w-7xl mx-auto">
+        {/* Tabs */}
+        <div className="flex items-center justify-between mb-8">
+          <div className="tabs tabs-boxed bg-base-100/50 backdrop-blur-sm p-1">
+            {tabs.map(tab => (
+              <Link 
+                key={tab.id}
+                href={`/explore/${tab.id === 1 ? 'tokens' : 'pools'}`}
+                className={`tab tab-lg gap-2 ${activeTab === tab.id ? 'tab-active' : ''}`}
+              >
+                {tab.id === 1 ? (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                )}
+                {tab.label}
+              </Link>
+            ))}
+          </div>
+        </div>
 
-					{poolData.length > 0 && activeTab === 2 ? (
-						poolData.map(row => (
-							<div className="flex flex-row p-4" key={row.id}>
-								<div className="w-[40px]">{row.id}</div>
-								<div className="flex-1">{row.pairsName}</div>
-								<div className="flex-1">{row.TVL} USD</div>
-								<div className="flex-1" style={{ color: row.APY > 100 ? 'red' : 'inherit' }}>
-									{formatNumber(row.APY, 3)}%
-								</div>
-								<div className="flex-1">{formatNumber(row.tradingVolume1D, 2)} USD</div>
-								<div className="flex-1">{formatNumber(row.tradingVolume30D, 2)} USD</div>
-								<div className="flex-1 flex gap-4">
-									<Link
-										href={`/?inputCurrency=${row.token0}&outputCurrency=${row.token1}`}
-										style={{ textDecoration: 'none' }}
-									>
-										<span className='text-primary'>Swap</span>
-									</Link>
-									<Link
-										href={`/add/${row.token0}/${row.token1}`}
-										style={{ textDecoration: 'none' }}
-									>
-										<span className='text-primary'>Add Liquidity</span>
-									</Link>
-								</div>
-							</div>
-						))
-					) : (
-						<></>
-					)}
+        {/* Table Card */}
+        <div className="card bg-base-100/90 backdrop-blur-xl shadow-xl">
+          <div className="card-body p-0">
+            <div className="overflow-x-auto">
+              <table className="table">
+                {/* Table Header */}
+                <thead>
+                  <tr className="bg-base-200/50 border-b border-base-300">
+                    {tableTitleData.map((item: any) => (
+                      <th
+                        key={item.value}
+                        className={`
+                          ${item.value === 'id' ? 'w-16' : ''}
+                          ${item.value === 'FDV' ? 'hidden lg:table-cell' : ''}
+                          ${item.value === 'change1H' ? 'hidden md:table-cell' : ''}
+                          ${item.value === 'vol30d' ? 'hidden md:table-cell' : ''}
+                          ${item.value === 'tradeVolume' ? 'hidden sm:table-cell' : ''}
+                        `}
+                      >
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          {item.label}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
 
-					{loading && (
-            <div className='flex justify-center items-center mt-6 mb-6'>
-              <Loader size='lg'/>
+                {/* Table Body */}
+                <tbody>
+                  {/* Tokens */}
+                  {tokenData.length > 0 && activeTab === 1 && tokenData.map(row => (
+                    <tr key={row.id} className="hover:bg-base-200/30 transition-colors duration-200">
+                      <td className="font-mono text-sm text-base-content/70">{row.id}</td>
+                      <td>
+                        <Link href={`/?outputCurrency=${row.address}`} className="flex items-center gap-3">
+                          <div className="avatar">
+                            <div className="w-8 h-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
+                              <img src={row.icon_url || "https://in-dex.4everland.store/indexcoin.jpg"} alt={row.symbol} />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium">{row.symbol}</div>
+                            <div className="text-xs text-base-content/60">{row.name}</div>
+                          </div>
+                        </Link>
+                      </td>
+                      <td className="font-medium">${formatNumber(row.price)}</td>
+                      <td className="hidden md:table-cell">
+                        <PriceChangeIndicator value={row.change1H} />
+                      </td>
+                      <td>
+                        <PriceChangeIndicator value={row.change24H} />
+                      </td>
+                      <td className="hidden lg:table-cell">${formatNumber(row.FDV)}</td>
+                      <td className="hidden sm:table-cell">{formatTradeVolume(row.tradingVolume, row.symbol, row.decimals)}</td>
+                    </tr>
+                  ))}
+
+                  {/* Pools */}
+                  {poolData.length > 0 && activeTab === 2 && poolData.map(row => (
+                    <tr key={row.id} className="hover:bg-base-200/30 transition-colors duration-200">
+                      <td className="font-mono text-sm text-base-content/70">{row.id}</td>
+                      <td>
+                        <div className="flex items-center gap-3">
+                          <div className="flex -space-x-3">
+                            <div className="avatar">
+                              <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
+                                <img src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[0]} />
+                              </div>
+                            </div>
+                            <div className="avatar">
+                              <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
+                                <img src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[1]} />
+                              </div>
+                            </div>
+                          </div>
+                          <div>
+                            <div className="font-medium text-base">{row.pairsName}</div>
+                            <div className="text-xs text-base-content/60">Pool</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="text-base">${formatNumber(row.TVL)}</td>
+                      <td className={`text-base ${Number(row.APY) > 100 ? 'text-warning' : 'text-success'}`}>
+                        {formatNumber(row.APY, 3)}%
+                      </td>
+                      <td className="text-base">${formatNumber(row.tradingVolume1D)}</td>
+                      <td className="hidden md:table-cell">${formatNumber(row.tradingVolume30D)}</td>
+                      {/* <td className="min-w-[200px]">
+                        <div className="flex gap-3">
+                          <Link
+                            href={`/?inputCurrency=${row.token0}&outputCurrency=${row.token1}`}
+                            className="btn btn-primary btn-md normal-case font-normal"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            Swap
+                          </Link>
+                          <Link
+                            href={`/add/${row.token0}/${row.token1}`}
+                            className="btn btn-secondary btn-md normal-case font-normal"
+                          >
+                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add
+                          </Link>
+                        </div>
+                      </td> */}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Loading State */}
+              {loading && (
+                <div className="flex justify-center items-center py-16">
+                  <div className="loading loading-spinner loading-lg text-primary"></div>
+                </div>
+              )}
+
+              {/* Empty State */}
+              {!loading && ((activeTab === 1 && tokenData.length === 0) || 
+                          (activeTab === 2 && poolData.length === 0)) && (
+                <div className="flex flex-col items-center justify-center py-16 text-base-content/60">
+                  <svg className="w-16 h-16 mb-4 text-base-content/30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                  <div className="text-lg font-medium mb-2">No data found</div>
+                  <div className="text-sm">Try refreshing the page</div>
+                </div>
+              )}
             </div>
-					)}
-				</div>
-			</div>
+          </div>
+        </div>
+      </div>
     </div>
-  )
+  );
 }

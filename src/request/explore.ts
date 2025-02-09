@@ -1,15 +1,17 @@
 import api from '@/utils/api'
 
 export interface Token {
-	id: string
+	id: number
 	symbol: string
-	decimals: number
-	tradingVolume: number
+	name: string
+	address: string
+	price: string
 	change1H: string
 	change24H: string
-	FDV: number
-	price: number
-	address: string
+	FDV: string
+	tradingVolume: string
+	decimals: number
+	icon_url?: string
 }
 
 export interface Pool {
