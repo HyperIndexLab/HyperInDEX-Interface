@@ -1,6 +1,5 @@
-// 设计成一个从右边弹出的侧边栏加个动画，参考uniswap的侧边栏
 import { useState, useEffect } from 'react';
-import { useAccount, useBalance, useDisconnect } from 'wagmi';
+import { useAccount, useDisconnect } from 'wagmi';
 import CopyAddress from './copyAddress';
 import jazzicon from 'jazzicon';
 import Image from 'next/image';
@@ -13,6 +12,7 @@ import { getTokens, Token } from '@/request/explore';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
 import TabPool from './Personal/TabPool';
 import BigNumber from 'bignumber.js';
+import TabActivity from './Personal/TabActivity';
 export interface TokenBalance {
 	address: string;
 	balance: string;
@@ -132,10 +132,10 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 					</button>
 				</div>
       </div>
-			<div className="text-4xl font-bold mb-4">
+			<div className="text-4xl font-bold mb-6">
 				${totalBalance}
 			</div>
-			<div role="tablist" className="tabs tabs-bordered w-full">
+			<div role="tablist" className="tabs tabs-boxed w-full">
 				<a role="tab" className={`tab ${activeTab === 'token' ? 'tab-active' : ''}`} onClick={() => setActiveTab('token')}>Tokens</a>
 				<a role="tab" className={`tab ${activeTab === 'pool' ? 'tab-active' : ''}`} onClick={() => setActiveTab('pool')}>Pools</a>
 				<a role="tab" className={`tab ${activeTab === 'activity' ? 'tab-active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</a>
@@ -143,7 +143,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 			<div className="transition-all duration-300 overflow-y-auto h-[calc(100vh-100px)] w-full">
 					{activeTab === 'token' && <TabToken  userTokens={tokenBalances}/>}
 					{activeTab === 'pool' && <TabPool tokenData={tokenData}/>}
-					{/* {activeTab === 'activity' && <TabActivity />} */}
+					{activeTab === 'activity' && <TabActivity />}
 				</div>
     </div>
   );

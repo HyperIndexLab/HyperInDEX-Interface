@@ -8,8 +8,6 @@ interface TabPoolProps extends PoolInfo {
 	amount: string
 }
 
-
-
 export default function TabPool({tokenData}: {tokenData: Token[]}) {
 	const { pools, isLoading, userAddress } = usePoolsData();
 	const [tabPools, setTabPools] = useState<TabPoolProps[]>([])
@@ -27,8 +25,6 @@ export default function TabPool({tokenData}: {tokenData: Token[]}) {
 			}
 		})
 		setTabPools(positions)
-		console.log(positions, "positions===");
-
 	}, [pools, tokenData])
 
 

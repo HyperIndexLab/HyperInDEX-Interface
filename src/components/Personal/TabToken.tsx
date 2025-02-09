@@ -10,7 +10,7 @@ export interface TokenTab extends UserToken {
 
 export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 	return (
-		<div className="mt-4">
+		<div className="mt-4 px-2">
 			{userTokens?.map((token) => (
 				<div key={token.token.address} className="flex items-center gap-2 mb-2 justify-between">
 					<div className="flex items-center gap-2">
