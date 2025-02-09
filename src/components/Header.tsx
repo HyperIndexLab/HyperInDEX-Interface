@@ -89,7 +89,7 @@ export default function Header() {
 	}, [address]);
 
 	return (
-		<div className="w-full fixed top-0 z-50 border-b border-base-200">
+		<div className="w-full top-0 z-50 border-b border-base-200">
 			<div className="navbar h-14 max-w-[1200px] mx-auto px-4">
 				{/* Logo 部分 */}
 				<div className="flex-1">
