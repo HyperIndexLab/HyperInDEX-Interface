@@ -9,7 +9,6 @@ export function isAddress(value: string | undefined): string | false {
   }
 }
 
-
 // 获取hashkey链上数据链接
 export function getEtherscanLink(chainId: ChainId, data: string, type: 'transaction' | 'token' | 'address'): string {
   const prefix = `https://explorer.hsk.xyz`

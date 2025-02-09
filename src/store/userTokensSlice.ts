@@ -13,7 +13,7 @@ interface Token {
 }
 
 // 定义用户token的类型
-interface UserToken {
+export interface UserToken {
   token: Token;
   token_id: string | null;
   token_instance: Record<string, unknown> | null;
