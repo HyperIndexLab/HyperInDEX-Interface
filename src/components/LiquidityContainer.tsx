@@ -219,7 +219,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({ token1 = 'HSK',
 
   // 修改交易成功的监听
   useEffect(() => {
-    if (isWriteSuccess && !isWritePending) {  // 确保交易真正完成
+    if (isWriteSuccess && !isWritePending) { 
       setTimeout(() => {
         refreshPool();
         setAmount1('');
