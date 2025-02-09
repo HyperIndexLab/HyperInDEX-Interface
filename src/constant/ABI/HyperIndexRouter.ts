@@ -326,7 +326,12 @@ export const ROUTER_ABI = [
       "inputs": [
         {
           "internalType": "address",
-          "name": "token",
+          "name": "tokenA",
+          "type": "address"
+        },
+        {
+          "internalType": "address",
+          "name": "tokenB",
           "type": "address"
         },
         {
@@ -336,18 +341,13 @@ export const ROUTER_ABI = [
         },
         {
           "internalType": "uint256",
-          "name": "amountTokenMin",
+          "name": "amountAMin",
           "type": "uint256"
         },
         {
           "internalType": "uint256",
-          "name": "amountETHMin",
+          "name": "amountBMin",
           "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
         },
         {
           "internalType": "uint256",

@@ -15,12 +15,14 @@ export interface PoolInfo {
   token0Amount: string;
   token1Amount: string;
   liquidityRevenue: string;
+  token0Price?: string;
+  token1Price?: string;
+  userAddress: string;
 }
 
 export const usePoolsData = () => {
   const [pools, setPools] = useState<PoolInfo[]>([]);
   const { address: userAddress } = useAccount();
-
   // 获取所有交易对数量
   const { data: pairLength } = useReadContract({
     address: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
@@ -123,6 +125,7 @@ export const usePoolsData = () => {
           token0Amount: formatTokenAmount(token0Amount),
           token1Amount: formatTokenAmount(token1Amount),
           liquidityRevenue: '计算中...',
+          userAddress: userAddress,
         });
       }
     }
