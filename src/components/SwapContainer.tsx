@@ -13,9 +13,9 @@ import { erc20Abi } from 'viem';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchTokenList, selectTokens } from '@/store/tokenListSlice';
 import { AppDispatch } from '@/store';
-import { ArrowsUpDownIcon, Cog6ToothIcon } from '@heroicons/react/24/outline';
-import { ChevronDownIcon } from '@heroicons/react/20/solid';
+import { ArrowsUpDownIcon, Cog6ToothIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
+import { toast } from 'react-toastify';
 
 interface SwapContainerProps {
   token1?: string;
@@ -51,8 +51,9 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   const [priceImpact, setPriceImpact] = useState<string>('0');
   const [minimumReceived, setMinimumReceived] = useState<string>('0');
   const [lpFee, setLpFee] = useState<string>('0');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [slippage, setSlippage] = useState<number>(0.5);
+  const [slippage, setSlippage] = useState<string>('5.5');
+  const [deadline, setDeadline] = useState<string>('30'); 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
@@ -60,12 +61,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [inputError, setInputError] = useState<string | null>(null);
   const [currentTx, setCurrentTx] = useState<'none' | 'approve' | 'swap'>('none');
+  const [showSettingsPopup, setShowSettingsPopup] = useState(false);
 
   const { address: userAddress } = useAccount();
-  const { writeContract, data: hash } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const { writeContract, data: hash, isPending: isWritePending, isSuccess: isWriteSuccess } = useWriteContract();
   // 检查授权额度
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: token1Data?.address as `0x${string}`,
@@ -73,11 +72,14 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     functionName: 'allowance',
     args: userAddress && token1Data ? [
       userAddress,                  // owner (用户地址)
-      '0x89491dd50EdbEE8CaAE912cbA162a6b2C6aC69ce'  // spender (Router 合约地址)
+      ROUTER_CONTRACT_ADDRESS       // spender (使用常量中定义的Router地址)
     ] : undefined,
     query: {
       enabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
     },
+  });
+  const { isLoading: isWaitingTx, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({
+    hash: hash as `0x${string}`,
   });
   // 在代币选择或金额变化时检查授权
   useEffect(() => {
@@ -116,8 +118,35 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       setTxStatus('pending');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Approval failed');
-      setTxStatus('failed');
+      setTxStatus('none');
+      toast.error('Failed to Approve. Please try again.', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
     } finally {
+      if(isWriteSuccess && !isWritePending) {
+        toast.success('Approved successfully!', {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+        });
+      } else if (!isWriteSuccess && !isWritePending) { 
+        toast.error('Failed to Approve. Please try again.', {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+        });
+      }
+      setTxStatus('none');
       setIsLoading(false);
     }
   };
@@ -329,6 +358,9 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     return `${lpFee} ${displaySymbol(token1Data)}`;
   };
 
+  // 添加一个函数来检查是否是高滑点
+  const isHighSlippage = (value: string) => Number(value) > 5.5;
+
   // 添加一个函数来处理价格影响的颜色
   const getPriceImpactColor = (impact: number) => {
     if (impact >= 5) {
@@ -340,86 +372,99 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     return 'text-success';
   };
 
-  // 执行swap
   const handleSwap = async () => {
-    if (!token1Data || !token2Data || !token1Amount || !userAddress) return;
-    
     try {
-      setIsLoading(true);
-      setError(null);
-      
-      const amountIn = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-      const amountOutMin = parseUnits(
-        minimumReceived,
-        Number(token2Data.decimals || '18')
-      );
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
+      if (!token1Data || !token2Data || !userAddress) return;
 
-      let swapParams;
+      // 计算 amountOutMin
+      const expectedAmount = parseUnits(token2Amount, Number(token2Data.decimals || '18'));
+      const slippagePercent = Number(slippage);
+      const amountOutMin = expectedAmount * BigInt(Math.floor((100 - slippagePercent) * 1000)) / BigInt(100000);
+
+      // 计算 deadline
+      const deadlineTime = Math.floor(Date.now() / 1000 + Number(deadline) * 60);
+
+      // 构建交易路径
+      let path: string[];
       if (token1Data.symbol === 'HSK') {
-        // HSK -> Token
-        swapParams = {
-          address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-          abi: ROUTER_ABI,
-          functionName: 'swapExactETHForTokens',
-          args: [amountOutMin, [WHSK, token2Data.address], userAddress, deadline],
-          value: amountIn
-        };
+        path = [WHSK, token2Data.address];
       } else if (token2Data.symbol === 'HSK') {
-        // Token -> HSK
-        swapParams = {
-          address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-          abi: ROUTER_ABI,
-          functionName: 'swapExactTokensForETH',
-          args: [amountIn, amountOutMin, [token1Data.address, WHSK], userAddress, deadline]
-        };
+        path = [token1Data.address, WHSK];
       } else {
-        // Token -> Token
-        swapParams = {
-          address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-          abi: ROUTER_ABI,
-          functionName: 'swapExactTokensForTokens',
-          args: [amountIn, amountOutMin, [token1Data.address, token2Data.address], userAddress, deadline]
-        };
+        path = [token1Data.address, token2Data.address];
       }
 
+      // 准备交易参数
+      const params = {
+        address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+        abi: ROUTER_ABI,
+        functionName: token1Data.symbol === 'HSK' 
+          ? 'swapExactETHForTokens'
+          : token2Data.symbol === 'HSK'
+          ? 'swapExactTokensForETH'
+          : 'swapExactTokensForTokens',
+        args: token1Data.symbol === 'HSK' ? [
+          amountOutMin,              // amountOutMin
+          path,                      // path
+          userAddress,               // to
+          deadlineTime,              // deadline
+        ] : [
+          parseUnits(token1Amount, Number(token1Data.decimals || '18')),  // amountIn
+          amountOutMin,              // amountOutMin
+          path,                      // path
+          userAddress,               // to
+          deadlineTime,              // deadline
+        ],
+        value: token1Data.symbol === 'HSK' ? parseUnits(token1Amount, 18) : undefined,
+      };
+
       setCurrentTx('swap');
-      writeContract(swapParams);
       setTxStatus('pending');
       
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Swap failed');
+      await writeContract(params);
+    } catch (error) {
+      console.error('Swap error:', error);
+      toast.error('Swap failed');
       setTxStatus('failed');
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // 监听交易状态
+  // 监听交易状态变化
   useEffect(() => {
-    if (hash) {
-      setTxStatus('pending');
+    // 如果交易正在提交到钱包
+    if (isWritePending) {
+        setTxStatus('pending');
+        return;
     }
-  }, [hash]);
 
-  useEffect(() => {
-    if (isSuccess) {
-      setTxStatus('success');
-      
-      if (currentTx === 'approve') {
-        // approve 成功后刷新授权额度
-        refetchAllowance();
-      } else if (currentTx === 'swap') {
+    // 如果交易已广播到链上
+    if (isWriteSuccess && currentTx === 'swap' && hash) {
+        toast.info('Transaction submitted!', {
+            position: "top-right",
+            autoClose: 3000,
+        });
+    }
+
+    // 如果交易已确认
+    if (isTxConfirmed && currentTx === 'swap') {
+        toast.success('Swap completed successfully!', {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+        });
+        
+        // 重置状态
         setToken1Amount('');
         setToken2Amount('');
         setMinimumReceived('0');
         setPriceImpact('0');
         setLpFee('0');
-      }
-      
-      setCurrentTx('none');
+        setTxStatus('success');
+        setCurrentTx('none');
     }
-  }, [isSuccess, currentTx, refetchAllowance]);
+  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash]);
 
   // 获取 HSK 余额
   const { data: hskBalance } = useBalance({
@@ -429,7 +474,16 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     },
   });
 
-  console.log('-->', hskBalance);
+  useEffect(() => {
+    console.log('Transaction Status:', {
+        timestamp: new Date(),
+        isWritePending,
+        isWriteSuccess,
+        currentTx,
+        txStatus,
+        hash
+    });
+  }, [isWritePending, isWriteSuccess, currentTx, txStatus, hash]);
 
   // 添加日志来检查值
   useEffect(() => {
@@ -442,57 +496,69 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
   // 更新按钮状态逻辑
   const getButtonState = () => {
-    if (!token1Data || !token2Data) {
-      return {
-        text: 'Select tokens',
-        disabled: true
-      };
-    }
+      if (!token1Data || !token2Data) {
+          return {
+              text: 'Select tokens',
+              disabled: true
+          };
+      }
 
-    if (!token1Amount || Number(token1Amount) === 0) {
-      return {
-        text: 'Enter an amount',
-        disabled: true
-      };
-    }
+      if (!token1Amount || Number(token1Amount) === 0) {
+          return {
+              text: 'Enter an amount',
+              disabled: true
+          };
+      }
 
-    if (error) {
-      return {
-        text: 'Insufficient liquidity',
-        disabled: true
-      };
-    }
+      if (error) {
+          return {
+              text: 'Insufficient liquidity',
+              disabled: true
+          };
+      }
 
-    if (txStatus === 'pending') {
-      return {
-        text: currentTx === 'approve' ? 'Approving...' : 'Swapping...',
-        disabled: true
-      };
-    }
+      if (txStatus === 'pending') {
+          if (isWritePending) {
+              return {
+                  text: 'Confirm in wallet...',
+                  disabled: true
+              };
+          }
+          if (isWaitingTx) {
+              return {
+                  text: 'Waiting for confirmation...',
+                  disabled: true
+              };
+          }
+          return {
+              text: 'Swapping...',
+              disabled: true
+          };
+      }
 
-    // 修改授权判断：只在不是 HSK 时检查授权
-    if (token1Data.symbol !== 'HSK' && !isApproved) {
-      return {
-        text: 'Approve',
-        disabled: false,
-        onClick: handleApprove
-      };
-    }
+      // 修改授权判断：只在不是 HSK 时检查授权
+      if (token1Data.symbol !== 'HSK' && !isApproved) {
+          return {
+              text: 'Approve',
+              disabled: false,
+              onClick: handleApprove
+          };
+      }
 
-    const priceImpactNum = Number(priceImpact);
-    if (priceImpactNum >= 5) {
-      return {
-        text: 'Swap anyway',
-        disabled: false,
-        onClick: handleSwap
-      };
-    }
+      const priceImpactNum = Number(priceImpact);
+      if (priceImpactNum >= 5) {
+          return {
+              text: 'Swap anyway',
+              disabled: false,
+              onClick: handleSwap
+          };
+      }
 
-    return {
-      text: 'Swap',
-      disabled: false,
-      onClick: handleSwap
-    };
+      return {
+          text: 'Swap',
+          disabled: false,
+          onClick: handleSwap
+      };
   };
 
   // 修改交换代币位置的函数
@@ -550,9 +616,93 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
             <button className="btn btn-sm btn-primary rounded-full px-6">Swap</button>
             <button className="btn btn-sm btn-ghost rounded-full px-6">Send</button>
           </div>
-          <button className="btn btn-sm btn-ghost btn-circle">
-            <Cog6ToothIcon className="w-5 h-5" />
-          </button>
+          <div className="relative">
+            <button 
+              className="btn btn-sm btn-ghost btn-circle"
+              onClick={() => setShowSettingsPopup(!showSettingsPopup)}
+            >
+              <Cog6ToothIcon className="w-5 h-5" />
+            </button>
+
+            {/* Settings Popup */}
+            {showSettingsPopup && (
+              <div className="absolute right-0 top-10 w-[320px] bg-[#1c1d22] rounded-2xl p-4 shadow-2xl z-50">
+                {/* Slippage Settings */}
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-lg text-base-content/80">Max slippage</span>
+                    <div className="tooltip" data-tip="Your transaction will revert if the price changes unfavorably by more than this percentage.">
+                      <InformationCircleIcon className="w-5 h-5 text-base-content/60" />
+                    </div>
+                  </div>
+                  {isHighSlippage(slippage) && (
+                    <div className="flex items-center gap-2 mb-3 text-warning">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                      </svg>
+                      <span>High slippage</span>
+                    </div>
+                  )}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      className={`input bg-[#2c2d33] border-0 w-full pr-24 focus:outline-none ${isHighSlippage(slippage) ? 'text-warning' : ''}`}
+                      value={slippage}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^\d.]/g, '');
+                        const parts = value.split('.');
+                        const sanitizedValue = parts.length > 2 ? `${parts[0]}.${parts[1]}` : value;
+                        const numValue = parseFloat(sanitizedValue);
+                        if (sanitizedValue === '' || (!isNaN(numValue) && numValue >= 0)) {
+                          // 如果值不合法或超出范围，设置为默认值 5.5
+                          if (numValue > 50 || numValue <= 0) {
+                            setSlippage('5.5');
+                          } else {
+                            setSlippage(sanitizedValue);
+                          }
+                        }
+                      }}
+                      placeholder="Custom slippage"
+                    />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <span className={`${Number(slippage) ? (isHighSlippage(slippage) ? 'text-warning' : 'text-primary') : 'text-base-content/60'} font-medium bg-base-100 px-4 py-2 rounded-full`}>
+                        {Number(slippage) === 5.5 ? 'Auto' : 'Custom'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Transaction Deadline */}
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-lg text-base-content/80">Tx. deadline</span>
+                    <div className="tooltip" data-tip="Your transaction will revert if it is pending for more than this period of time.">
+                      <InformationCircleIcon className="w-5 h-5 text-base-content/60" />
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      className="input bg-[#2c2d33] border-0 w-full pr-16 focus:outline-none"
+                      value={deadline}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^\d.]/g, '');
+                        const numValue = parseInt(value);
+                        // 如果值不合法或超出范围，设置为默认值 30
+                        if (value === '' || isNaN(numValue) || numValue <= 0 || numValue > 4320) {
+                          setDeadline('30');
+                        } else {
+                          setDeadline(value);
+                        }
+                      }}
+                      placeholder="Enter deadline"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/60">minutes</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Sell 输入框 */}

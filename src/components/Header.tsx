@@ -87,7 +87,7 @@ export default function Header() {
 
 
 	return (
-		<div className="w-full fixed top-0 z-50 border-b border-base-200">
+		<div className="w-full top-0 z-50 border-b border-base-200">
 			<div className="navbar h-14 max-w-[1200px] mx-auto px-4">
 				{/* Logo 部分 */}
 				<div className="flex-1">
@@ -114,7 +114,12 @@ export default function Header() {
 										</span>
 									</Link>
 								) : (
-									<details className="dropdown dropdown-end">
+									<details className="dropdown dropdown-end" onClick={(e) => {
+										// 如果点击的是链接，则关闭下拉菜单
+										if ((e.target as HTMLElement).tagName === 'A') {
+											(e.currentTarget as HTMLDetailsElement).removeAttribute('open');
+										}
+									}}>
 										<summary className={`rounded-lg px-3 hover:bg-base-200 transition-colors ${
 											pathname === item.path ? 'bg-primary/10 text-primary' : ''
 										}`}>
@@ -188,9 +193,6 @@ export default function Header() {
 								className="btn btn-ghost btn-circle" 
 								onClick={() => setIsMobileMenuOpen(false)}
 							>
-								<svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-								</svg>
 							</button>
 						</div>
 
