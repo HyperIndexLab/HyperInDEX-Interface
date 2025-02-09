@@ -23,6 +23,7 @@ export interface Pool {
 	tradingVolume1D: number
 	tradingVolume30D: number
 	pairsName: string
+	pairsAddress: string
 }
 
 export const getTokens = async (): Promise<Token[]> => {

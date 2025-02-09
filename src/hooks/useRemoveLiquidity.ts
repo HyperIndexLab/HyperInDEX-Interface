@@ -4,6 +4,8 @@ import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexR
 import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
 import { erc20Abi } from 'viem';
 import { WHSK } from '../constant/value';
+import { waitForTransactionReceipt } from 'wagmi/actions';
+import { wagmiConfig } from '@/components/RainbowKitProvider';
 
 interface RemoveLiquidityParams {
   token0Address: string;
@@ -18,11 +20,15 @@ interface RemoveLiquidityParams {
 export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, lpAmount?: bigint) => {
   const [isRemoving, setIsRemoving] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
-  const [hash, setHash] = useState<`0x${string}` | undefined>();
+  // const [hash, setHash] = useState<`0x${string}` | undefined>();
   const [needsApproval, setNeedsApproval] = useState(true);
   
   const { writeContractAsync } = useWriteContract();
-  const { isLoading: isWaiting, isSuccess } = useWaitForTransactionReceipt({ hash });
+
+  const [isWaiting, setIsWaiting] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  // const { isLoading: isWaiting, isSuccess, isError } = useWaitForTransactionReceipt({ hash });
 
   // 检查授权removeliquidityETH
   const { data: allowance } = useReadContract({
@@ -84,6 +90,7 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
       // 判断是否包含 WHSK
       const isToken0WHSK = token0Address.toLowerCase() === WHSK.toLowerCase();
       const isToken1WHSK = token1Address.toLowerCase() === WHSK.toLowerCase();
+      setIsWaiting(true)
 
       const hash = await writeContractAsync({
         address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
@@ -107,7 +114,11 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
         ],
       });
 
-      setHash(hash);
+   
+      const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: hash as `0x${string}` });
+      // console.log(receipt, "receipt===")
+      setIsSuccess(true)
+
       return { success: true };
     } catch (error) {
       const wagmiError = error as BaseError;
@@ -118,6 +129,7 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
       };
     } finally {
       setIsRemoving(false);
+      setIsWaiting(false)
     }
   };
 

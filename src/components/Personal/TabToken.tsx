@@ -3,6 +3,7 @@ import React from 'react';
 
 import { UserToken } from '@/store/userTokensSlice';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
+import BigNumber from 'bignumber.js';
 
 export interface TokenTab extends UserToken {
 	price: string;
@@ -26,7 +27,7 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 						</div>
 					</div>
 					<div className="text-base">
-						{token.price === '0' ?  BigInt(formatTokenBalance(token.value, token.token.decimals)) : `$${BigInt(token.price) * BigInt(formatTokenBalance(token.value, token.token.decimals))}`}
+						{token.price === '0' ?  BigNumber(formatTokenBalance(token.value, token.token.decimals)).toString() : `$${BigNumber(token.price).multipliedBy(BigNumber(formatTokenBalance(token.value, token.token.decimals))).toString()}`}
 					</div>
 				</div>
 			))}

@@ -31,7 +31,7 @@ export default function TabPool({tokenData}: {tokenData: Token[]}) {
 	return (
 		<div className="mt-4 overflow-y-auto h-[calc(70vh-100px)]">
 			{tabPools.length > 0 ? tabPools.map((pool) => (
-				<div className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-4 space-y-4 hover:bg-base-200/50 transition-all duration-300 cursor-pointer" key={pool.pairAddress}>
+				<div className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-4 space-y-4 mb-4 hover:bg-base-200/50 transition-all duration-300 cursor-pointer" key={pool.pairAddress}>
 					<div className="flex items-center">
 						<div className="relative w-12 h-6">
 							<img 

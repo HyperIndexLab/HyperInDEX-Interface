@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { usePoolData } from '../hooks/usePoolData';
 import { formatEther } from 'viem';
 import { useRemoveLiquidity } from '../hooks/useRemoveLiquidity';
-import { toast } from 'react-toastify';
+import { Id, toast } from 'react-toastify';
 import { useReadContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
@@ -32,6 +32,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
 }) => {
   const [percentage, setPercentage] = useState(0);
   const networkFee = "0.0001";
+  const toastId = React.useRef<Id | null>(null);
   
   const { data: poolData, loading } = usePoolData(pool.pairAddress, pool.userAddress);
   const { remove, approve, isRemoving, isApproving, isWaiting, isSuccess } = useRemoveLiquidity();
@@ -86,7 +87,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     if (!amounts || !poolData) return;
     
     const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
-    const toastId = toast.loading("Approving...", {
+    toastId.current = toast.loading("Approving...", {
       position: "top-right",
       autoClose: false,
       closeOnClick: false,
@@ -98,7 +99,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     try {
       const result = await approve(pool.pairAddress, lpAmount);
       if (result.success) {
-        toast.update(toastId, {
+        toast.update(toastId.current, {
           render: "Successfully approved",
           type: "success",
           isLoading: false,
@@ -106,7 +107,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         });
         setNeedsApproval(false);
       } else {
-        toast.update(toastId, {
+        toast.update(toastId.current, {
           render: result.error || "Failed to approve",
           type: "error",
           isLoading: false,
@@ -114,7 +115,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         });
       }
     } catch (error) {
-      toast.update(toastId, {
+      toast.update(toastId.current, {
         render: "Failed to approve",
         type: "error",
         isLoading: false,
@@ -129,6 +130,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     setPercentage(value);
   };
 
+
   const handleRemove = async () => {
     if (!amounts || !poolData) return;
     
@@ -136,7 +138,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     const amount0 = amounts.token0Amount * BigInt(percentage) / 100n;
     const amount1 = amounts.token1Amount * BigInt(percentage) / 100n;
 
-    const toastId = toast.loading("Removing liquidity...", {
+    toastId.current = toast.loading("Removing liquidity...", {
       position: "top-right",
       autoClose: false,
       closeOnClick: false,
@@ -156,14 +158,10 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         pairAddress: pool.pairAddress,
       });
 
+
       if (result.success) {
-        // 等待交易确认
-        while (isWaiting) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        
         if (isSuccess) {
-          toast.update(toastId, {
+          toast.update(toastId.current, {
             render: "Successfully removed liquidity",
             type: "success",
             isLoading: false,
@@ -172,7 +170,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
           onClose();
         }
       } else {
-        toast.update(toastId, {
+        toast.update(toastId.current, {
           render: result.error || "Failed to remove liquidity",
           type: "error",
           isLoading: false,
@@ -180,7 +178,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         });
       }
     } catch (error) {
-      toast.update(toastId, {
+      toast.update(toastId.current, {
         render: "Failed to remove liquidity",
         type: "error",
         isLoading: false,
