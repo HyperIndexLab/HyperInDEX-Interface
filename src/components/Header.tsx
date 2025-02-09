@@ -7,6 +7,7 @@ import logo from '../assets/img/logo.png';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Personal from './Personal';
 
 const MENU_MAP = [
 	{
@@ -79,14 +80,11 @@ const MENU_MAP = [
 ];
 
 export default function Header() {
-	const { address } = useAccount();
 	const pathname = usePathname();
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-	// 测试下wagmi是否好用
-	useEffect(() => {
-		console.log(address);
-	}, [address]);
+	const [open, setOpen] = useState(false);
+
 
 	return (
 		<div className="w-full fixed top-0 z-50 border-b border-base-200">
@@ -164,13 +162,14 @@ export default function Header() {
 								);
 							}
 							return (
-								<button onClick={openConnectModal} className="btn btn-primary btn-sm font-normal">
+								<button onClick={() => setOpen(true)} className="btn btn-primary btn-sm font-normal">
 									{account.displayName}
 								</button>
 							);
 						}}
 					</ConnectButton.Custom>
 				</div>
+				<Personal isOpen={open} setOpen={setOpen} />
 			</div>
 
 			{/* Mobile Drawer */}

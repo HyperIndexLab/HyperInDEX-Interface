@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 // 参数
 export default function Home() {
   const searchParams = useSearchParams();
-  
+
   // inputCurrency 为token1  传入address地址
   const inputCurrency = searchParams?.get('inputCurrency') ?? undefined;
 
