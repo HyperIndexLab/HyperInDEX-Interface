@@ -3,7 +3,7 @@ import { RootState } from './index';
 import { getApiBaseUrl } from '../utils/getApiBaseUrl';
 
 // 定义token的类型
-interface Token {
+export interface Token {
   address: string;
   decimals: string | null;
   name: string | null;

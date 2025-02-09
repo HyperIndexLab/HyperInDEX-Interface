@@ -16,6 +16,23 @@ import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
+
+
+const wagmiConfig = getDefaultConfig({
+	appName: 'RainbowKit demo',
+	projectId: 'YOUR_PROJECT_ID',
+	wallets: [
+		{
+			groupName: 'Recommended',
+			wallets: [metaMaskWallet, okxWallet],
+		},
+	],
+	chains: [
+		hashkeyTestnet,
+		// hashkeyMainnet,
+	],
+	ssr: true,
+});
 		
 const RainbowKitWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const queryClient = new QueryClient();
@@ -38,22 +55,6 @@ const RainbowKitWrapper: React.FC<{ children: React.ReactNode }> = ({ children }
 	// 	},
 	// } as const satisfies Chain;
 
-	const wagmiConfig = getDefaultConfig({
-		appName: 'RainbowKit demo',
-		projectId: 'YOUR_PROJECT_ID',
-		wallets: [
-			{
-				groupName: 'Recommended',
-				wallets: [metaMaskWallet, okxWallet],
-			},
-		],
-		chains: [
-			hashkeyTestnet,
-			// hashkeyMainnet,
-		],
-		ssr: true,
-	});
-
 	return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
@@ -63,5 +64,9 @@ const RainbowKitWrapper: React.FC<{ children: React.ReactNode }> = ({ children }
       </QueryClientProvider>
     </WagmiProvider>
   );};
+
+export {
+	wagmiConfig
+}
 
 export default RainbowKitWrapper;
