@@ -26,3 +26,13 @@ export function getEtherscanLink(chainId: ChainId, data: string, type: 'transact
     }
   }
 }
+
+export const formatNumber = (value: number | string, decimals: number = 2): string => {
+  if (value === 0 || isNaN(Number(value))) {
+    return '0'
+  }
+  const num = Number(value)
+  if (Math.abs(num) < 0.00001) return '< 0.00001'
+  const fixedValue = num.toFixed(decimals)
+  return fixedValue.replace(/\.?0+$/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+}
