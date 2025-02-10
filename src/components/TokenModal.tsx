@@ -9,7 +9,7 @@ import { AppDispatch } from '../store';
 import { RootState } from '../store';
 import { formatTokenBalance } from '../utils/formatTokenBalance';
 
-const DEFAULT_TOKEN_ICON = 'https://in-dex.4everland.store/indexcoin.jpg';
+export const DEFAULT_TOKEN_ICON = 'https://in-dex.4everland.store/indexcoin.jpg';
 
 interface Token {
   symbol: string | null;

@@ -4,6 +4,7 @@ import React from 'react';
 import { UserToken } from '@/store/userTokensSlice';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
 import BigNumber from 'bignumber.js';
+import { DEFAULT_TOKEN_ICON } from '../TokenModal';
 
 export interface TokenTab extends UserToken {
 	price: string;
