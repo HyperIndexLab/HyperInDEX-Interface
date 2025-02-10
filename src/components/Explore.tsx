@@ -158,7 +158,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
             <path d="M10.6979 16.2453L6.31787 9.75247C5.58184 8.66118 6.2058 7 7.35185 7L16.6482 7C17.7942 7 18.4182 8.66243 17.6821 9.75247L13.3021 16.2453C12.623 17.2516 11.377 17.2516 10.6979 16.2453Z" fill="currentColor" />
           </svg>
         )}
-        {value.replace('-', '')}%
+        {value.replace('-', '')}
       </div>
     )
   }
@@ -253,24 +253,26 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                     <tr key={row.id} className="hover:bg-base-200/30 transition-colors duration-200">
                       <td className="font-mono text-sm text-base-content/70">{row.id}</td>
                       <td>
-                        <div className="flex items-center gap-3">
-                          <div className="flex -space-x-3">
-                            <div className="avatar">
-                              <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
-                                <img src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[0]} />
+                        <Link href={`/explore/pools/${row.pairsAddress}`} className="flex items-center gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className="flex -space-x-3">
+                              <div className="avatar">
+                                <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
+                                  <img src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[0]} />
+                                </div>
+                              </div>
+                              <div className="avatar">
+                                <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
+                                  <img src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[1]} />
+                                </div>
                               </div>
                             </div>
-                            <div className="avatar">
-                              <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
-                                <img src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[1]} />
-                              </div>
+                            <div>
+                              <div className="font-medium text-base">{row.pairsName}</div>
+                              <div className="text-xs text-base-content/60">Pool</div>
                             </div>
                           </div>
-                          <div>
-                            <div className="font-medium text-base">{row.pairsName}</div>
-                            <div className="text-xs text-base-content/60">Pool</div>
-                          </div>
-                        </div>
+                        </Link>
                       </td>
                       <td className="text-base">${formatNumber(row.TVL)}</td>
                       <td className={`text-base ${Number(row.APY) > 100 ? 'text-warning' : 'text-success'}`}>
@@ -278,29 +280,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                       </td>
                       <td className="text-base">${formatNumber(row.tradingVolume1D)}</td>
                       <td className="hidden md:table-cell">${formatNumber(row.tradingVolume30D)}</td>
-                      {/* <td className="min-w-[200px]">
-                        <div className="flex gap-3">
-                          <Link
-                            href={`/?inputCurrency=${row.token0}&outputCurrency=${row.token1}`}
-                            className="btn btn-primary btn-md normal-case font-normal"
-                          >
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
-                            Swap
-                          </Link>
-                          <Link
-                            href={`/add/${row.token0}/${row.token1}`}
-                            className="btn btn-secondary btn-md normal-case font-normal"
-                          >
-                            <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                            Add
-                          </Link>
-                        </div>
-                      </td> */}
-                    </tr>
+                    </tr> 
                   ))}
                 </tbody>
               </table>

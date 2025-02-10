@@ -2,10 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import logo from '../assets/img/logo.png';
 import Image from 'next/image';
 import Link from 'next/link';
+import { particleWagmiWallet } from './ParticleWallet/particleWagmiWallet';
+import {
+    AuthCoreEvent,
+    getLatestAuthType,
+    isSocialAuthType,
+    particleAuth,
+    type SocialAuthType,
+} from '@particle-network/auth-core';
+import { useConnect as useParticleConnect } from '@particle-network/auth-core-modal';
+
 import { usePathname } from 'next/navigation';
 import Personal from './Personal';
 
@@ -85,6 +95,25 @@ export default function Header() {
 
 	const [open, setOpen] = useState(false);
 
+	const { connect } = useConnect();
+	const { connectionStatus } = useParticleConnect();
+	const { disconnect } = useDisconnect();
+
+
+	useEffect(() => {
+		if (connectionStatus === 'connected' && isSocialAuthType(getLatestAuthType())) {
+				connect({
+						connector: particleWagmiWallet({ socialType: getLatestAuthType() as SocialAuthType }),
+				});
+		}
+		const onDisconnect = () => {
+				disconnect();
+		};
+		particleAuth.on(AuthCoreEvent.ParticleAuthDisconnect, onDisconnect);
+		return () => {
+				particleAuth.off(AuthCoreEvent.ParticleAuthDisconnect, onDisconnect);
+		};
+}, [connect, connectionStatus, disconnect]);
 
 	return (
 		<div className="w-full top-0 z-50 border-b border-base-200">
