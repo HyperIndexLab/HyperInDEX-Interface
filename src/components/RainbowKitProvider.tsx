@@ -16,6 +16,7 @@ import {
   QueryClientProvider,
   QueryClient,
 } from "@tanstack/react-query";
+import { particleWallet, particleGoogleWallet, particleTwitterWallet } from './ParticleWallet';
 
 
 const wagmiConfig = getDefaultConfig({
@@ -24,7 +25,13 @@ const wagmiConfig = getDefaultConfig({
 	wallets: [
 		{
 			groupName: 'Recommended',
-			wallets: [metaMaskWallet, okxWallet],
+			wallets: [
+				metaMaskWallet, 
+				okxWallet,
+				particleWallet,
+				particleGoogleWallet,
+				particleTwitterWallet,
+			],
 		},
 	],
 	chains: [
@@ -36,7 +43,6 @@ const wagmiConfig = getDefaultConfig({
 		
 const RainbowKitWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const queryClient = new QueryClient();
-
 
 	// 自定义一个网络
 	// const hashkeyMainnet = {
