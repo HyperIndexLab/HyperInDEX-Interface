@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {  isAddress } from 'viem';
 import { formatNumber } from '@/utils';
+import Link from 'next/link';
 
 export default function Page() {
 	const { hash } = useParams() || {};
@@ -90,9 +91,9 @@ export default function Page() {
 							>
 								Swap Tokens
 							</button>
-							<button className='btn btn-primary rounded-full px-8 font-semibold'>
+							<Link href={`/liquidity?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`} className='btn btn-primary rounded-full px-8 font-semibold'>
 								Add Liquidity
-							</button>
+							</Link>
 						</div>
 
 					
