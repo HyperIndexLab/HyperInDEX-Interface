@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
 import CopyAddress from './copyAddress';
-import jazzicon from 'jazzicon';
+import Jazzicon, { jsNumberForAddress } from 'react-jazzicon';
 import Image from 'next/image';
 import {  selectTokens } from '@/store/tokenListSlice';
 import { useDispatch, useSelector } from 'react-redux';
@@ -30,23 +30,10 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 	const [totalBalance, setTotalBalance] = useState<string>('0');
 	const [tokenBalances, setTokenBalances] = useState<TokenTab[]>([]);
 
-	console.log(userTokens, "userTokens===111")
-
 	const logout = () => {
 		disconnect();
 		setOpen(false);
 	}
-
-	useEffect(() => {
-    if (address) {
-      const icon = jazzicon(32, parseInt(address.slice(2, 10), 16)); // 生成32px的图标
-      const iconContainer = document.getElementById('jazzicon');
-      if (iconContainer) {
-        iconContainer.innerHTML = '';
-        iconContainer.appendChild(icon);
-      }
-    }
-  }, [address]); 
 
 	useEffect(() => {
     if (address && userTokens.length === 0) {
@@ -119,10 +106,10 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
   return (
     <div className={`flex flex-col fixed top-0 right-0 h-screen transition-all duration-300 bg-base-300 border-l border-base-200 shadow-lg p-2  ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
 			<button className="absolute top-[16px] right-[10px] btn btn-ghost btn-circle text-lg" onClick={() => setOpen(false)}>X</button>
-      <div className="p-4 w-80 bg-base-300">
+      	<div className="p-4 w-80 bg-base-300">
 				<div className="flex  bg-base-300">
 					<div className="mr-2 relative">
-						<div id="jazzicon"></div>
+						<Jazzicon  diameter={32} seed={jsNumberForAddress(address || '')} />
 						<Image className="absolute bottom-1 right-[-4px] rounded-full" src={`/img/${connectorName}.png`} alt="avatar" width={14} height={14} />
 					</div>
 					<div className="mt-[6px]">
@@ -141,12 +128,12 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 			<div role="tablist" className="tabs tabs-boxed w-full">
 				<a role="tab" className={`tab ${activeTab === 'token' ? 'tab-active' : ''}`} onClick={() => setActiveTab('token')}>Tokens</a>
 				<a role="tab" className={`tab ${activeTab === 'pool' ? 'tab-active' : ''}`} onClick={() => setActiveTab('pool')}>Pools</a>
-				<a role="tab" className={`tab ${activeTab === 'activity' ? 'tab-active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</a>
+				{/* <a role="tab" className={`tab ${activeTab === 'activity' ? 'tab-active' : ''}`} onClick={() => setActiveTab('activity')}>Activity</a> */}
 			</div>
 			<div className="transition-all duration-300 overflow-y-auto h-[calc(100vh-100px)] w-full">
 					{activeTab === 'token' && <TabToken  userTokens={tokenBalances}/>}
 					{activeTab === 'pool' && <TabPool tokenData={tokenData}/>}
-					{activeTab === 'activity' && <TabActivity />}
+					{/* {activeTab === 'activity' && <TabActivity />} */}
 				</div>
     </div>
   );
