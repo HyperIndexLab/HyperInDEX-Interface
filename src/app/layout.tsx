@@ -9,6 +9,7 @@ import store from '../store';
 import Header from '../components/Header';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ParticlesBackground from '../components/ParticlesBackground';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,7 +32,8 @@ export default function RootLayout({
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}>
           <Theme dataTheme="dark">
             <RainbowKitWrapper>
-              <div className="min-h-screen flex flex-col bg-base-300">
+              <ParticlesBackground />
+              <div className="relative z-10">
                 <Header />
                 <main className="flex-1">
                   {children}
@@ -39,18 +41,7 @@ export default function RootLayout({
               </div>
             </RainbowKitWrapper>
           </Theme>
-          <ToastContainer
-            position="top-right"
-            autoClose={5000}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="dark"
-          />
+          <ToastContainer />
         </body>
       </html>
     </Provider>

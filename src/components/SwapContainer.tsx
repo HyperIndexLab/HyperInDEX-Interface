@@ -609,7 +609,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           selectedToken={modalType === 'token2' ? token1Data : token2Data}
         />
       )}
-      <div className="w-[460px] mx-auto rounded-2xl bg-base-200/50 backdrop-blur-lg p-4 shadow-xl">
+      <div className="w-[460px] mx-auto rounded-2xl bg-[#1c1d22]/30 bg-opacity-20 p-4 shadow-xl border border-white/5">
         {/* 头部操作栏 */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex gap-2">
@@ -706,7 +706,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         </div>
 
         {/* Sell 输入框 */}
-        <div className="bg-base-100 rounded-xl p-4 mb-2">
+        <div className="bg-[#2c2d33]/50 rounded-xl p-4 mb-2">
           <div className="flex justify-between items-center mb-2">
             <span className="text-base text-base-content/60">Sell</span>
           </div>
@@ -767,7 +767,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         </div>
 
         {/* Buy 输入框 */}
-        <div className="bg-base-100 rounded-xl p-4 mb-4">
+        <div className="bg-base-300 backdrop-blur-md rounded-xl p-4 mb-4 border border-white/[0.02]">
           <div className="flex justify-between items-center mb-2">
             <span className="text-base text-base-content/60">Buy</span>
           </div>
@@ -779,7 +779,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
               readOnly
             />
             <button 
-              className="btn btn-ghost rounded-full h-10 px-3 hover:bg-base-200"
+              className="btn btn-ghost rounded-full h-10 px-3 hover:bg-white/5"
               onClick={() => {
                 setModalType('token2');
                 setShowModal(true);
@@ -806,7 +806,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
         {/* 交易详情 */}
         {token1Data && token2Data && token1Amount && (
-          <div className="bg-base-100 rounded-xl p-4 space-y-3 text-sm mb-4">
+          <div className="bg-[#2c2d33]/20 backdrop-blur-md rounded-xl p-4 space-y-3 text-sm mb-4 border border-white/[0.02]">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-1 text-base-content/60">
                 <span>Minimum received</span>

@@ -14,8 +14,8 @@ import TabPool from './Personal/TabPool';
 import BigNumber from 'bignumber.js';
 import TabActivity from './Personal/TabActivity';
 export interface TokenBalance {
-	address: string;
-	balance: string;
+  address: string;
+  balance: string;
 }
 
 export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen: (open: boolean) => void }) {

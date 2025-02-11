@@ -12,7 +12,7 @@ export default function Home() {
   // outputCurrency 为token2  传入address地址
   const outputCurrency = searchParams?.get('outputCurrency') ?? undefined;
   return (
-    <div className="flex justify-center items-center min-h-[calc(100vh-3.5rem)] pt-14">
+    <div className="flex justify-center items-center min-h-[calc(100vh-3.5rem)] pt-14 px-4">
       <SwapContainer token1={inputCurrency} token2={outputCurrency} />
     </div>
   );
