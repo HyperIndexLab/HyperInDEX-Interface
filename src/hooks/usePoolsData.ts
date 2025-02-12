@@ -26,6 +26,8 @@ export interface PoolInfo {
 export const usePoolsData = () => {
   const [pools, setPools] = useState<PoolInfo[]>([]);
   const { address: userAddress } = useAccount();
+
+  // 获取所有交易对地址和基本信息
   const { data: pairLength } = useReadContract({
     address: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI as Abi,
@@ -44,38 +46,37 @@ export const usePoolsData = () => {
 
   // 获取所有交易对的详细信息
   const { data: pairsInfo } = useReadContracts({
-    contracts:
-      pairAddresses?.flatMap((pairData) => {
-        const pairAddress = pairData.result as `0x${string}`;
-        return [
-          {
-            address: pairAddress,
-            abi: PAIR_ABI as Abi,
-            functionName: "balanceOf",
-            args: [userAddress as `0x${string}`],
-          },
-          {
-            address: pairAddress,
-            abi: PAIR_ABI as Abi,
-            functionName: "token0",
-          },
-          {
-            address: pairAddress,
-            abi: PAIR_ABI as Abi,
-            functionName: "token1",
-          },
-          {
-            address: pairAddress,
-            abi: PAIR_ABI as Abi,
-            functionName: "getReserves",
-          },
-          {
-            address: pairAddress,
-            abi: PAIR_ABI as Abi,
-            functionName: "totalSupply",
-          },
-        ];
-      }) || [],
+    contracts: pairAddresses?.flatMap((pairData) => {
+      const pairAddress = pairData.result as `0x${string}`;
+      return [
+        {
+          address: pairAddress,
+          abi: PAIR_ABI as Abi,
+          functionName: "balanceOf",
+          args: [userAddress as `0x${string}`],
+        },
+        {
+          address: pairAddress,
+          abi: PAIR_ABI as Abi,
+          functionName: "token0",
+        },
+        {
+          address: pairAddress,
+          abi: PAIR_ABI as Abi,
+          functionName: "token1",
+        },
+        {
+          address: pairAddress,
+          abi: PAIR_ABI as Abi,
+          functionName: "getReserves",
+        },
+        {
+          address: pairAddress,
+          abi: PAIR_ABI as Abi,
+          functionName: "totalSupply",
+        },
+      ];
+    }) || [],
   });
 
   // 获取代币符号
@@ -94,7 +95,7 @@ export const usePoolsData = () => {
     ]),
   });
 
-  // 处理数据
+  // 处理基本池子数据
   useEffect(() => {
     if (!pairsInfo || !pairAddresses || !userAddress) return;
 
@@ -140,18 +141,28 @@ export const usePoolsData = () => {
     setPools(processedPools);
   }, [pairsInfo, pairAddresses, userAddress]);
 
-  // 更新代币符号
+  // 处理代币符号
   useEffect(() => {
     if (!tokenSymbols || !pools.length) return;
 
-    const updatedPools = pools.map((pool, index) => ({
-      ...pool,
-      token0Symbol: tokenSymbols[index * 2].result as string,
-      token1Symbol: tokenSymbols[index * 2 + 1].result as string,
-    }));
+    const updatedPools = pools.map((pool, index) => {
+      const symbols = {
+        token0Symbol: tokenSymbols[index * 2]?.result as string || 'Unknown',
+        token1Symbol: tokenSymbols[index * 2 + 1]?.result as string || 'Unknown',
+      };
+      return { ...pool, ...symbols };
+    });
 
-    setPools(updatedPools);
-  }, [tokenSymbols, pools]);
+    // 只有当符号真正发生变化时才更新
+    const hasSymbolsChanged = updatedPools.some((pool, index) => 
+      pool.token0Symbol !== pools[index].token0Symbol || 
+      pool.token1Symbol !== pools[index].token1Symbol
+    );
+
+    if (hasSymbolsChanged) {
+      setPools(updatedPools);
+    }
+  }, [tokenSymbols]); // 移除 pools 依赖
 
   return {
     pools,
