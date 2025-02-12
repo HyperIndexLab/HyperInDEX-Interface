@@ -56,7 +56,6 @@ export default function RootLayout({
                     </main>
                   </div>
                 </Suspense>
-                
               </RainbowKitWrapper>
             </AuthCoreContextProvider>
           </Theme>
