@@ -20,6 +20,9 @@ import { useTokenApproval } from "@/hooks/useTokenApproval";
 import { StepIndicator } from "./StepIndicator";
 import { toast } from "react-toastify";
 import Image from "next/image";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchTokenList, selectTokens } from "@/store/tokenListSlice";
+import { AppDispatch } from "@/store";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -47,6 +50,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   token1 = "HSK",
   token2 = "Select token",
 }) => {
+  const tokens = useSelector(selectTokens);
+  const dispatch = useDispatch<AppDispatch>();
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState<"token1" | "token2">("token1");
   const { address: userAddress } = useAccount();
@@ -108,6 +113,41 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       setToken1Data(DEFAULT_HSK_TOKEN);
     }
   }, [token1, token1Data]);
+
+   // 需要拉取一下tokenList，才能获取到token1和token2的详细数据
+   useEffect(() => {
+    dispatch(fetchTokenList());
+  }, [dispatch]);
+
+  
+   // 根据url中的参数设置初始化的token
+   useEffect(() => {
+    if (tokens.length === 0) {
+      return;
+    }
+    tokens.forEach(token => {
+      if (token.address === token1) {
+        const tokenData: TokenData = {
+          symbol: token.symbol || '',
+          name: token.name || '',
+          address: token.address,
+          icon_url: token.icon_url,
+          decimals: token.decimals,
+        };
+        setToken1Data(tokenData);
+      }
+      if (token.address === token2) {
+        const tokenData: TokenData = {
+          symbol: token.symbol || '',
+          name: token.name || '',
+          address: token.address,
+          icon_url: token.icon_url,
+          decimals: token.decimals,
+        };
+        setToken2Data(tokenData);
+      }
+    });
+  }, [tokens, token1, token2]);
 
   // // 获取池子信息
   // const { data: pairInfo } = useReadContract({
