@@ -19,6 +19,7 @@ import { useLiquidityPool } from "@/hooks/useLiquidityPool";
 import { useTokenApproval } from "@/hooks/useTokenApproval";
 import { StepIndicator } from "./StepIndicator";
 import { toast } from "react-toastify";
+import Image from "next/image";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -106,7 +107,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     if (!token1Data && token1 === "HSK") {
       setToken1Data(DEFAULT_HSK_TOKEN);
     }
-  }, [token1]);
+  }, [token1, token1Data]);
 
   // // 获取池子信息
   // const { data: pairInfo } = useReadContract({
@@ -425,8 +426,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 onChange={(e) => handleAmountChange(e.target.value, true)}
               />
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
-                <img
+                <Image
                   src={token1Data?.icon_url || ""}
+                  alt={token1Data?.symbol || ""}
+                  width={24}
+                  height={24}
                   className="w-6 h-6 rounded-full"
                 />
                 <span className="text-md">{token1Data?.symbol}</span>
@@ -458,8 +462,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 onChange={(e) => handleAmountChange(e.target.value, false)}
               />
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
-                <img
+                <Image
                   src={token2Data?.icon_url || ""}
+                  alt={token2Data?.symbol || ""}
+                  width={24}
+                  height={24}
                   className="w-6 h-6 rounded-full"
                 />
                 <span className="text-md">{token2Data?.symbol}</span>
@@ -532,9 +539,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       >
         {tokenData ? (
           <div className="flex items-center gap-3">
-            <img
+            <Image
               src={tokenData.icon_url || "/img/HSK-LOGO.png"}
               alt={tokenData.name}
+              width={32}
+              height={32}
               className="w-8 h-8 rounded-full"
             />
             <span className="text-lg font-normal">{tokenData.symbol}</span>

@@ -121,6 +121,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         isLoading: false,
         autoClose: 5000
       });
+      console.error(error);
     }
   };
 

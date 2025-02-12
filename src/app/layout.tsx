@@ -11,6 +11,7 @@ import Header from '../components/Header';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ParticlesBackground from '../components/ParticlesBackground';
+import { Suspense } from "react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,16 +44,19 @@ export default function RootLayout({
               }}
             >
               <RainbowKitWrapper>
-                <div className="fixed inset-0 z-0">
-                  <ParticlesBackground />
-                </div>
+                <Suspense>
+                  <div className="fixed inset-0 z-0">
+                    <ParticlesBackground />
+                  </div>
+                  
+                  <div className="relative z-10 min-h-screen flex flex-col">
+                    <Header />
+                    <main className="flex-1">
+                      {children}
+                    </main>
+                  </div>
+                </Suspense>
                 
-                <div className="relative z-10 min-h-screen flex flex-col">
-                  <Header />
-                  <main className="flex-1">
-                    {children}
-                  </main>
-                </div>
               </RainbowKitWrapper>
             </AuthCoreContextProvider>
           </Theme>

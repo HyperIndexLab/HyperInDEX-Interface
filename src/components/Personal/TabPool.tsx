@@ -2,6 +2,7 @@ import { PoolInfo, usePoolsData } from "@/hooks/usePoolsData";
 import { Token } from "@/request/explore";
 import { useEffect, useState } from "react";
 import BigNumber from "bignumber.js";
+import Image from "next/image";
 
 interface TabPoolProps extends PoolInfo {
 	rate: string;  // 汇率
@@ -41,8 +42,8 @@ export default function TabPool({tokenData}: {tokenData: Token[]}) {
 	
 	useEffect(() => {
 		const positions = pools.map((pool) => {
-			const token0 = tokenData.find(token => token.address === pool.token0Address);
-			const token1 = tokenData.find(token => token.address === pool.token1Address);
+			// const token0 = tokenData.find(token => token.address === pool.token0Address);
+			// const token1 = tokenData.find(token => token.address === pool.token1Address);
 			
 			// 计算汇率
 			const reserve0 = BigNumber(pool.token0Amount);
@@ -71,14 +72,20 @@ export default function TabPool({tokenData}: {tokenData: Token[]}) {
 				<div className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-4 mb-4 hover:bg-base-200/50 transition-all duration-300 cursor-pointer" key={pool.pairAddress}>
 					<div className="flex items-center">
 						<div className="relative w-12 h-6">
-							<img 
+							<Image 
 								src="https://in-dex.4everland.store/indexcoin.jpg" 
 								alt={pool.token0Symbol}
+								width={24}
+								height={24}
+								unoptimized
 								className="w-6 h-6 rounded-full absolute left-0"
 							/>
-							<img 
+							<Image 
 								src="https://in-dex.4everland.store/indexcoin.jpg" 
 								alt={pool.token1Symbol}
+								width={24}
+								height={24}
+								unoptimized
 								className="w-6 h-6 rounded-full absolute left-4"
 							/>
 						</div>

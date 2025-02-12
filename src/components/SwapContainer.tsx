@@ -308,6 +308,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         setMinimumReceived('0');
         setPriceImpact('0');
         setLpFee('0');
+        console.error(error);
       }
     }
   }, [amountsOut, baseAmountOut, token2Data, token1Amount, token1Data]);

@@ -27,12 +27,13 @@ export interface Pool {
 }
 
 export const getTokens = async (): Promise<Token[]> => {
-	const res = await api.get('/api/explore/tokens')
+	const res = await api.get('/api/testnet-explore/tokens')
 	return res.data as Token[]
 }
 
 export const getPools = async (): Promise<Pool[]> => {
-	const res = await api.get('/api/explore/pools')
-	console.log(res)
+
+	//const res = await api.get('/api/explore/pools')
+	const res = await api.get('/api/testnet-explore/pools')
 	return res.data as Pool[]
 }

@@ -57,7 +57,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
   const lastUpdated = useSelector((state: RootState) => state.tokenList.lastUpdated);
   const userLastUpdated = useSelector((state: RootState) => state.userTokens.lastUpdated);
 
-  console.log(userTokens, "userTokens===");
+  console.log(userTokens, type, "userTokens===");
   useEffect(() => {
     if (tokens.length === 0 && !lastUpdated) {
       dispatch(fetchTokenList());

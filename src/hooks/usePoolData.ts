@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useReadContracts } from 'wagmi';
-import { erc20Abi, formatEther, type Abi } from 'viem';
+import {  type Abi } from 'viem';
 import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
 
 export const usePoolData = (pairAddress: string, userAddress: string) => {

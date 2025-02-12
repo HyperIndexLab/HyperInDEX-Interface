@@ -10,7 +10,7 @@ export default function CopyAddress({
   headLength?: number;
   tailLength?: number;
 }) {
-  const [copied, setCopied] = useState(false);
+  const [, setCopied] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(address);
