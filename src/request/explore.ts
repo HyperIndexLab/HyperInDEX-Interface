@@ -27,13 +27,17 @@ export interface Pool {
 }
 
 export const getTokens = async (): Promise<Token[]> => {
-	const res = await api.get('/api/testnet-explore/tokens')
+	const requestUrl = process.env.NODE_ENV === 'development' 
+    ? '/api/testnet-explore/tokens'
+    : '/api/explore/tokens';
+	const res = await api.get(requestUrl)
 	return res.data as Token[]
 }
 
 export const getPools = async (): Promise<Pool[]> => {
-
-	//const res = await api.get('/api/explore/pools')
-	const res = await api.get('/api/testnet-explore/pools')
+	const requestUrl = process.env.NODE_ENV === 'development' 
+    ? '/api/testnet-explore/pools'
+    : '/api/explore/pools';
+	const res = await api.get(requestUrl)
 	return res.data as Pool[]
 }

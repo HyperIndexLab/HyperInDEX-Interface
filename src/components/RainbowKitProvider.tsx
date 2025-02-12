@@ -18,6 +18,26 @@ import {
 } from "@tanstack/react-query";
 import { particleWallet, particleGoogleWallet, particleTwitterWallet } from './ParticleWallet';
 
+const hashkeyMainnet = {
+	id: 177,
+	name: 'Hashkey Mainnet',
+	nativeCurrency: {
+		decimals: 18,
+		name: 'Hashkey',
+		symbol: 'HSK',
+	},
+	rpcUrls: {
+		default: {
+			http: ['https://mainnet.hsk.xyz'],
+		},
+	},
+	blockExplorers: {
+		default: {
+			name: 'HashKey Chain Explorer',
+			url: 'https://explorer.hsk.xyz',
+		},
+	},
+}
 
 const wagmiConfig = getDefaultConfig({
 	appName: 'RainbowKit demo',
@@ -35,8 +55,7 @@ const wagmiConfig = getDefaultConfig({
 		},
 	],
 	chains: [
-		hashkeyTestnet,
-		// hashkeyMainnet,
+		process.env.NODE_ENV === 'development' ? hashkeyTestnet : hashkeyMainnet,
 	],
 	ssr: true,
 });
