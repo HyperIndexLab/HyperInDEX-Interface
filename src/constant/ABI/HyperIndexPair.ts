@@ -1,4 +1,3 @@
-export const PAIR_ADDRESS = '0x66F75DCA1d49bD95b8579d1B16727A81839c987C';
 
 export const PAIR_ABI = [
     {
