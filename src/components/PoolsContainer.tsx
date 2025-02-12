@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { usePoolsData } from '../hooks/usePoolsData';
 import RemoveLiquidityModal from './RemoveLiquidityModal';
+import Link from 'next/link';
 
 interface PoolInfo {
   pairAddress: string;
@@ -81,12 +82,12 @@ const PoolsContainer: React.FC = () => {
         >
           Remove
         </button>
-        <button 
-          onClick={() => {/* 处理添加流动性 */}} 
+        <Link 
+          href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
           className="btn btn-primary flex-1 rounded-full text-lg"
         >
           Add
-        </button>
+        </Link>
       </div>
     </div>
   );
@@ -142,12 +143,12 @@ const PoolsContainer: React.FC = () => {
                   >
                     Remove
                   </button>
-                  <button 
-                    onClick={() => {/* 处理添加流动性 */}} 
+                  <Link 
+                    href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
                     className="btn btn-sm btn-primary rounded-full px-6"
                   >
                     Add
-                  </button>
+                  </Link>
                 </div>
               </td>
             </tr>
@@ -169,12 +170,12 @@ const PoolsContainer: React.FC = () => {
     <div className="w-full max-w-6xl mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Your Liquidity Positions</h1>
-        <button 
-          onClick={() => {/* 处理添加新流动性 */}} 
+        <Link 
+          href="/liquidity"
           className="btn btn-primary rounded-full text-md px-6"
         >
           Add Liquidity
-        </button>
+        </Link>
       </div>
       
       {isLoading ? (

@@ -226,14 +226,14 @@ export default function Header() {
                 ) : (
                   <div className="group">
                     <button
-                      className={`flex items-center gap-2 rounded-lg px-3 hover:bg-base-200 transition-colors`}
+                      className={`flex items-center gap-2 rounded-lg px-3`}
                     >
                       {item.icon}
                       {item.label}
                     </button>
                     
                     {/* 简化的二级菜单 */}
-                    <div className="absolute left-[-8px] top-full pt-4">  {/* 增加 padding 确保鼠标移动时不会失去 hover */}
+                    <div className="absolute left-[-8px] top-full pt-2">  {/* 增加 padding 确保鼠标移动时不会失去 hover */}
                       <div className="bg-primary/10 rounded-2xl shadow-lg overflow-hidden w-52 hidden group-hover:block">
                         {item.children.map((child) => (
                           <Link
