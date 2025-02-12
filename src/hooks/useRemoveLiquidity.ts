@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useReadContract, type BaseError } from 'wagmi';
+import { useWriteContract, useReadContract, type BaseError } from 'wagmi';
 import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
 import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
 import { erc20Abi } from 'viem';
@@ -79,7 +79,6 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
     lpAmount,
     amount0,
     amount1,
-    pairAddress,
   }: RemoveLiquidityParams) => {
     setIsRemoving(true);
     try {
@@ -104,7 +103,6 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
           userAddress as `0x${string}`,                                 
           deadline.toString(),                                           
         ] : [
-          // 普通代币对的参数
           token0Address as `0x${string}`,
           token1Address as `0x${string}`,
           lpAmount.toString(),
@@ -115,8 +113,7 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
       });
 
    
-      const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: hash as `0x${string}` });
-      // console.log(receipt, "receipt===")
+      await waitForTransactionReceipt(wagmiConfig, { hash: hash as `0x${string}` });
       setIsSuccess(true)
 
       return { success: true };
