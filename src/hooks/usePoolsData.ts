@@ -23,8 +23,6 @@ export interface PoolInfo {
 export const usePoolsData = () => {
   const [pools, setPools] = useState<PoolInfo[]>([]);
   const { address: userAddress } = useAccount();
-  // const userAddress = '0x66F75DCA1d49bD95b8579d1B16727A81839c987C'
-  // 获取所有交易对数量
   const { data: pairLength } = useReadContract({
     address: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI as Abi,

@@ -85,6 +85,25 @@ const MENU_MAP = [
           </svg>
         ),
       },
+	  {
+        path: "/user/liquidity",
+        label: "My Pool",
+        icon: (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 10V3L4 14h7v7l9-11h-7z"
+            />
+          </svg>
+        ),
+      },
     ],
   },
   {
@@ -172,8 +191,8 @@ export default function Header() {
                 {!item.children ? (
                   <Link
                     href={item.path}
-                    className={`rounded-lg px-3 hover:bg-base-200 transition-colors ${
-                      pathname === item.path ? "bg-primary/10 text-primary" : ""
+                    className={`rounded-lg px-3 flex items-center gap-2 hover:bg-base-200 transition-colors ${
+                      pathname === item.path ? "bg-primary/20 text-primary border border-primary rounded-lg" : ""
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -184,9 +203,7 @@ export default function Header() {
                 ) : (
                   <div className="group">
                     <button
-                      className={`flex items-center gap-2 rounded-lg px-3 hover:bg-base-200 transition-colors ${
-                        pathname === item.path ? "bg-primary/10 text-primary" : ""
-                      }`}
+                      className={`flex items-center gap-2 rounded-lg px-3 hover:bg-base-200 transition-colors`}
                     >
                       {item.icon}
                       {item.label}
@@ -194,12 +211,12 @@ export default function Header() {
                     
                     {/* 简化的二级菜单 */}
                     <div className="absolute left-[-8px] top-full pt-4">  {/* 增加 padding 确保鼠标移动时不会失去 hover */}
-                      <div className="bg-surface-dark rounded-2xl shadow-lg overflow-hidden w-52 hidden group-hover:block">
+                      <div className="bg-primary/10 rounded-2xl shadow-lg overflow-hidden w-52 hidden group-hover:block">
                         {item.children.map((child) => (
                           <Link
                             key={child.path}
                             href={child.path}
-                            className={`flex items-center gap-3 px-6 py-3 hover:bg-hover-light ${
+                            className={`flex items-center gap-3 px-6 py-3 hover:bg-primary/20 transition-colors ${
                               pathname === child.path ? "text-primary" : ""
                             }`}
                           >

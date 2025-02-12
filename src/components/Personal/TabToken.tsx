@@ -16,7 +16,7 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 			{userTokens?.map((token) => (
 				<div key={token.token.address} className="flex items-center gap-2 mb-2 justify-between">
 					<div className="flex items-center gap-2">
-						<img src={token.token.icon_url || DEFAULT_TOKEN_ICON}  alt={token.token.name} className="w-8 h-8 rounded-full" />
+						<img src={token.token.icon_url || DEFAULT_TOKEN_ICON}  alt={token.token.name!} className="w-8 h-8 rounded-full" />
 						<div className="flex flex-col">
 							<span>{token.token.name}</span>
 							<div className="flex">
