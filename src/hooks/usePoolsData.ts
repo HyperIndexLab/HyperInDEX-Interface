@@ -151,7 +151,7 @@ export const usePoolsData = () => {
     }));
 
     setPools(updatedPools);
-  }, [tokenSymbols]);
+  }, [tokenSymbols, pools]);
 
   return {
     pools,

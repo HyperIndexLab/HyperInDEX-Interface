@@ -8,10 +8,10 @@ import { useEffect, useState } from 'react';
 import {  isAddress } from 'viem';
 import { formatNumber } from '@/utils';
 import Link from 'next/link';
-
+import Image from 'next/image';
 export default function Page() {
 	const { hash } = useParams() || {};
-	const [loading, setLoading] = useState(false);
+	const [, setLoading] = useState(false);
 	const [poolData, setPoolData] = useState<Pool[]>([]);
 	const [pool, setPool] = useState<Pool | null>(null);
 	const [showSwap, setShowSwap] = useState(false);  // 添加新的状态
@@ -51,12 +51,12 @@ export default function Page() {
 							<div className="flex -space-x-3">
 								<div className="avatar">
 									<div className="w-12 h-12 rounded-full ring-2 ring-base-100">
-										<img src="https://in-dex.4everland.store/indexcoin.jpg" alt={pool?.pairsName.split('/')[0]} />
+										<Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={pool?.pairsName.split('/')[0] || ''} width={48} height={48} unoptimized />
 									</div>
 								</div>
 								<div className="avatar">
 									<div className="w-12 h-12 rounded-full ring-2 ring-base-100">
-										<img src="https://in-dex.4everland.store/indexcoin.jpg" alt={pool?.pairsName.split('/')[1]} />
+										<Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={pool?.pairsName.split('/')[1] || ''} width={48} height={48} unoptimized />
 									</div>
 								</div>
 							</div>

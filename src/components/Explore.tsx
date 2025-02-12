@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { getPools, getTokens, Pool, Token } from "@/request/explore";
 import { formatUnits } from "viem";
 import { formatNumber } from "@/utils";
+import Image from "next/image";
 
 const formatTradeVolume = (
   value: any,
@@ -28,8 +29,6 @@ export default function Explore({ activeTab }: { activeTab: number }) {
 
   const [tokenData, setTokenData] = useState<Token[]>([]);
   const [poolData, setPoolData] = useState<Pool[]>([]);
-
-  const [, setSortConfig] = useState({ key: "", direction: "" });
 
   const TABLE_TITLE = useMemo(() => {
     return {
@@ -136,15 +135,8 @@ export default function Explore({ activeTab }: { activeTab: number }) {
     } else if (activeTab === 2 && poolData.length === 0) {
       fetchPools();
     }
-  }, [activeTab]);
+  }, [activeTab, tokenData.length, poolData.length]);
 
-  // 处理排序点击
-  const handleSort = (key: string) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
 
   // 添加上升下降指示器组件
   const PriceChangeIndicator = ({ value }: { value: string }) => {
@@ -295,12 +287,15 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                           >
                             <div className="avatar">
                               <div className="w-8 h-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                                <img
+                                <Image
                                   src={
                                     row.icon_url ||
                                     "https://in-dex.4everland.store/indexcoin.jpg"
                                   }
                                   alt={row.symbol}
+                                  width={32}
+                                  height={32}
+                                  unoptimized
                                 />
                               </div>
                             </div>
@@ -344,12 +339,12 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                             <div className="flex -space-x-3">
                               <div className="avatar">
                                 <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
-                                  <img src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[0]} />
+                                  <Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[0]} width={48} height={48} unoptimized/>
                                 </div>
                               </div>
                               <div className="avatar">
                                 <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
-                                  <img src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[1]} />
+                                  <Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[1]} width={48} height={48} unoptimized/>
                                 </div>
                               </div>
                             </div>

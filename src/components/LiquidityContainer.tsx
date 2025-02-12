@@ -8,7 +8,7 @@ import {
   ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
-import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
+// import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
 import { WHSK } from "@/constant/value";
 import { erc20Abi } from "viem";
 import {
@@ -65,7 +65,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const { isFirstProvider, poolInfo, refreshPool, isLoading } =
     useLiquidityPool(token1Data, token2Data);
 
-  const { needApprove, handleApprove, isApproving } = useTokenApproval(
+  const { needApprove, handleApprove } = useTokenApproval(
     token1Data,
     token2Data,
     amount1,
@@ -108,19 +108,19 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     }
   }, [token1]);
 
-  // 获取池子信息
-  const { data: pairInfo } = useReadContract({
-    address: poolInfo?.pairAddress as `0x${string}`,
-    abi: PAIR_ABI,
-    functionName: "getReserves",
-  });
+  // // 获取池子信息
+  // const { data: pairInfo } = useReadContract({
+  //   address: poolInfo?.pairAddress as `0x${string}`,
+  //   abi: PAIR_ABI,
+  //   functionName: "getReserves",
+  // });
 
-  // 获取 totalSupply
-  const { data: totalSupply } = useReadContract({
-    address: poolInfo?.pairAddress as `0x${string}`,
-    abi: PAIR_ABI,
-    functionName: "totalSupply",
-  });
+  // // 获取 totalSupply
+  // const { data: totalSupply } = useReadContract({
+  //   address: poolInfo?.pairAddress as `0x${string}`,
+  //   abi: PAIR_ABI,
+  //   functionName: "totalSupply",
+  // });
 
   // 判断是否可以继续
   const canContinue = token1Data && token2Data;
@@ -267,7 +267,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
       }, 3000);
     }
-  }, [isWriteSuccess, isWritePending]);
+  }, [isWriteSuccess, isWritePending, refreshPool]);
 
   // 添加一个清除 step2 数据的函数
   const clearStep2Data = () => {
@@ -277,99 +277,99 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   };
 
   // 渲染输入框
-  const renderAmountInput = (isToken1: boolean) => {
-    const token = isToken1 ? token1Data : token2Data;
-    const amount = isToken1 ? amount1 : amount2;
+  // const renderAmountInput = (isToken1: boolean) => {
+  //   const token = isToken1 ? token1Data : token2Data;
+  //   const amount = isToken1 ? amount1 : amount2;
 
-    return (
-      <div className="bg-base-300/50 rounded-2xl p-4">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm text-base-content/60">Input</span>
-          <span className="text-sm text-base-content/60">
-            Balance: {token?.balance || "0"}
-          </span>
-        </div>
-        <div className="flex justify-between items-center">
-          <input
-            type="number"
-            min="0"
-            className="input input-ghost w-[60%] text-2xl focus:outline-none px-4 
-              [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
-              [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
-              [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
-              [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
-              [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
-              [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
-            placeholder="0"
-            value={amount}
-            onChange={(e) => handleAmountChange(e.target.value, isToken1)}
-          />
-          <div className="flex items-center gap-2">
-            <img src={token?.icon_url || ""} className="w-6 h-6 rounded-full" />
-            <span>{token?.symbol}</span>
-          </div>
-        </div>
-      </div>
-    );
-  };
+  //   return (
+  //     <div className="bg-base-300/50 rounded-2xl p-4">
+  //       <div className="flex justify-between items-center mb-2">
+  //         <span className="text-sm text-base-content/60">Input</span>
+  //         <span className="text-sm text-base-content/60">
+  //           Balance: {token?.balance || "0"}
+  //         </span>
+  //       </div>
+  //       <div className="flex justify-between items-center">
+  //         <input
+  //           type="number"
+  //           min="0"
+  //           className="input input-ghost w-[60%] text-2xl focus:outline-none px-4 
+  //             [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
+  //             [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
+  //             [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
+  //             [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
+  //             [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
+  //             [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
+  //           placeholder="0"
+  //           value={amount}
+  //           onChange={(e) => handleAmountChange(e.target.value, isToken1)}
+  //         />
+  //         <div className="flex items-center gap-2">
+  //           <img src={token?.icon_url || ""} className="w-6 h-6 rounded-full" />
+  //           <span>{token?.symbol}</span>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // };
 
   // 渲染价格和份额信息
-  const renderPriceInfo = () => {
-    let price1 = "0",
-      price2 = "0";
+  // const renderPriceInfo = () => {
+  //   let price1 = "0",
+  //     price2 = "0";
 
-    if (isFirstProvider) {
-      // 首个提供者的情况，使用输入值计算
-      price1 =
-        amount1 && amount2
-          ? (parseFloat(amount2) / parseFloat(amount1)).toFixed(6)
-          : "0";
-      price2 =
-        amount1 && amount2
-          ? (parseFloat(amount1) / parseFloat(amount2)).toFixed(6)
-          : "0";
-    } else if (poolInfo) {
-      // 使用池子储备计算实际汇率
-      // 确保 token1 是 HSK
-      if (token1Data?.symbol === "HSK") {
-        price1 = (
-          Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
-        ).toFixed(6);
-        price2 = (
-          Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
-        ).toFixed(6);
-      } else {
-        price1 = (
-          Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
-        ).toFixed(6);
-        price2 = (
-          Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
-        ).toFixed(6);
-      }
-    }
+  //   if (isFirstProvider) {
+  //     // 首个提供者的情况，使用输入值计算
+  //     price1 =
+  //       amount1 && amount2
+  //         ? (parseFloat(amount2) / parseFloat(amount1)).toFixed(6)
+  //         : "0";
+  //     price2 =
+  //       amount1 && amount2
+  //         ? (parseFloat(amount1) / parseFloat(amount2)).toFixed(6)
+  //         : "0";
+  //   } else if (poolInfo) {
+  //     // 使用池子储备计算实际汇率
+  //     // 确保 token1 是 HSK
+  //     if (token1Data?.symbol === "HSK") {
+  //       price1 = (
+  //         Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
+  //       ).toFixed(6);
+  //       price2 = (
+  //         Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
+  //       ).toFixed(6);
+  //     } else {
+  //       price1 = (
+  //         Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
+  //       ).toFixed(6);
+  //       price2 = (
+  //         Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
+  //       ).toFixed(6);
+  //     }
+  //   }
 
-    const poolShare = calculatePoolShare();
+  //   const poolShare = calculatePoolShare();
 
-    return (
-      <div className="bg-base-300/50 rounded-2xl p-4 space-y-3">
-        <div className="flex justify-between items-center">
-          <span>Price</span>
-          <div className="text-right">
-            <div>
-              1 {token1Data?.symbol} = {price1} {token2Data?.symbol}
-            </div>
-            <div>
-              1 {token2Data?.symbol} = {price2} {token1Data?.symbol}
-            </div>
-          </div>
-        </div>
-        <div className="flex justify-between items-center">
-          <span>Share of Pool</span>
-          <span>{poolShare}%</span>
-        </div>
-      </div>
-    );
-  };
+  //   return (
+  //     <div className="bg-base-300/50 rounded-2xl p-4 space-y-3">
+  //       <div className="flex justify-between items-center">
+  //         <span>Price</span>
+  //         <div className="text-right">
+  //           <div>
+  //             1 {token1Data?.symbol} = {price1} {token2Data?.symbol}
+  //           </div>
+  //           <div>
+  //             1 {token2Data?.symbol} = {price2} {token1Data?.symbol}
+  //           </div>
+  //         </div>
+  //       </div>
+  //       <div className="flex justify-between items-center">
+  //         <span>Share of Pool</span>
+  //         <span>{poolShare}%</span>
+  //       </div>
+  //     </div>
+  //   );
+  // };
 
   // 渲染步骤 2 的内容
   const renderStep2 = () => {
