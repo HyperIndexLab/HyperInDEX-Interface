@@ -7,10 +7,8 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
-import { useAccount, useReadContract, useWriteContract } from "wagmi";
-// import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
+import { useAccount, useWriteContract } from "wagmi";
 import { WHSK } from "@/constant/value";
-import { erc20Abi } from "viem";
 import {
   ROUTER_CONTRACT_ADDRESS,
   ROUTER_ABI,
@@ -77,36 +75,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     amount1,
     amount2
   );
-
-  const { data: allowance1 } = useReadContract({
-    address:
-      token1Data?.symbol !== "HSK"
-        ? (token1Data?.address as `0x${string}`)
-        : undefined,
-    abi: erc20Abi,
-    functionName: "allowance",
-    args:
-      userAddress && token1Data
-        ? [userAddress, ROUTER_CONTRACT_ADDRESS]
-        : undefined,
-  });
-
-  const { data: allowance2 } = useReadContract({
-    address:
-      token2Data?.symbol !== "HSK"
-        ? (token2Data?.address as `0x${string}`)
-        : undefined,
-    abi: erc20Abi,
-    functionName: "allowance",
-    args:
-      userAddress && token2Data
-        ? [userAddress, ROUTER_CONTRACT_ADDRESS]
-        : undefined,
-  });
-
-  useEffect(() => {
-    console.log(allowance1, allowance2);
-  }, [allowance1, allowance2]);
 
   useEffect(() => {
     if (!token1Data && token1 === "HSK") {

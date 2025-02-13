@@ -42,7 +42,7 @@ export default function Page() {
 
 	return (
 		isAddress(hash as string) ? (
-			<div className="flex justify-center min-h-screen pt-14 bg-base-200">
+			<div className="flex justify-center min-h-screen pt-14">
 				<div className="container mx-auto px-4 max-w-3xl">
 					{/* 池子信息卡片 */}
 					<div className="card bg-base-100 shadow-xl p-6">
