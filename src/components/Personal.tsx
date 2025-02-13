@@ -69,7 +69,6 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 	useEffect(() => {
 		if (connector?.name) {
 			const name = connector?.name.toLowerCase();
-			console.log(name, "name===111")
 			if (name === 'metamask') {
 				setConnectorName('metamask');
 			} else if (name === 'okx wallet') {

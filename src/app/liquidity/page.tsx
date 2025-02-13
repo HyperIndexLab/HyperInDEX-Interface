@@ -10,8 +10,6 @@ export default function LiquidityPage() {
 
   // outputCurrency 为token2  传入address地址
   const outputCurrency = searchParams?.get('outputCurrency') ?? undefined;
-  console.log('inputCurrency: ', inputCurrency);
-  console.log('outputCurrency: ', outputCurrency);
   return (
     <main className="min-h-[calc(100vh-64px)] flex items-center justify-center">
       <LiquidityContainer token1={inputCurrency} token2={outputCurrency} />

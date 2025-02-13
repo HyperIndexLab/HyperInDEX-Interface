@@ -16,11 +16,20 @@ export const formatTokenBalance = (value: string, decimals: string | null) => {
   // 移除末尾的0
   fractionalStr = fractionalStr.replace(/0+$/, '');
   
-  // 如果小数部分超过4位，截取到4位
-  if (fractionalStr.length > 4) {
-    fractionalStr = fractionalStr.slice(0, 4);
+  // 如果小数部分为空，只返回整数部分
+  if (fractionalStr === '') {
+    return `${integerPart}`;
+  }
+
+  // 如果小数部分只有一个零，返回整数部分
+  if (fractionalStr === '0') {
+    return `${integerPart}`;
   }
   
-  // 如果小数部分为空，只返回整数部分
-  return fractionalStr ? `${integerPart}.${fractionalStr}` : `${integerPart}`;
+  // 如果小数部分超过7位，截取到7位
+  if (fractionalStr.length > 7) {
+    fractionalStr = fractionalStr.slice(0, 7);
+  }
+  
+  return `${integerPart}.${fractionalStr}`;
 }; 
