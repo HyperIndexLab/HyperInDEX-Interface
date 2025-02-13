@@ -1,6 +1,5 @@
 'use client'
 
-
 import SwapContainer from '@/components/SwapContainer';
 import { getPools, Pool } from '@/request/explore';
 import { useParams } from 'next/navigation';
@@ -9,6 +8,7 @@ import {  isAddress } from 'viem';
 import { formatNumber } from '@/utils';
 import Link from 'next/link';
 import Image from 'next/image';
+import Chart from '@/components/Chart';
 export default function Page() {
 	const { hash } = useParams() || {};
 	const [, setLoading] = useState(false);
@@ -44,6 +44,27 @@ export default function Page() {
 		isAddress(hash as string) ? (
 			<div className="flex justify-center min-h-screen pt-14">
 				<div className="container mx-auto px-4 max-w-3xl">
+					<Chart data={
+						[
+							{ time: '2024-01-01', price: 100 },
+							{ time: '2024-01-02', price: 101 },
+							{ time: '2024-01-03', price: 102 },
+							{ time: '2024-01-04', price: 103 },
+							{ time: '2024-01-05', price: 104 },
+							{ time: '2024-01-06', price: 105 },
+							{ time: '2024-01-07', price: 106 },
+							{ time: '2024-01-08', price: 107 },
+							{ time: '2024-01-09', price: 108 },
+							{ time: '2024-01-10', price: 109 },
+							{ time: '2024-01-11', price: 210 },
+							{ time: '2024-01-12', price: 211 },
+							{ time: '2024-01-13', price: 212 },
+							{ time: '2024-01-14', price: 213 },
+							{ time: '2024-01-15', price: 214 },
+							{ time: '2024-01-16', price: 215 },
+							{ time: '2024-01-17', price: 216 },
+						]
+					}/>
 					{/* 池子信息卡片 */}
 					<div className="card bg-base-100 shadow-xl p-6">
 						{/* 代币对信息 */}
