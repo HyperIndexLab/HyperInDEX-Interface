@@ -355,7 +355,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                           </div>
                         </Link>
                       </td>
-                      <td className="text-base">${formatNumber(row.TVL)}</td>
+                      <td className="text-base">{row.TVL}</td>
                       <td className={`text-base ${Number(row.APY) > 100 ? 'text-warning' : 'text-success'}`}>
                         {formatNumber(row.APY, 3)}%
                       </td>
