@@ -7,10 +7,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Personal from "./Personal";
-import { useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { useConnect as useParticleConnect } from '@particle-network/auth-core-modal';
 import { AuthCoreEvent, getLatestAuthType, isSocialAuthType, particleAuth, SocialAuthType } from "@particle-network/auth-core";
 import { particleWagmiWallet } from "./ParticleWallet/particleWagmiWallet";
+import { useSwitchChain, useChainId } from "wagmi";
+import { switchChain } from '@wagmi/core'
+import { getChainId } from '@wagmi/core'
+import { MAINNET_CHAIN_ID, TESTNET_CHAIN_ID, wagmiConfig } from "./RainbowKitProvider";
 
 const MENU_MAP = [
   {
@@ -180,6 +184,40 @@ export default function Header() {
   const { connect } = useConnect();
   const { connectionStatus } = useParticleConnect();
   const { disconnect } = useDisconnect();
+  
+  // 添加网络切换相关的状态和函数
+  const [isWrongNetwork, setIsWrongNetwork] = useState(false);
+  
+  // const chainId = useChainId();
+  const { isConnected, address } = useAccount();
+  
+  // 检查网络并在需要时自动切换
+  useEffect(() => {
+    const switchNetwork = async () => {
+      const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+      const chainIdInt = parseInt(chainId || '0', 16);
+
+      const changeChaindId = process.env.NODE_ENV !== 'development' ? MAINNET_CHAIN_ID : TESTNET_CHAIN_ID;
+   
+      if (chainIdInt !== changeChaindId) {
+        setIsWrongNetwork(true);
+        try {
+          await switchChain(wagmiConfig, { chainId: changeChaindId });
+          setIsWrongNetwork(false);
+          console.log(`链切换成功到链ID ${changeChaindId}`);
+        } catch (error) {
+          console.error('切换链失败：', error);
+        }
+        
+      } else {
+        setIsWrongNetwork(false);
+      }
+    };
+
+    if (isConnected && address) {
+      switchNetwork();
+    }
+  }, [switchChain, isConnected, address]);
 
   useEffect(() => {
     if (connectionStatus === 'connected' && isSocialAuthType(getLatestAuthType())) {
@@ -195,6 +233,8 @@ export default function Header() {
         particleAuth.off(AuthCoreEvent.ParticleAuthDisconnect, onDisconnect);
     };
   }, [connect, connectionStatus, disconnect]);
+
+  
 
   return (
     <div className="w-full top-0 z-50">
@@ -279,30 +319,40 @@ export default function Header() {
               </svg>
             </label>
           </div>
-          <ConnectButton.Custom>
-            {({ openConnectModal, account, chain }) => {
-              if (!account || !chain) {
+          <div className="relative">
+            <ConnectButton.Custom>
+              {({ openConnectModal, account, chain }) => {
+                if (!account || !chain) {
+                  return (
+                    <button
+                      onClick={openConnectModal}
+                      className="btn btn-outline px-4 h-10 min-h-0 border border-surface-button hover:bg-surface-button-hover border-none rounded-full font-normal text-sm"
+                    >
+                      Connect Wallet
+                    </button>
+                  );
+                }
                 return (
-                  <button
-                    onClick={openConnectModal}
-                    className="btn btn-outline px-4 h-10 min-h-0 border border-surface-button hover:bg-surface-button-hover border-none rounded-full font-normal text-sm"
-                  >
-                    Connect Wallet
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setOpen(true)}
+                      className="btn btn-outline px-4 h-10 min-h-0 border border-surface-button hover:bg-surface-button-hover rounded-full font-normal text-sm"
+                    >
+                      {account.displayName}
+                      
+                    </button>
+                    {isWrongNetwork && (
+                         <div className="top-full  text-center">
+                          <span className="text-error text-sm">Wrong Network</span>
+                        </div>
+                      )}
+                  </div>
                 );
-              }
-              return (
-                <button
-                  onClick={() => setOpen(true)}
-                  className="btn btn-outline px-4 h-10 min-h-0 border border-surface-button hover:bg-surface-button-hover rounded-full font-normal text-sm"
-                >
-                  {account.displayName}
-                </button>
-              );
-            }}
-          </ConnectButton.Custom>
+              }}
+            </ConnectButton.Custom>
+          </div>
+          <Personal isOpen={open} setOpen={setOpen} />
         </div>
-        <Personal isOpen={open} setOpen={setOpen} />
       </div>
 
       {/* Mobile Drawer */}

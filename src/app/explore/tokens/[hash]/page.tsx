@@ -9,6 +9,7 @@ import Chart from '@/components/Chart';
 import { getTokens, getTokenPriceData, Token, TokenPriceData } from '@/request/explore';
 import dayjs from 'dayjs';
 import SwapContainer from '@/components/SwapContainer';
+import { formatTradeVolume } from '@/components/Explore';
 
 
 export default function TokenPage() {
@@ -31,9 +32,9 @@ export default function TokenPage() {
         }
     };
 
-    const fetchTokenPriceData = useCallback(async () => {
+    const fetchTokenPriceData = useCallback(async (num: number) => {
         try {
-            const data = await getTokenPriceData(hash as string, 1);
+            const data = await getTokenPriceData(hash as string, num);
             setPriceData(data);
         } catch (error) {
             console.error('获取价格数据失败:', error);
@@ -44,7 +45,7 @@ export default function TokenPage() {
     useEffect(() => {
         if (isAddress(hash as string)) {
             fetchTokenData();
-            fetchTokenPriceData();
+            fetchTokenPriceData(1);
         }
     }, [hash]);
 
@@ -62,6 +63,18 @@ export default function TokenPage() {
             price: Number(item.price)
         }));
     }, [priceData]);
+
+
+    const handleRangeChange = async (range: '1d' | '1w') => {
+      switch (range) {
+          case '1d':
+              await fetchTokenPriceData(1);
+              break;
+          case '1w':
+              await fetchTokenPriceData(7);
+              break;
+      }
+    };
 
     return (
         isAddress(hash as string) ? (
@@ -89,10 +102,11 @@ export default function TokenPage() {
                         </div>
                         <Chart 
                             name={token?.name || ''} 
-                            token0="USD"
+                            token0=""
                             token1={token?.symbol || ''}
                             data={formatPriceData()}
                             type="token"
+                            onRangeChange={handleRangeChange}
                         />
                     </div>
 
@@ -106,31 +120,29 @@ export default function TokenPage() {
                       </button>
                       	{/* Swap容器 */}
                       <div className={`mt-6 transition-all duration-300 ease-in-out ${showSwap ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-                        <SwapContainer token1={token?.address} />
+                        <SwapContainer  token2={token?.address} />
                       </div>
                       <div className="grid grid-cols-1 gap-4">
                           <div className="stat bg-base-200 rounded-box p-4">
                               <div className="stat-title text-sm">Price</div>
                               <div className="stat-value text-primary text-xl">
-                                  ${formatNumber(token?.price || 0, 3)}
+                                  {(token?.price)}
                               </div>
                           </div>
                           <div className="stat bg-base-200 rounded-box p-4">
                               <div className="stat-title text-sm">FDV</div>
                               <div className="stat-value text-xl">
-                                  ${formatNumber(token?.FDV || 0, 0)}
-                              </div>
-                          </div>
-                          <div className="stat bg-base-200 rounded-box p-4">
-                              <div className="stat-title text-sm">24h Trading Volume</div>
-                              <div className="stat-value text-xl">
-                                  ${formatNumber(token?.tradingVolume || 0, 0)}
+                                  {(token?.FDV)}
                               </div>
                           </div>
                           <div className="stat bg-base-200 rounded-box p-4">
                               <div className="stat-title text-sm">Total Supply</div>
                               <div className="stat-value text-xl">
-                                  {formatNumber(token?.tradingVolume || 0, 0)}
+                                {formatTradeVolume(
+                                  token?.tradingVolume || 0,
+                                  token?.symbol || '',
+                                  token?.decimals || 0
+                                )}
                               </div>
                           </div>
                       </div>

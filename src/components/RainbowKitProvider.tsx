@@ -18,8 +18,10 @@ import {
 } from "@tanstack/react-query";
 import { particleWallet, particleGoogleWallet, particleTwitterWallet } from './ParticleWallet';
 
+export const MAINNET_CHAIN_ID = 177;
+export const TESTNET_CHAIN_ID = 133;
 const hashkeyMainnet = {
-	id: 177,
+	id: MAINNET_CHAIN_ID,
 	name: 'Hashkey Mainnet',
 	nativeCurrency: {
 		decimals: 18,

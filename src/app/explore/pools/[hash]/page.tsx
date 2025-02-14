@@ -32,16 +32,16 @@ export default function Page() {
     }
   }
 
-	const fetchPoolPriceData = useCallback(async () => {
+	const fetchPoolPriceData = useCallback(async (num: number) => {
 	
-			const poolPriceData = await getPoolPriceData(hash as string, 1)
+			const poolPriceData = await getPoolPriceData(hash as string, num)
 			setPoolPriceData(poolPriceData)
 		
 	}, [hash])
 
 	useEffect(() => {
 		fetchPools()
-		fetchPoolPriceData()
+		fetchPoolPriceData(1)
 	}, [])
 
 
@@ -53,6 +53,16 @@ export default function Page() {
 		}
 	}, [hash, poolData])
 
+	const handleRangeChange = async (range: '1d' | '1w') => {
+		switch (range) {
+			case '1d':
+				await fetchPoolPriceData(1);
+				break;
+			case '1w':	
+				await fetchPoolPriceData(7);
+				break;
+		}
+	}
 
 
 	return (
@@ -77,10 +87,10 @@ export default function Page() {
 							</div>
 							<div className='text-2xl font-bold'>{pool?.pairsName}</div>
 						</div>
-						<Chart name={pool?.pairsName || ''} token0={poolPriceData[0].token1Symbol} token1={poolPriceData[0].token0Symbol} data={poolPriceData.map((item) => ({
+						<Chart name={pool?.pairsName || ''} token0={poolPriceData[0]?.token1Symbol || ''} token1={poolPriceData[0]?.token0Symbol || ''} data={poolPriceData.map((item) => ({
 							time: dayjs(item.timestamp).format('MM-DD HH:mm'),
 							price: Number(parseFloat(item.token0VsToken1).toFixed(3))
-						}))} type="pool"/>
+						}))} type="pool" onRangeChange={handleRangeChange}/>
 					</div>
 
 					{/* 池子信息卡片 */}

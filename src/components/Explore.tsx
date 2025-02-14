@@ -5,7 +5,7 @@ import { formatUnits } from "viem";
 import { formatNumber } from "@/utils";
 import Image from "next/image";
 
-const formatTradeVolume = (
+export const formatTradeVolume = (
   value: any,
   symbol: string,
   decimals: number
@@ -282,7 +282,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                         </td>
                         <td>
                           <Link
-                            href={`/?outputCurrency=${row.address}`}
+                            href={`/explore/tokens/${row.address}`}
                             className="flex items-center gap-3"
                           >
                             <div className="avatar">
@@ -317,7 +317,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                           <PriceChangeIndicator value={row.change24H} />
                         </td>
                         <td className="hidden lg:table-cell">
-                          ${row.FDV}
+                          {row.FDV}
                         </td>
                         <td className="hidden sm:table-cell">
                           {formatTradeVolume(

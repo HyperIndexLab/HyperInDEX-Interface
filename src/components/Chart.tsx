@@ -7,12 +7,14 @@ interface ChartProps {
     token1: string;
     data: { time: string; price: number }[];
     type: 'token' | 'pool';
+    onRangeChange?: (range: '1d' | '1w') => void;
 }
 
-export default function Chart({ name, token0, token1, data, type = 'token' }: ChartProps) {
-    const chartRef = useRef<HTMLDivElement | null>(null);
-    const chartInstanceRef = useRef<echarts.ECharts | null>(null);
-
+export default function Chart({ name, token0, token1, data, type = 'token', onRangeChange }: ChartProps) {
+    const [activeRange, setActiveRange] = React.useState<'1d' | '1w'>('1d');
+    const chartRef = useRef<HTMLDivElement>(null);
+    const chartInstance = useRef<echarts.ECharts | null>(null);
+    const [loading, setLoading] = React.useState(false);
     // 添加 data 的深度比较
     const memoizedData = useMemo(() => {
         return data.map(item => ({
@@ -109,114 +111,157 @@ export default function Chart({ name, token0, token1, data, type = 'token' }: Ch
                 bottom: '3%',
                 containLabel: true,
             },
-            // dataZoom: [
-            //     {
-            //         type: 'inside',
-            //         zoomOnMouseWheel: true, // 允许放大
-            //         moveOnMouseWheel: true, // 允许缩小
-            //         start: 0, // 初始显示的起始位置
-            //         end: 100, // 初始显示的结束位置
-            //         rangeMode: ['value', 'value'], // 限制缩放范围
-            //         minValueSpan: 10, // 最小可见范围
-            //     },
-            // ],
         };
     }, [memoizedData, token0, token1]); // 使用 memoizedData 替代 data
 
     useEffect(() => {
-        if (chartRef.current) {
-            // 只有在没有图表实例或数据发生变化时才初始化
-            if (!chartInstanceRef.current) {
-                chartInstanceRef.current = echarts.init(chartRef.current);
-            }
-            
-            chartInstanceRef.current.setOption(option);
-
-            // 事件监听器设置
-            chartInstanceRef.current.on('updateAxisPointer', function (event: any) {
-                const dataIndex = event.dataIndex;
-                if (typeof dataIndex === 'undefined' || dataIndex <= 0) return;
-
-                const currentPrice = data[dataIndex]?.price;
-                const previousPrice = data[dataIndex - 1]?.price;
-
-                if (currentPrice !== undefined && previousPrice !== undefined) {
-                    const apy = calculateAPY((currentPrice - previousPrice) / previousPrice * 100);
-                    chartInstanceRef.current?.setOption({
-                        title: { 
-                            text: type === 'token' ? 
-                                `{price|$${currentPrice}}\n{apy|${apy >= 0.01 ? '▲' : '▼'} ${Math.abs(apy).toFixed(2)}%}` : 
-                                `{price|1 ${token0} = ${currentPrice} ${token1}}\n{apy|${apy >= 0.01 ? '▲' : '▼'} ${Math.abs(apy).toFixed(2)}%}`,
-                            textStyle: {
-                                rich: {
-                                    price: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-                                    apy: {
-                                        fontSize: 12,
-                                        fontWeight: 'bold',
-                                        color: apy >= 0.01 ? '#4eaf0a' : '#e84749',
-                                        padding: [10, 0, 0, 0]
-                                    }
-                                }
-                            }
-                        },
-                    });
-                }
-            });
+        if (!chartRef.current) return;
+        
+        // 如果已存在图表实例，先销毁它
+        if (chartInstance.current) {
+            chartInstance.current.dispose();
         }
 
+        // 创建新的图表实例
+        const chart = echarts.init(chartRef.current);
+        chartInstance.current = chart;
+
+        chart.setOption(option);
+
+        // 事件监听器设置
+        chart.on('updateAxisPointer', function (event: any) {
+            const dataIndex = event.dataIndex;
+            if (typeof dataIndex === 'undefined' || dataIndex <= 0) return;
+
+            const currentPrice = data[dataIndex]?.price;
+            const previousPrice = data[dataIndex - 1]?.price;
+
+            if (currentPrice !== undefined && previousPrice !== undefined) {
+                const apy = calculateAPY((currentPrice - previousPrice) / previousPrice * 100);
+                chart.setOption({
+                    title: { 
+                        text: type === 'token' ? 
+                            `{price|$${currentPrice}}\n{apy|${apy >= 0.01 ? '▲' : '▼'} ${Math.abs(apy).toFixed(2)}%}` : 
+                            `{price|1 ${token0} = ${currentPrice} ${token1}}\n{apy|${apy >= 0.01 ? '▲' : '▼'} ${Math.abs(apy).toFixed(2)}%}`,
+                        textStyle: {
+                            rich: {
+                                price: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
+                                apy: {
+                                    fontSize: 12,
+                                    fontWeight: 'bold',
+                                    color: apy >= 0.01 ? '#4eaf0a' : '#e84749',
+                                    padding: [10, 0, 0, 0]
+                                }
+                            }
+                        }
+                    },
+                });
+            }
+        });
+
         return () => {
-            if (chartInstanceRef.current) {
-                chartInstanceRef.current.off('updateAxisPointer');
-                chartInstanceRef.current.dispose();
-                chartInstanceRef.current = null;
+            // 组件卸载时清理图表实例
+            if (chartInstance.current) {
+                chartInstance.current.dispose();
+                chartInstance.current = null;
             }
         };
-    }, [token0, token1, memoizedData]); // 使用 memoizedData 替代 data
+    }, [data]); // 依赖于 data 的变化
 
+    const handleRangeChange = async (range: '1d' | '1w') => {
+        setLoading(true);
+        setActiveRange(range);
+        try {
+            await onRangeChange?.(range);
+        } catch (error) {
+            console.error('Range change failed:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
-    return data.length > 0 ? (
-        <div ref={chartRef} style={{ width: '100%', height: '400px' }} />
-    ) : (
-        <div 
-            style={{
-                width: '100%',
-                height: '400px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative'
-            }}
-        >
-            <svg
-                width="300"
-                height="100"
-                viewBox="0 0 300 100"
-                style={{
-                    opacity: 0.6
-                }}
-            >
-                <path
-                    d="M 0,50 Q 75,20 150,50 T 300,50"
-                    fill="none"
-                    stroke="#3498db"
-                    strokeWidth="2"
+    return (
+        <div className="w-full relative">
+             {loading && (
+                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm z-10 flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+            )}
+            {data.length > 0  ? (
+                <div ref={chartRef} className="w-full h-[400px]" />
+            ) : (
+                <div 
                     style={{
-                        animation: 'pathAnimate 3s linear infinite'
+                        width: '100%',
+                        height: '400px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        position: 'relative'
                     }}
-                />
-            </svg>
-            <style jsx global>{`
-                @keyframes pathAnimate {
-                    0% {
-                        stroke-dasharray: 500;
-                        stroke-dashoffset: 500;
-                    }
-                    100% {
-                        stroke-dasharray: 500;
-                        stroke-dashoffset: -500;
-                    }
-                }
-            `}</style>
+                >
+                    <svg
+                        width="300"
+                        height="100"
+                        viewBox="0 0 300 100"
+                        style={{
+                            opacity: 0.6
+                        }}
+                    >
+                        <path
+                            d="M 0,50 Q 75,20 150,50 T 300,50"
+                            fill="none"
+                            stroke="#3498db"
+                            strokeWidth="2"
+                            style={{
+                                animation: 'pathAnimate 3s linear infinite'
+                            }}
+                        />
+                    </svg>
+                    <style jsx global>{`
+                        @keyframes pathAnimate {
+                            0% {
+                                stroke-dasharray: 500;
+                                stroke-dashoffset: 500;
+                            }
+                            100% {
+                                stroke-dasharray: 500;
+                                stroke-dashoffset: -500;
+                            }
+                        }
+                    `}</style>
+                </div>
+            )}
+            <div className="mt-4 flex">
+                <div className="flex p-1 bg-white/10 rounded-lg">
+                    <button
+                        onClick={() => handleRangeChange('1d')}
+                        className={`
+                            min-w-[40px] px-2 py-0.5 text-sm rounded-md
+                            transition-all duration-300 ease-in-out
+                            ${activeRange === '1d' 
+                                ? 'bg-white/20 text-white' 
+                                : 'bg-transparent text-white/60 hover:text-white/80'
+                            }
+                        `}
+                    >
+                        1D
+                    </button>
+                    <button
+                        onClick={() => handleRangeChange('1w')}
+                        className={`
+                            min-w-[40px] px-2 py-0.5 text-sm rounded-md
+                            transition-all duration-300 ease-in-out
+                            ${activeRange === '1w' 
+                                ? 'bg-white/20 text-white' 
+                                : 'bg-transparent text-white/60 hover:text-white/80'
+                            }
+                        `}
+                    >
+                        1W
+                    </button>
+                </div>
+            </div>
         </div>
     );
 }

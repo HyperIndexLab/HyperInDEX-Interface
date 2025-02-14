@@ -54,7 +54,8 @@ export interface TokenPriceData {
 }
 export const getTokens = async (): Promise<Token[]> => {
 	const requestUrl = process.env.NODE_ENV === 'development' 
-    ? '/api/testnet-explore/tokens'
+    // ? '/api/testnet-explore/tokens'
+		? '/api/explore/tokens'
     : '/api/explore/tokens';
 	const res = await api.get(requestUrl)
 	return res.data as Token[]
