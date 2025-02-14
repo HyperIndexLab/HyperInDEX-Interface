@@ -11,9 +11,7 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { useConnect as useParticleConnect } from '@particle-network/auth-core-modal';
 import { AuthCoreEvent, getLatestAuthType, isSocialAuthType, particleAuth, SocialAuthType } from "@particle-network/auth-core";
 import { particleWagmiWallet } from "./ParticleWallet/particleWagmiWallet";
-import { useSwitchChain, useChainId } from "wagmi";
 import { switchChain } from '@wagmi/core'
-import { getChainId } from '@wagmi/core'
 import { MAINNET_CHAIN_ID, TESTNET_CHAIN_ID, wagmiConfig } from "./RainbowKitProvider";
 
 const MENU_MAP = [

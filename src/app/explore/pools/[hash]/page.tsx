@@ -10,41 +10,37 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Chart from '@/components/Chart';
 import dayjs from 'dayjs';
-import { formatTokenBalance } from '@/utils/formatTokenBalance';
 
 export default function Page() {
 	const { hash } = useParams() || {};
 	const [, setLoading] = useState(false);
 	const [poolData, setPoolData] = useState<Pool[]>([]);
 	const [pool, setPool] = useState<Pool | null>(null);
-	const [showSwap, setShowSwap] = useState(false);  // 添加新的状态
+	const [showSwap, setShowSwap] = useState(false);
 	const [poolPriceData, setPoolPriceData] = useState<PoolPriceData[]>([]);
+	const [isReversed, setIsReversed] = useState(false);
 
-  const fetchPools = async () => {
-    setLoading(true)
-    try {
-      const pools = await getPools()
-      setPoolData(pools)
-    } catch (error) {
-      console.error('Failed to fetch pool list:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+	const fetchPools = async () => {
+		setLoading(true)
+		try {
+			const pools = await getPools()
+			setPoolData(pools)
+		} catch (error) {
+			console.error('Failed to fetch pool list:', error)
+		} finally {
+			setLoading(false)
+		}
+	}
 
 	const fetchPoolPriceData = useCallback(async (num: number) => {
-	
-			const poolPriceData = await getPoolPriceData(hash as string, num)
-			setPoolPriceData(poolPriceData)
-		
+		const poolPriceData = await getPoolPriceData(hash as string, num)
+		setPoolPriceData(poolPriceData)
 	}, [hash])
 
 	useEffect(() => {
 		fetchPools()
 		fetchPoolPriceData(1)
 	}, [])
-
-
 
 	useEffect(() => {
 		const pool = poolData.find((pool) => pool.pairsAddress === hash)
@@ -63,7 +59,6 @@ export default function Page() {
 				break;
 		}
 	}
-
 
 	return (
 		isAddress(hash as string) ? (
@@ -86,11 +81,27 @@ export default function Page() {
 								</div>
 							</div>
 							<div className='text-2xl font-bold'>{pool?.pairsName}</div>
+							<button 
+								className="btn btn-circle btn-sm"
+								onClick={() => setIsReversed(!isReversed)}
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+								</svg>
+							</button>
 						</div>
-						<Chart name={pool?.pairsName || ''} token0={poolPriceData[0]?.token1Symbol || ''} token1={poolPriceData[0]?.token0Symbol || ''} data={poolPriceData.map((item) => ({
-							time: dayjs(item.timestamp).format('MM-DD HH:mm'),
-							price: Number(parseFloat(item.token0VsToken1).toFixed(3))
-						}))} type="pool" onRangeChange={handleRangeChange}/>
+						<Chart 
+							token0={isReversed ? poolPriceData[0]?.token0Symbol : poolPriceData[0]?.token1Symbol || ''} 
+							token1={isReversed ? poolPriceData[0]?.token1Symbol : poolPriceData[0]?.token0Symbol || ''} 
+							data={poolPriceData.map((item) => ({
+								time: dayjs(item.timestamp).format('MM-DD HH:mm'),
+								price: isReversed ? 
+									Number(parseFloat(item.token1VsToken0).toFixed(6)) : 
+									Number(parseFloat(item.token0VsToken1).toFixed(4))
+							}))} 
+							type="pool" 
+							onRangeChange={handleRangeChange}
+						/>
 					</div>
 
 					{/* 池子信息卡片 */}

@@ -3,7 +3,6 @@
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { isAddress } from 'viem';
-import { formatNumber } from '@/utils';
 import Image from 'next/image';
 import Chart from '@/components/Chart';
 import { getTokens, getTokenPriceData, Token, TokenPriceData } from '@/request/explore';
@@ -14,7 +13,7 @@ import { formatTradeVolume } from '@/components/Explore';
 
 export default function TokenPage() {
     const { hash } = useParams() || {};
-    const [loading, setLoading] = useState(false);
+    const [, setLoading] = useState(false);
     const [token, setToken] = useState<Token | null>(null);
     const [showSwap, setShowSwap] = useState(false);  // 添加新的状态
     const [tokenData, setTokenData] = useState<Token[]>([]);
@@ -101,7 +100,6 @@ export default function TokenPage() {
                             </div>
                         </div>
                         <Chart 
-                            name={token?.name || ''} 
                             token0=""
                             token1={token?.symbol || ''}
                             data={formatPriceData()}

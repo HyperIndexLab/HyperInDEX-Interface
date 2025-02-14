@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import * as echarts from 'echarts';
 
 interface ChartProps {
-    name: string;
     token0: string;
     token1: string;
     data: { time: string; price: number }[];
@@ -10,7 +9,7 @@ interface ChartProps {
     onRangeChange?: (range: '1d' | '1w') => void;
 }
 
-export default function Chart({ name, token0, token1, data, type = 'token', onRangeChange }: ChartProps) {
+export default function Chart({ token0, token1, data, type = 'token', onRangeChange }: ChartProps) {
     const [activeRange, setActiveRange] = React.useState<'1d' | '1w'>('1d');
     const chartRef = useRef<HTMLDivElement>(null);
     const chartInstance = useRef<echarts.ECharts | null>(null);
@@ -21,7 +20,7 @@ export default function Chart({ name, token0, token1, data, type = 'token', onRa
             time: item.time,
             price: item.price
         }));
-    }, [JSON.stringify(data)]); // 使用 JSON.stringify 进行深度比较
+    }, [data.length, data[0]?.time, data[0]?.price, data[data.length - 1]?.time, data[data.length - 1]?.price]); // 只比较数组长度和首尾数据
 
     const calculateAPY = (price: number): number => {
         return (price / 100) * 12;
@@ -30,11 +29,11 @@ export default function Chart({ name, token0, token1, data, type = 'token', onRa
     // 修改 option 的依赖项
     const option = useMemo(() => {
         const latestPrice = data.length > 0 ? data[data.length - 1].price : 0;
-        const previousPrice = data.length > 1 ? data[data.length - 2].price : 0;
+        const firstPrice = data.length > 0 ? data[0].price : 0; // 获取最老的价格数据
         let apy = 0;
 
-        if (latestPrice !== 0 && previousPrice !== 0) {
-            apy = calculateAPY((latestPrice - previousPrice) / previousPrice * 100);
+        if (latestPrice !== 0 && firstPrice !== 0) {
+            apy = calculateAPY((latestPrice - firstPrice) / firstPrice * 100);
         }
 
         return {
@@ -83,9 +82,9 @@ export default function Chart({ name, token0, token1, data, type = 'token', onRa
                 axisLabel: { color: '#666' },
                 splitLine: { show: false }, // 去掉 y 轴的分隔线
                 boundaryGap: [0, '100%'],
-                min: function (value: any) {
-                    return value.min / 2; // 从最小值的一半开始
-                }
+								min: function (value: any) {
+									return Math.floor(value.min / 2); 
+							}
             },
             series: [
                 {
@@ -112,7 +111,7 @@ export default function Chart({ name, token0, token1, data, type = 'token', onRa
                 containLabel: true,
             },
         };
-    }, [memoizedData, token0, token1]); // 使用 memoizedData 替代 data
+    }, [memoizedData, token0, token1, type]); // 使用 memoizedData 替代 data
 
     useEffect(() => {
         if (!chartRef.current) return;
@@ -166,7 +165,7 @@ export default function Chart({ name, token0, token1, data, type = 'token', onRa
                 chartInstance.current = null;
             }
         };
-    }, [data]); // 依赖于 data 的变化
+    }, [memoizedData]); // 依赖于 data 的变化
 
     const handleRangeChange = async (range: '1d' | '1w') => {
         setLoading(true);
