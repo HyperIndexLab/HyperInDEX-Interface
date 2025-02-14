@@ -317,7 +317,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                           <PriceChangeIndicator value={row.change24H} />
                         </td>
                         <td className="hidden lg:table-cell">
-                          ${formatNumber(row.FDV)}
+                          ${row.FDV}
                         </td>
                         <td className="hidden sm:table-cell">
                           {formatTradeVolume(
