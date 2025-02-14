@@ -43,30 +43,9 @@ export default function Page() {
 	return (
 		isAddress(hash as string) ? (
 			<div className="flex justify-center min-h-screen pt-14">
-				<div className="container mx-auto px-4 max-w-3xl">
-					<Chart data={
-						[
-							{ time: '2024-01-01', price: 100 },
-							{ time: '2024-01-02', price: 101 },
-							{ time: '2024-01-03', price: 102 },
-							{ time: '2024-01-04', price: 103 },
-							{ time: '2024-01-05', price: 104 },
-							{ time: '2024-01-06', price: 105 },
-							{ time: '2024-01-07', price: 106 },
-							{ time: '2024-01-08', price: 107 },
-							{ time: '2024-01-09', price: 108 },
-							{ time: '2024-01-10', price: 109 },
-							{ time: '2024-01-11', price: 210 },
-							{ time: '2024-01-12', price: 211 },
-							{ time: '2024-01-13', price: 212 },
-							{ time: '2024-01-14', price: 213 },
-							{ time: '2024-01-15', price: 214 },
-							{ time: '2024-01-16', price: 215 },
-							{ time: '2024-01-17', price: 216 },
-						]
-					}/>
-					{/* 池子信息卡片 */}
-					<div className="card bg-base-100 shadow-xl p-6">
+				<div className="container mx-auto px-4 flex flex-col md:flex-row gap-6">
+					{/* Chart */}
+					<div className="card bg-base-100 flex-1 p-6">
 						{/* 代币对信息 */}
 						<div className='flex items-center gap-4 mb-6'>
 							<div className="flex -space-x-3">
@@ -82,6 +61,50 @@ export default function Page() {
 								</div>
 							</div>
 							<div className='text-2xl font-bold'>{pool?.pairsName}</div>
+						</div>
+						<Chart data={
+							[
+								{ time: '2024-01-01', price: 100 },
+								{ time: '2024-01-02', price: 101 },
+								{ time: '2024-01-03', price: 102 },
+								{ time: '2024-01-04', price: 103 },
+								{ time: '2024-01-05', price: 104 },
+								{ time: '2024-01-06', price: 105 },
+								{ time: '2024-01-07', price: 106 },
+								{ time: '2024-01-08', price: 107 },
+								{ time: '2024-01-09', price: 108 },
+								{ time: '2024-01-10', price: 109 },
+								{ time: '2024-01-11', price: 210 },
+								{ time: '2024-01-12', price: 211 },
+								{ time: '2024-01-13', price: 212 },
+								{ time: '2024-01-14', price: 213 },
+								{ time: '2024-01-15', price: 214 },
+								{ time: '2024-01-16', price: 215 },
+								{ time: '2024-01-17', price: 216 },
+							]
+						}/>
+					</div>
+
+					{/* 池子信息卡片 */}
+					<div className="card bg-base-100 shadow-xl p-6 flex-1">
+
+						{/* Swap按钮 */}
+						<div className="text-center flex justify-center items-center gap-4">
+							<button 
+								className='btn btn-primary rounded-full px-8 font-semibold'
+								onClick={() => setShowSwap(!showSwap)}
+							>
+								Swap Tokens
+							</button>
+							<Link href={`/liquidity?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`} className='btn btn-primary rounded-full px-8 font-semibold'>
+								Add Liquidity
+							</Link>
+						</div>
+
+
+						{/* Swap容器 */}
+						<div className={`mt-6 transition-all duration-300 ease-in-out ${showSwap ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+							<SwapContainer token1={pool?.token0} token2={pool?.token1} />
 						</div>
 
 						{/* 池子数据网格 */}
@@ -102,26 +125,6 @@ export default function Page() {
 								<div className="stat-title text-sm">30D Volume</div>
 								<div className="stat-value text-xl">{pool?.tradingVolume30D}</div>
 							</div>
-						</div>
-
-						{/* Swap按钮 */}
-						<div className="text-center flex justify-center items-center gap-4">
-							<button 
-								className='btn btn-primary rounded-full px-8 font-semibold'
-								onClick={() => setShowSwap(!showSwap)}
-							>
-								Swap Tokens
-							</button>
-							<Link href={`/liquidity?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`} className='btn btn-primary rounded-full px-8 font-semibold'>
-								Add Liquidity
-							</Link>
-						</div>
-
-					
-
-						{/* Swap容器 */}
-						<div className={`mt-6 transition-all duration-300 ease-in-out ${showSwap ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-							<SwapContainer token1={pool?.token0} token2={pool?.token1} />
 						</div>
 					</div>
 				</div>
