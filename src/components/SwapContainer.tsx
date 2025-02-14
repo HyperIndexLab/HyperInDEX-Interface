@@ -190,7 +190,21 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     const value = e.target.value;
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setToken1Amount(value);
-      if (value === '') {
+      
+      // 检查是否是 HSK 和 WHSK 的交易对
+      const isHskWhskPair = token1Data && token2Data && (
+        (token1Data.symbol === 'HSK' && token2Data.address === WHSK) ||
+        (token2Data.symbol === 'HSK' && token1Data.address === WHSK)
+      );
+
+      if (isHskWhskPair) {
+        // HSK 和 WHSK 的 1:1 交易，直接设置相同的金额
+        setToken2Amount(value);
+        setMinimumReceived(value);
+        setPriceImpact('0');
+        setLpFee('0');
+      } else if (value === '') {
+        // 如果输入为空，清空所有相关状态
         setToken2Amount('');
         setMinimumReceived('0');
         setPriceImpact('0');
@@ -261,31 +275,45 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   useEffect(() => {
     if (amountsOut && baseAmountOut && token2Data && token1Data && token1Amount) {
       try {
-        // 计算输出金额
-        const outputAmount = (amountsOut as bigint[])[1];
-        const formattedOutput = formatTokenBalance(outputAmount.toString(), token2Data.decimals || '18');
-        setToken2Amount(formattedOutput);
-        
-        // 计算最小接收数量 (0.5% 滑点)
-        const minReceived = (outputAmount * BigInt(995)) / BigInt(1000);
-        setMinimumReceived(formatTokenBalance(minReceived.toString(), token2Data.decimals || '18'));
-        
-        // 计算 LP 费用 (0.3%)
-        const inputAmountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-        const lpFeeAmount = (inputAmountBigInt * BigInt(3)) / BigInt(1000);
-        setLpFee(formatTokenBalance(lpFeeAmount.toString(), token1Data.decimals || '18'));
-        
-        // 计算价格影响
-        const baseOutput = (baseAmountOut as bigint[])[1];  // 小额交易输出
-        const actualOutput = (amountsOut as bigint[])[1];   // 实际交易输出
-        
-        // 计算比率
-        const baseRate = (baseOutput * BigInt(10000)) / parseUnits('0.0001', Number(token1Data.decimals || '18'));
-        const actualRate = (actualOutput * BigInt(10000)) / parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-        
-        // 计算价格影响
-        const priceImpact = Math.abs(Number(actualRate - baseRate) / Number(baseRate) * 100);
-        setPriceImpact(priceImpact.toFixed(2));
+        // 检查是否是 HSK 和 WHSK 的交易对
+        const isHskWhskPair = (
+          (token1Data.symbol === 'HSK' && token2Data.address === WHSK) ||
+          (token2Data.symbol === 'HSK' && token1Data.address === WHSK)
+        );
+
+        if (isHskWhskPair) {
+          // HSK 和 WHSK 的 1:1 交易
+          setToken2Amount(token1Amount);
+          setMinimumReceived(token1Amount);
+          setPriceImpact('0');
+          // LP 费用为 0
+          setLpFee('0');
+        } else {
+          // 正常的代币交易计算
+          // 计算输出金额
+          const outputAmount = (amountsOut as bigint[])[1];
+          const formattedOutput = formatTokenBalance(outputAmount.toString(), token2Data.decimals || '18');
+          setToken2Amount(formattedOutput);
+          
+          // 计算最小接收数量 (根据滑点设置)
+          const minReceived = (outputAmount * BigInt(995)) / BigInt(1000);
+          setMinimumReceived(formatTokenBalance(minReceived.toString(), token2Data.decimals || '18'));
+          
+          // 计算 LP 费用 (0.3%)
+          const inputAmountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+          const lpFeeAmount = (inputAmountBigInt * BigInt(3)) / BigInt(1000);
+          setLpFee(formatTokenBalance(lpFeeAmount.toString(), token1Data.decimals || '18'));
+          
+          // 计算价格影响
+          const baseOutput = (baseAmountOut as bigint[])[1];
+          const actualOutput = (amountsOut as bigint[])[1];
+          
+          const baseRate = (baseOutput * BigInt(10000)) / parseUnits('0.0001', Number(token1Data.decimals || '18'));
+          const actualRate = (actualOutput * BigInt(10000)) / parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+          
+          const priceImpact = Math.abs(Number(actualRate - baseRate) / Number(baseRate) * 100);
+          setPriceImpact(priceImpact.toFixed(2));
+        }
       } catch (error) {
         setToken2Amount('0');
         setMinimumReceived('0');
@@ -464,69 +492,127 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     },
   });
 
+  // 1. 修改 useReadContract hook 的调用，添加 enabled 条件的打印
+  const { data: pairAddress } = useReadContract({
+    address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+    abi: ROUTER_ABI,
+    functionName: 'getPair',
+    args: token1Data && token2Data ? [
+      getQueryAddress(token1Data),
+      getQueryAddress(token2Data)
+    ] : undefined,
+    query: {
+      enabled: !!(token1Data && token2Data),
+    },
+  });
+
+  // 添加调试日志
+  useEffect(() => {
+    console.log('token1Data:', token1Data);
+    console.log('token2Data:', token2Data);
+    console.log('pairAddress:', pairAddress);
+  }, [token1Data, token2Data, pairAddress]);
+
+  // 2. 检查余额是否足够
+  const hasInsufficientBalance = () => {
+    if (!token1Data || !token1Amount) return false;
+    
+    const balance = token1Data.symbol === 'HSK' 
+      ? hskBalance?.value?.toString() || '0'
+      : token1Balance?.value?.toString() || '0';
+      
+    try {
+      const amountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+      const balanceBigInt = BigInt(balance);
+      return amountBigInt > balanceBigInt;
+    } catch {
+      return false;
+    }
+  };
+
+  // 3. 修改 getButtonState 函数
   const getButtonState = () => {
-      if (!token1Data || !token2Data) {
-          return {
-              text: 'Select tokens',
-              disabled: true
-          };
-      }
-
-      if (!token1Amount || Number(token1Amount) === 0) {
-          return {
-              text: 'Enter an amount',
-              disabled: true
-          };
-      }
-
-      if (error) {
-          return {
-              text: 'Insufficient liquidity',
-              disabled: true
-          };
-      }
-
-      if (txStatus === 'pending') {
-          if (isWritePending) {
-              return {
-                  text: 'Confirm in wallet...',
-                  disabled: true
-              };
-          }
-          if (isWaitingTx) {
-              return {
-                  text: 'Waiting for confirmation...',
-                  disabled: true
-              };
-          }
-          return {
-              text: 'Swapping...',
-              disabled: true
-          };
-      }
-
-      if (token1Data.symbol !== 'HSK' && !isApproved) {
-          return {
-              text: 'Approve',
-              disabled: false,
-              onClick: handleApprove
-          };
-      }
-
-      const priceImpactNum = Number(priceImpact);
-      if (priceImpactNum >= 5) {
-          return {
-              text: 'Swap anyway',
-              disabled: false,
-              onClick: handleSwap
-          };
-      }
-
+    if (!token1Data || !token2Data) {
       return {
-          text: 'Swap',
-          disabled: false,
-          onClick: handleSwap
+        text: 'Select tokens',
+        disabled: true
       };
+    }
+
+    // 检查池子是否存在
+    if (!pairAddress) {
+      return {
+        text: 'Add liquidity',
+        disabled: false,
+        onClick: () => {
+          // 跳转到添加流动性页面
+          window.location.href = `/liquidity?inputCurrency=${getQueryAddress(token1Data)}&outputCurrency=${getQueryAddress(token2Data)}`;
+        }
+      };
+    }
+
+    if (hasInsufficientBalance()) {
+      return {
+        text: 'Insufficient balance',
+        disabled: true
+      };
+    }
+
+    if (!token1Amount || Number(token1Amount) === 0) {
+      return {
+        text: 'Enter an amount',
+        disabled: true
+      };
+    }
+
+    if (error) {
+      return {
+        text: 'Insufficient liquidity',
+        disabled: true
+      };
+    }
+
+    if (txStatus === 'pending') {
+      if (isWritePending) {
+        return {
+          text: 'Confirm in wallet...',
+          disabled: true
+        };
+      }
+      if (isWaitingTx) {
+        return {
+          text: 'Waiting for confirmation...',
+          disabled: true
+        };
+      }
+      return {
+        text: 'Swapping...',
+        disabled: true
+      };
+    }
+
+    if (token1Data.symbol !== 'HSK' && !isApproved) {
+      return {
+        text: 'Approve',
+        disabled: false,
+        onClick: handleApprove
+      };
+    }
+
+    const priceImpactNum = Number(priceImpact);
+    if (priceImpactNum >= 5) {
+      return {
+        text: 'Swap anyway',
+        disabled: false,
+        onClick: handleSwap
+      };
+    }
+
+    return {
+      text: 'Swap',
+      disabled: false,
+      onClick: handleSwap
+    };
   };
 
   const handleSwapTokens = () => {
@@ -580,6 +666,25 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     };
   }, []);
 
+  // 添加处理百分比点击的函数
+  const handlePercentageClick = (percentage: number) => {
+    if (!token1Data) return;
+    
+    const balance = token1Data.symbol === 'HSK' 
+      ? hskBalance?.value?.toString() || '0'
+      : token1Balance?.value?.toString() || '0';
+      
+    try {
+      const balanceBigInt = BigInt(balance);
+      const amount = (balanceBigInt * BigInt(percentage)) / BigInt(100);
+      const decimals = Number(token1Data.decimals || '18');
+      const formattedAmount = formatTokenBalance(amount.toString(), decimals.toString());
+      setToken1Amount(formattedAmount);
+    } catch (error) {
+      console.error('Error calculating percentage:', error);
+    }
+  };
+
   return (
     <>
       {showModal && (
@@ -593,11 +698,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       )}
       <div className="w-[460px] mx-auto rounded-2xl bg-[#1c1d22]/30 bg-opacity-20 p-4 shadow-xl border border-white/5">
         {/* 头部操作栏 */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex gap-2">
-            <button className="btn btn-sm btn-primary rounded-full px-6">Swap</button>
-            <button className="btn btn-sm btn-ghost rounded-full px-6">Send</button>
-          </div>
+        <div className="flex justify-end items-center mb-6">
           <div className="relative">
             <button 
               className="btn btn-sm btn-ghost btn-circle"
@@ -694,6 +795,32 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         <div className="bg-[#2c2d33]/50 rounded-xl p-4 mb-2">
           <div className="flex justify-between items-center mb-2">
             <span className="text-base text-base-content/60">Sell</span>
+            <div className="flex gap-2">
+              <button 
+                className="btn btn-xs btn-ghost hover:bg-base-200"
+                onClick={() => handlePercentageClick(25)}
+              >
+                25%
+              </button>
+              <button 
+                className="btn btn-xs btn-ghost hover:bg-base-200"
+                onClick={() => handlePercentageClick(50)}
+              >
+                50%
+              </button>
+              <button 
+                className="btn btn-xs btn-ghost hover:bg-base-200"
+                onClick={() => handlePercentageClick(75)}
+              >
+                75%
+              </button>
+              <button 
+                className="btn btn-xs btn-ghost hover:bg-base-200"
+                onClick={() => handlePercentageClick(100)}
+              >
+                100%
+              </button>
+            </div>
           </div>
           <div className="flex justify-between items-center">
             <input 
@@ -789,35 +916,48 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
         {/* 交易详情 */}
         {token1Data && token2Data && token1Amount && (
-          <div className="bg-[#2c2d33]/20 backdrop-blur-md rounded-xl p-4 space-y-3 text-sm mb-4 border border-white/[0.02]">
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1 text-base-content/60">
-                <span>Minimum received</span>
-                <div className="tooltip" data-tip="Your transaction will revert if there is a large, unfavorable price movement before it is confirmed.">
-                  <InformationCircleIcon className="w-4 h-4" />
+          <>
+            {!pairAddress ? (
+              <div className="bg-[#2c2d33]/20 backdrop-blur-md rounded-xl p-4 mb-4 border border-white/[0.02]">
+                <div className="text-center">
+                  <p className="text-base-content/60 mb-2">No liquidity pool found</p>
+                  <p className="text-sm text-base-content/40 mb-4">
+                    Create a new liquidity pool for this token pair
+                  </p>
                 </div>
               </div>
-              <span>{minimumReceived} {displaySymbol(token2Data)}</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1 text-base-content/60">
-                <span>Price Impact</span>
-                <div className="tooltip" data-tip="The difference between the market price and estimated price due to trade size.">
-                  <InformationCircleIcon className="w-4 h-4" />
+            ) : (
+              <div className="bg-[#2c2d33]/20 backdrop-blur-md rounded-xl p-4 space-y-3 text-sm mb-4 border border-white/[0.02]">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1 text-base-content/60">
+                    <span>Minimum received</span>
+                    <div className="tooltip" data-tip="Your transaction will revert if there is a large, unfavorable price movement before it is confirmed.">
+                      <InformationCircleIcon className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <span>{minimumReceived} {displaySymbol(token2Data)}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1 text-base-content/60">
+                    <span>Price Impact</span>
+                    <div className="tooltip" data-tip="The difference between the market price and estimated price due to trade size.">
+                      <InformationCircleIcon className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <span className={getPriceImpactColor(Number(priceImpact))}>{priceImpact}%</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-1 text-base-content/60">
+                    <span>LP Fee</span>
+                    <div className="tooltip" data-tip="A portion of each trade (0.30%) goes to liquidity providers as a protocol incentive.">
+                      <InformationCircleIcon className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <span>{displayLPFee()}</span>
                 </div>
               </div>
-              <span className={getPriceImpactColor(Number(priceImpact))}>{priceImpact}%</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-1 text-base-content/60">
-                <span>LP Fee</span>
-                <div className="tooltip" data-tip="A portion of each trade (0.30%) goes to liquidity providers as a protocol incentive.">
-                  <InformationCircleIcon className="w-4 h-4" />
-                </div>
-              </div>
-              <span>{displayLPFee()}</span>
-            </div>
-          </div>
+            )}
+          </>
         )}
 
         {/* 操作按钮 */}
