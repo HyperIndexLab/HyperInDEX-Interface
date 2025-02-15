@@ -193,8 +193,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       
       // 检查是否是 HSK 和 WHSK 的交易对
       const isHskWhskPair = token1Data && token2Data && (
-        (token1Data.symbol === 'HSK' && token2Data.address === WHSK) ||
-        (token2Data.symbol === 'HSK' && token1Data.address === WHSK)
+        (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') ||
+        (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
       );
 
       if (isHskWhskPair) {
@@ -210,7 +210,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         setPriceImpact('0');
         setLpFee('0');
         setInputError(null);
-      }
+      } 
     }
   };
 
@@ -277,8 +277,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       try {
         // 检查是否是 HSK 和 WHSK 的交易对
         const isHskWhskPair = (
-          (token1Data.symbol === 'HSK' && token2Data.address === WHSK) ||
-          (token2Data.symbol === 'HSK' && token1Data.address === WHSK)
+          (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') ||
+          (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
         );
 
         if (isHskWhskPair) {
