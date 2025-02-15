@@ -16,6 +16,7 @@ import { AppDispatch } from '@/store';
 import { ArrowsUpDownIcon, Cog6ToothIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
+import { FACTORY_ABI, FACTORY_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexFactory';
 
 interface SwapContainerProps {
   token1?: string;
@@ -273,6 +274,21 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
   // 修改价格计算相关的 useEffect
   useEffect(() => {
+    if (token1Data && token2Data) {
+      // 检查是否是 HSK 和 WHSK 的交易对 1:1 兑换
+      const isHskWhskPair = (
+        (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') ||
+        (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
+      );
+
+      if (isHskWhskPair) {
+        setToken2Amount(token1Amount);
+        setMinimumReceived(token1Amount);
+        setPriceImpact('0');
+        setLpFee('0');
+      }
+    }
+
     if (amountsOut && baseAmountOut && token2Data && token1Data && token1Amount) {
       try {
         // 检查是否是 HSK 和 WHSK 的交易对
@@ -281,14 +297,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
         );
 
-        if (isHskWhskPair) {
-          // HSK 和 WHSK 的 1:1 交易
-          setToken2Amount(token1Amount);
-          setMinimumReceived(token1Amount);
-          setPriceImpact('0');
-          // LP 费用为 0
-          setLpFee('0');
-        } else {
+        if (!isHskWhskPair)  {
           // 正常的代币交易计算
           // 计算输出金额
           const outputAmount = (amountsOut as bigint[])[1];
@@ -494,8 +503,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
   // 1. 修改 useReadContract hook 的调用，添加 enabled 条件的打印
   const { data: pairAddress } = useReadContract({
-    address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-    abi: ROUTER_ABI,
+    address: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
+    abi: FACTORY_ABI,
     functionName: 'getPair',
     args: token1Data && token2Data ? [
       getQueryAddress(token1Data),
