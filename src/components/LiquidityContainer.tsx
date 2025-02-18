@@ -294,7 +294,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
       }, 3000);
     }
-  }, [isWriteSuccess, isWritePending, refreshPool]);
+  }, [isWriteSuccess, isWritePending]);
 
   // 添加一个清除 step2 数据的函数
   const clearStep2Data = () => {
