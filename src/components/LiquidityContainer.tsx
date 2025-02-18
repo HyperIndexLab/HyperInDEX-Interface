@@ -21,6 +21,7 @@ import Image from "next/image";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTokenList, selectTokens } from "@/store/tokenListSlice";
 import { AppDispatch } from "@/store";
+import { getPools, Pool } from "@/request/explore";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -65,6 +66,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     isSuccess: isWriteSuccess,
   } = useWriteContract();
 
+  // 获取池子的详细数据
+  const [poolData, setPoolData] = useState<Pool[]>([]);
   // Custom hooks
   const { isFirstProvider, poolInfo, refreshPool, isLoading } =
     useLiquidityPool(token1Data, token2Data);
@@ -81,6 +84,15 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       setToken1Data(DEFAULT_HSK_TOKEN);
     }
   }, [token1, token1Data]);
+
+  // 必须要获取一下池子的详细数据，池子中token0，token1是什么。
+  // 合约拿到的数据是[0,1]
+  // 用户前端是可以切换token的，所以当token0，1的数据改变的时候。需要判断合约返回的数据哪一个是0，哪一个是1
+  useEffect(() => {
+    getPools().then(res => {
+      setPoolData(res);
+    });
+  }, []);
 
    // 需要拉取一下tokenList，才能获取到token1和token2的详细数据
    useEffect(() => {
@@ -145,21 +157,27 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     } else if (poolInfo) {
       const amount = parseFloat(value);
 
+      const pool = poolData.find(pool => pool.pairsAddress === poolInfo.pairAddress);
+      // 检查用户选择的代币顺序是否与池子一致
+      const isOrderMatched = token1Data?.address === pool?.token0;
+
       if (isToken1) {
         setAmount1(value);
         if (amount > 0) {
-          const hskPerBlack =
-            Number(poolInfo.reserve0) / Number(poolInfo.reserve1);
-          setAmount2((amount * hskPerBlack).toString()); // 使用乘法
+          const ratio = isOrderMatched
+            ? Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
+            : Number(poolInfo.reserve0) / Number(poolInfo.reserve1);
+          setAmount2((amount * ratio).toString());
         } else {
           setAmount2("");
         }
       } else {
         setAmount2(value);
         if (amount > 0) {
-          const blackPerHsk =
-            Number(poolInfo.reserve1) / Number(poolInfo.reserve0);
-          setAmount1((amount * blackPerHsk).toString()); // 使用乘法
+          const ratio = isOrderMatched
+            ? Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
+            : Number(poolInfo.reserve1) / Number(poolInfo.reserve0);
+          setAmount1((amount * ratio).toString());
         } else {
           setAmount1("");
         }
@@ -383,12 +401,33 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   // 渲染步骤 2 的内容
   const renderStep2 = () => {
     // 计算价格和份额
-    const price1 = poolInfo
-      ? (Number(poolInfo.reserve1) / Number(poolInfo.reserve0)).toFixed(6)
-      : "0";
-    const price2 = poolInfo
-      ? (Number(poolInfo.reserve0) / Number(poolInfo.reserve1)).toFixed(6)
-      : "0";
+    let price1 = "0", price2 = "0";
+    let token0Symbol = "", token1Symbol = "";
+    
+    if (poolInfo) {
+      const pool = poolData.find(pool => pool.pairsAddress === poolInfo.pairAddress);
+      if (pool) {
+        // 确定代币在池子中的顺序
+        if (token1Data?.address === pool.token0) {
+          // token1 是 token0，保持原有顺序
+          token0Symbol = token1Data.symbol || "";
+          token1Symbol = token2Data?.symbol || "";
+          price1 = (Number(poolInfo.reserve1) / Number(poolInfo.reserve0)).toFixed(6);
+          price2 = (Number(poolInfo.reserve0) / Number(poolInfo.reserve1)).toFixed(6);
+        } else {
+          // token1 是 token1，需要调换顺序
+          token0Symbol = token2Data?.symbol || "";
+          token1Symbol = token1Data?.symbol || "";
+          price1 = (Number(poolInfo.reserve0) / Number(poolInfo.reserve1)).toFixed(6);
+          price2 = (Number(poolInfo.reserve1) / Number(poolInfo.reserve0)).toFixed(6);
+        }
+      }
+    }
+
+    const formatPrice = (price: string) => {
+      return parseFloat(price).toString();
+    };
+
     const poolShare = calculatePoolShare();
 
     // 检查是否需要授权
@@ -488,15 +527,15 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           <h3 className="text-lg mb-4">Prices and pool share</h3>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <div className="text-lg mb-2">{price1}</div>
+              <div className="text-lg mb-2">{formatPrice(price1)}</div>
               <div className="text-sm text-base-content/60">
-                {token2Data?.symbol} per {token1Data?.symbol}
+                {token1Symbol} per {token0Symbol}
               </div>
             </div>
             <div>
-              <div className="text-lg mb-2">{price2}</div>
+              <div className="text-lg mb-2">{formatPrice(price2)}</div>
               <div className="text-sm text-base-content/60">
-                {token1Data?.symbol} per {token2Data?.symbol}
+                {token0Symbol} per {token1Symbol}
               </div>
             </div>
             <div>

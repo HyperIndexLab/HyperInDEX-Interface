@@ -54,8 +54,8 @@ export interface TokenPriceData {
 }
 export const getTokens = async (): Promise<Token[]> => {
 	const requestUrl = process.env.NODE_ENV === 'development' 
-    // ? '/api/testnet-explore/tokens'
-		? '/api/explore/tokens'
+    ? '/api/testnet-explore/tokens'
+		// ? '/api/explore/tokens'
     : '/api/explore/tokens';
 	const res = await api.get(requestUrl)
 	return res.data as Token[]
@@ -63,8 +63,8 @@ export const getTokens = async (): Promise<Token[]> => {
 
 export const getPools = async (): Promise<Pool[]> => {
 	const requestUrl = process.env.NODE_ENV === 'development' 
-    // ? '/api/testnet-explore/pools'
-		? '/api/explore/pools'
+    ? '/api/testnet-explore/pools'
+		// ? '/api/explore/pools'
     : '/api/explore/pools';
 	const res = await api.get(requestUrl)
 	return res.data as Pool[]
