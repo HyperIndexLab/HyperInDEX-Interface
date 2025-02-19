@@ -71,12 +71,12 @@ export default function Page() {
 							<div className="flex -space-x-3">
 								<div className="avatar">
 									<div className="w-12 h-12 rounded-full ring-2 ring-base-100">
-										<Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={pool?.pairsName.split('/')[0] || ''} width={48} height={48} unoptimized />
+										<Image src="https://hyperindex.4everland.store/index-coin.jpg" alt={pool?.pairsName.split('/')[0] || ''} width={48} height={48} unoptimized />
 									</div>
 								</div>
 								<div className="avatar">
 									<div className="w-12 h-12 rounded-full ring-2 ring-base-100">
-										<Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={pool?.pairsName.split('/')[1] || ''} width={48} height={48} unoptimized />
+										<Image src="https://hyperindex.4everland.store/index-coin.jpg" alt={pool?.pairsName.split('/')[1] || ''} width={48} height={48} unoptimized />
 									</div>
 								</div>
 							</div>

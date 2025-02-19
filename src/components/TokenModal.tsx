@@ -9,7 +9,7 @@ import { AppDispatch } from '../store';
 import { RootState } from '../store';
 import { formatTokenBalance } from '../utils/formatTokenBalance';
 
-export const DEFAULT_TOKEN_ICON = 'https://in-dex.4everland.store/indexcoin.jpg';
+export const DEFAULT_TOKEN_ICON = 'https://hyperindex.4everland.store/index-coin.jpg';
 
 interface Token {
   symbol: string | null;
@@ -60,6 +60,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
     if (tokens.length === 0 && !lastUpdated) {
       dispatch(fetchTokenList());
     }
+
     if (address && userTokens.length === 0 && !userLastUpdated) {
       dispatch(fetchUserTokens(address));
     }
@@ -253,13 +254,13 @@ const TokenModal: React.FC<TokenModalProps> = ({
               symbol: 'HSK',
               name: 'HyperSwap Token',
               address: '0x0000000000000000000000000000000000000000',  // HSK 的地址
-              icon_url: "https://in-dex.4everland.store/indexcoin.jpg",
+              icon_url: "https://hyperindex.4everland.store/index-coin.jpg",
               decimals: '18'
             })}
           >
             <div className="flex items-center">
               <img 
-                src="https://in-dex.4everland.store/indexcoin.jpg"
+                src="https://hyperindex.4everland.store/index-coin.jpg"
                 alt="HSK" 
                 className="w-8 h-8 mr-3 rounded-full" 
               />

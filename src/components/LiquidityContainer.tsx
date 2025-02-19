@@ -54,7 +54,7 @@ const getDefaultTokenIcon = (tokenData: TokenData | null) => {
   }
   
   // 其他 ERC20 代币使用通用图标
-  return "https://in-dex.4everland.store/indexcoin.jpg";
+  return "https://hyperindex.4everland.store/index-coin.jpg";
 };
 
 const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
@@ -448,6 +448,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                   width={24}
                   height={24}
                   className="w-6 h-6 rounded-full"
+                  unoptimized
                 />
                 <span className="text-md">{token1Data?.symbol}</span>
               </div>
@@ -484,6 +485,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                   width={24}
                   height={24}
                   className="w-6 h-6 rounded-full"
+                  unoptimized
                 />
                 <span className="text-md">{token2Data?.symbol}</span>
               </div>
@@ -553,6 +555,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               width={32}
               height={32}
               className="w-8 h-8 rounded-full"
+              unoptimized
             />
             <span className="text-lg font-normal">{tokenData.symbol}</span>
           </div>

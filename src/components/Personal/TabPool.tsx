@@ -78,7 +78,7 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
             <div className="flex items-center">
               <div className="relative w-12 h-6">
                 <Image
-                  src="https://in-dex.4everland.store/indexcoin.jpg"
+                  src="https://hyperindex.4everland.store/index-coin.jpg"
                   alt={pool.token0Symbol}
                   width={24}
                   height={24}
@@ -86,7 +86,7 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
                   className="w-6 h-6 rounded-full absolute left-0"
                 />
                 <Image
-                  src="https://in-dex.4everland.store/indexcoin.jpg"
+                  src="https://hyperindex.4everland.store/index-coin.jpg"
                   alt={pool.token1Symbol}
                   width={24}
                   height={24}
