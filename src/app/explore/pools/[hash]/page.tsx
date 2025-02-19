@@ -71,12 +71,12 @@ export default function Page() {
 							<div className="flex -space-x-3">
 								<div className="avatar">
 									<div className="w-12 h-12 rounded-full ring-2 ring-base-100">
-										<Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={pool?.pairsName.split('/')[0] || ''} width={48} height={48} unoptimized />
+										<Image src="https://hyperindex.4everland.store/index-coin.jpg" alt={pool?.pairsName.split('/')[0] || ''} width={48} height={48} unoptimized />
 									</div>
 								</div>
 								<div className="avatar">
 									<div className="w-12 h-12 rounded-full ring-2 ring-base-100">
-										<Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={pool?.pairsName.split('/')[1] || ''} width={48} height={48} unoptimized />
+										<Image src="https://hyperindex.4everland.store/index-coin.jpg" alt={pool?.pairsName.split('/')[1] || ''} width={48} height={48} unoptimized />
 									</div>
 								</div>
 							</div>
@@ -122,12 +122,12 @@ export default function Page() {
 
 
 						{/* Swap容器 */}
-						<div className={`mt-6 transition-all duration-300 ease-in-out ${showSwap ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+						<div className={`mt-6 transition-all duration-300 ease-in-out ${showSwap ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'}`}>
 							<SwapContainer token1={pool?.token0} token2={pool?.token1} />
 						</div>
 
 						{/* 池子数据网格 */}
-						<div className="grid grid-cols-1 gap-4 mb-6">
+						<div className="grid grid-cols-1 gap-4 my-6">
 							<div className="stat bg-base-200 rounded-box p-4">
 								<div className="stat-title text-sm">APY</div>
 								<div className="stat-value text-primary text-xl">{formatNumber(pool?.APY || 0, 3)}</div>

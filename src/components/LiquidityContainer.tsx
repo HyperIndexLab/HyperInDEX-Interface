@@ -45,6 +45,18 @@ const DEFAULT_HSK_TOKEN: TokenData = {
   decimals: "18",
 };
 
+const getDefaultTokenIcon = (tokenData: TokenData | null) => {
+  if (!tokenData) return "/img/HSK-LOGO.png";
+  
+  // 如果是 HSK，使用 HSK 图标
+  if (tokenData.symbol === "HSK") {
+    return "/img/HSK-LOGO.png";
+  }
+  
+  // 其他 ERC20 代币使用通用图标
+  return "https://hyperindex.4everland.store/index-coin.jpg";
+};
+
 const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   token1 = "HSK",
   token2 = "Select token",
@@ -72,11 +84,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const { isFirstProvider, poolInfo, refreshPool, isLoading } =
     useLiquidityPool(token1Data, token2Data);
 
-  const { needApprove, handleApprove } = useTokenApproval(
+  const { needApprove, handleApprove, isApproving, isApproveSuccess } = useTokenApproval(
     token1Data,
     token2Data,
     amount1,
-    amount2
+    amount2,
+    userAddress
   );
 
   useEffect(() => {
@@ -187,15 +200,26 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
   // 计算池子份额
   const calculatePoolShare = () => {
-    if (!poolInfo || !amount1 || !amount2) return "0.00";
-    if (isFirstProvider) return "100.00";
-
-    const amount1Big = BigInt(Math.floor(parseFloat(amount1) * 1e18));
-    const totalSupply = poolInfo.totalSupply;
-    const share = Number(
-      (amount1Big * BigInt(100)) / (totalSupply + amount1Big)
-    );
-    return share.toFixed(2);
+    if (!amount1 || !amount2) return "0.00";
+    
+    // 如果是第一个流动性提供者
+    if (isFirstProvider) {
+      return "100.00";
+    }
+    
+    // 如果已有流动性池
+    if (poolInfo && poolInfo.totalSupply) {
+      const amount1Big = BigInt(Math.floor(parseFloat(amount1) * 1e18));
+      const totalSupply = poolInfo.totalSupply;
+      if (totalSupply === BigInt(0)) return "0.00";
+      
+      const share = Number(
+        (amount1Big * BigInt(100)) / (totalSupply + amount1Big)
+      );
+      return share.toFixed(2);
+    }
+    
+    return "0.00";
   };
 
   // 修改 handleSupply 函数
@@ -303,119 +327,45 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     setIsPending(false);
   };
 
-  // 渲染输入框
-  // const renderAmountInput = (isToken1: boolean) => {
-  //   const token = isToken1 ? token1Data : token2Data;
-  //   const amount = isToken1 ? amount1 : amount2;
-
-  //   return (
-  //     <div className="bg-base-300/50 rounded-2xl p-4">
-  //       <div className="flex justify-between items-center mb-2">
-  //         <span className="text-sm text-base-content/60">Input</span>
-  //         <span className="text-sm text-base-content/60">
-  //           Balance: {token?.balance || "0"}
-  //         </span>
-  //       </div>
-  //       <div className="flex justify-between items-center">
-  //         <input
-  //           type="number"
-  //           min="0"
-  //           className="input input-ghost w-[60%] text-2xl focus:outline-none px-4 
-  //             [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
-  //             [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
-  //             [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
-  //             [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
-  //             [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
-  //             [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
-  //           placeholder="0"
-  //           value={amount}
-  //           onChange={(e) => handleAmountChange(e.target.value, isToken1)}
-  //         />
-  //         <div className="flex items-center gap-2">
-  //           <img src={token?.icon_url || ""} className="w-6 h-6 rounded-full" />
-  //           <span>{token?.symbol}</span>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // };
-
-  // 渲染价格和份额信息
-  // const renderPriceInfo = () => {
-  //   let price1 = "0",
-  //     price2 = "0";
-
-  //   if (isFirstProvider) {
-  //     // 首个提供者的情况，使用输入值计算
-  //     price1 =
-  //       amount1 && amount2
-  //         ? (parseFloat(amount2) / parseFloat(amount1)).toFixed(6)
-  //         : "0";
-  //     price2 =
-  //       amount1 && amount2
-  //         ? (parseFloat(amount1) / parseFloat(amount2)).toFixed(6)
-  //         : "0";
-  //   } else if (poolInfo) {
-  //     // 使用池子储备计算实际汇率
-  //     // 确保 token1 是 HSK
-  //     if (token1Data?.symbol === "HSK") {
-  //       price1 = (
-  //         Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
-  //       ).toFixed(6);
-  //       price2 = (
-  //         Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
-  //       ).toFixed(6);
-  //     } else {
-  //       price1 = (
-  //         Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
-  //       ).toFixed(6);
-  //       price2 = (
-  //         Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
-  //       ).toFixed(6);
-  //     }
-  //   }
-
-  //   const poolShare = calculatePoolShare();
-
-  //   return (
-  //     <div className="bg-base-300/50 rounded-2xl p-4 space-y-3">
-  //       <div className="flex justify-between items-center">
-  //         <span>Price</span>
-  //         <div className="text-right">
-  //           <div>
-  //             1 {token1Data?.symbol} = {price1} {token2Data?.symbol}
-  //           </div>
-  //           <div>
-  //             1 {token2Data?.symbol} = {price2} {token1Data?.symbol}
-  //           </div>
-  //         </div>
-  //       </div>
-  //       <div className="flex justify-between items-center">
-  //         <span>Share of Pool</span>
-  //         <span>{poolShare}%</span>
-  //       </div>
-  //     </div>
-  //   );
-  // };
+  // 添加 useEffect 来监听授权成功
+  useEffect(() => {
+    if (isApproveSuccess) {
+      // 如果授权成功，刷新授权状态
+      toast.success("Token approved successfully!", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+    }
+  }, [isApproveSuccess]);
 
   // 渲染步骤 2 的内容
   const renderStep2 = () => {
     // 计算价格和份额
     let price1 = "0", price2 = "0";
-    let token0Symbol = "", token1Symbol = "";
+    let token0Symbol = token1Data?.symbol || "";
+    let token1Symbol = token2Data?.symbol || "";
     
-    if (poolInfo) {
+    if (isFirstProvider) {
+      // 如果是第一个流动性提供者，使用输入值计算价格
+      if (amount1 && amount2 && parseFloat(amount1) > 0 && parseFloat(amount2) > 0) {
+        price1 = (parseFloat(amount2) / parseFloat(amount1)).toFixed(6);
+        price2 = (parseFloat(amount1) / parseFloat(amount2)).toFixed(6);
+      }
+    } else if (poolInfo) {
       const pool = poolData.find(pool => pool.pairsAddress === poolInfo.pairAddress);
       if (pool) {
         // 确定代币在池子中的顺序
         if (token1Data?.address === pool.token0) {
-          // token1 是 token0，保持原有顺序
           token0Symbol = token1Data.symbol || "";
           token1Symbol = token2Data?.symbol || "";
           price1 = (Number(poolInfo.reserve1) / Number(poolInfo.reserve0)).toFixed(6);
           price2 = (Number(poolInfo.reserve0) / Number(poolInfo.reserve1)).toFixed(6);
         } else {
-          // token1 是 token1，需要调换顺序
           token0Symbol = token2Data?.symbol || "";
           token1Symbol = token1Data?.symbol || "";
           price1 = (Number(poolInfo.reserve0) / Number(poolInfo.reserve1)).toFixed(6);
@@ -432,8 +382,27 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
     // 检查是否需要授权
     const needsApproval = needApprove.token1 || needApprove.token2;
-    const isButtonDisabled =
-      !amount1 || !amount2 || isPending || isWritePending;
+    const isButtonDisabled = !amount1 || !amount2 || isPending || isWritePending || isApproving;
+
+    // 获取按钮文本
+    const getButtonText = () => {
+      if (isPending || isWritePending) return "Processing...";
+      if (isApproving) return "Approving...";
+      if (needApprove.token1) return `Approve ${token1Data?.symbol}`;
+      if (needApprove.token2) return `Approve ${token2Data?.symbol}`;
+      return "Supply";
+    };
+
+    // 处理按钮点击
+    const handleButtonClick = async () => {
+      if (needsApproval) {
+        // 如果需要授权，先处理授权
+        await handleApprove(needApprove.token1);
+      } else {
+        // 如果不需要授权，直接供应
+        await handleSupply();
+      }
+    };
 
     return (
       <div className="bg-base-200/30 backdrop-blur-sm rounded-3xl p-6">
@@ -474,11 +443,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               />
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
                 <Image
-                  src={token1Data?.icon_url || ""}
-                  alt={token1Data?.symbol || ""}
+                  src={token1Data?.icon_url || getDefaultTokenIcon(token1Data)}
+                  alt={token1Data?.symbol || "Token"}
                   width={24}
                   height={24}
                   className="w-6 h-6 rounded-full"
+                  unoptimized
                 />
                 <span className="text-md">{token1Data?.symbol}</span>
               </div>
@@ -510,11 +480,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               />
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
                 <Image
-                  src={token2Data?.icon_url || ""}
-                  alt={token2Data?.symbol || ""}
+                  src={token2Data?.icon_url || getDefaultTokenIcon(token2Data)}
+                  alt={token2Data?.symbol || "Token"}
                   width={24}
                   height={24}
                   className="w-6 h-6 rounded-full"
+                  unoptimized
                 />
                 <span className="text-md">{token2Data?.symbol}</span>
               </div>
@@ -552,18 +523,10 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               ? "bg-primary/50 cursor-not-allowed"
               : "bg-primary/90 hover:bg-primary"
           } text-primary-content`}
-          onClick={() =>
-            needsApproval ? handleApprove(needApprove.token1) : handleSupply()
-          }
+          onClick={handleButtonClick}
           disabled={isButtonDisabled}
         >
-          {isPending || isWritePending
-            ? "Processing..."
-            : needApprove.token1
-            ? `Approve ${token1Data?.symbol}`
-            : needApprove.token2
-            ? `Approve ${token2Data?.symbol}`
-            : "Supply"}
+          {getButtonText()}
         </button>
       </div>
     );
@@ -587,11 +550,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         {tokenData ? (
           <div className="flex items-center gap-3">
             <Image
-              src={tokenData.icon_url || "/img/HSK-LOGO.png"}
+              src={tokenData.icon_url || getDefaultTokenIcon(tokenData)}
               alt={tokenData.name}
               width={32}
               height={32}
               className="w-8 h-8 rounded-full"
+              unoptimized
             />
             <span className="text-lg font-normal">{tokenData.symbol}</span>
           </div>

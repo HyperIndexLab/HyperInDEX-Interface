@@ -86,7 +86,7 @@ export default function TokenPage() {
                             <div className="avatar">
                                 <div className="w-12 h-12 rounded-full">
                                     <Image 
-                                        src={token?.icon_url || "https://in-dex.4everland.store/indexcoin.jpg"} 
+                                        src={token?.icon_url || "https://hyperindex.4everland.store/index-coin.jpg"} 
                                         alt={token?.symbol || ''} 
                                         width={48} 
                                         height={48} 

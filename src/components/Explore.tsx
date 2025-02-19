@@ -290,7 +290,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                                 <Image
                                   src={
                                     row.icon_url ||
-                                    "https://in-dex.4everland.store/indexcoin.jpg"
+                                    "https://hyperindex.4everland.store/index-coin.jpg"
                                   }
                                   alt={row.symbol}
                                   width={32}
@@ -339,12 +339,12 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                             <div className="flex -space-x-3">
                               <div className="avatar">
                                 <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
-                                  <Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[0]} width={48} height={48} unoptimized/>
+                                  <Image src="https://hyperindex.4everland.store/index-coin.jpg" alt={row.pairsName.split('/')[0]} width={48} height={48} unoptimized/>
                                 </div>
                               </div>
                               <div className="avatar">
                                 <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
-                                  <Image src="https://in-dex.4everland.store/indexcoin.jpg" alt={row.pairsName.split('/')[1]} width={48} height={48} unoptimized/>
+                                  <Image src="https://hyperindex.4everland.store/index-coin.jpg" alt={row.pairsName.split('/')[1]} width={48} height={48} unoptimized/>
                                 </div>
                               </div>
                             </div>

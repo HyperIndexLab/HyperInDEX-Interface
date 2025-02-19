@@ -3,7 +3,7 @@ import { useReadContract, useWriteContract } from "wagmi";
 import { TokenData } from "@/types/liquidity";
 import { erc20Abi } from "viem";
 import { ROUTER_CONTRACT_ADDRESS } from "@/constant/ABI/HyperIndexRouter";
-
+import { toast } from "react-toastify";
 export function useTokenApproval(
   token1Data: TokenData | null,
   token2Data: TokenData | null,
@@ -49,19 +49,27 @@ export function useTokenApproval(
   useEffect(() => {
     if (!amount1 || !amount2) return;
 
-    const amount1Big = BigInt(Math.floor(parseFloat(amount1) * 1e18));
-    const amount2Big = BigInt(Math.floor(parseFloat(amount2) * 1e18));
+    try {
+      const amount1Big = BigInt(Math.floor(parseFloat(amount1) * 1e18));
+      const amount2Big = BigInt(Math.floor(parseFloat(amount2) * 1e18));
 
-    setNeedApprove({
-      token1:
-        token1Data?.symbol !== "HSK" &&
-        allowance1 !== undefined &&
-        allowance1 < amount1Big,
-      token2:
-        token2Data?.symbol !== "HSK" &&
-        allowance2 !== undefined &&
-        allowance2 < amount2Big,
-    });
+      setNeedApprove({
+        token1:
+          token1Data?.symbol !== "HSK" &&
+          allowance1 !== undefined &&
+          BigInt(allowance1.toString()) < amount1Big,
+        token2:
+          token2Data?.symbol !== "HSK" &&
+          allowance2 !== undefined &&
+          BigInt(allowance2.toString()) < amount2Big,
+      });
+    } catch (error) {
+      console.error("Error checking allowance:", error);
+      setNeedApprove({
+        token1: false,
+        token2: false,
+      });
+    }
   }, [token1Data, token2Data, amount1, amount2, allowance1, allowance2]);
 
   // 处理授权
@@ -70,14 +78,29 @@ export function useTokenApproval(
     if (!token || token.symbol === "HSK") return;
 
     try {
+      const maxApproval = BigInt(2) ** BigInt(256) - BigInt(1);
       await writeContract({
         address: token.address as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
-        args: [ROUTER_CONTRACT_ADDRESS, BigInt(2) ** BigInt(256) - BigInt(1)],
+        args: [ROUTER_CONTRACT_ADDRESS, maxApproval],
+      });
+      toast.success("Successfully Approved!", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
       });
     } catch (error) {
       console.error("Approval failed:", error);
+      toast.error("Approval failed!", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+      }); 
     }
   };
 
