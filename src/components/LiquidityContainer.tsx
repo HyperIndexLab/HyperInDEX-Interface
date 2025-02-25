@@ -179,16 +179,17 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         if (amount > 0) {
           const token1Decimals = Number(token1Data?.decimals || '18');
           const token2Decimals = Number(token2Data?.decimals || '18');
-          const decimalsDiff = token2Decimals - token1Decimals;
+          
+          // 将 reserve 转换为实际数值
+          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
+          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
           
           const ratio = isOrderMatched
-            ? Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
-            : Number(poolInfo.reserve0) / Number(poolInfo.reserve1);
+            ? reserve1 / reserve0
+            : reserve0 / reserve1;
           
-          // 根据 decimals 差异调整比率
-          const adjustedRatio = ratio * Math.pow(10, decimalsDiff);
-          
-          setAmount2((amount * adjustedRatio).toString());
+          const adjustedAmount = amount * ratio;
+          setAmount2(adjustedAmount.toString());
         } else {
           setAmount2("");
         }
@@ -197,16 +198,17 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         if (amount > 0) {
           const token1Decimals = Number(token1Data?.decimals || '18');
           const token2Decimals = Number(token2Data?.decimals || '18');
-          const decimalsDiff = token1Decimals - token2Decimals;
+          
+          // 将 reserve 转换为实际数值
+          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
+          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
           
           const ratio = isOrderMatched
-            ? Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
-            : Number(poolInfo.reserve1) / Number(poolInfo.reserve0);
+            ? reserve0 / reserve1
+            : reserve1 / reserve0;
           
-          // 根据 decimals 差异调整比率
-          const adjustedRatio = ratio * Math.pow(10, decimalsDiff);
-          
-          setAmount1((amount * adjustedRatio).toString());
+          const adjustedAmount = amount * ratio;
+          setAmount1(adjustedAmount.toString());
         } else {
           setAmount1("");
         }
