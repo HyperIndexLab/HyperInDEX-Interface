@@ -55,6 +55,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
   const userTokensLoading = useSelector(selectUserTokensLoading);
   const lastUpdated = useSelector((state: RootState) => state.tokenList.lastUpdated);
   const userLastUpdated = useSelector((state: RootState) => state.userTokens.lastUpdated);
+  const [searchQuery, setSearchQuery] = React.useState('');
 
   useEffect(() => {
     if (tokens.length === 0 && !lastUpdated) {
@@ -91,6 +92,24 @@ const TokenModal: React.FC<TokenModalProps> = ({
     onClose();
   };
 
+  const handleSearch = (value: string) => {
+    setSearchQuery(value.toLowerCase());
+  };
+
+  // 过滤用户代币列表
+  const filteredUserTokens = userTokens.filter(userToken => 
+    userToken.token.symbol?.toLowerCase().includes(searchQuery) || 
+    userToken.token.name?.toLowerCase().includes(searchQuery) ||
+    userToken.token.address.toLowerCase().includes(searchQuery)
+  );
+
+  // 过滤所有代币列表
+  const filteredTokens = tokens.filter(token => 
+    token.symbol?.toLowerCase().includes(searchQuery) || 
+    token.name?.toLowerCase().includes(searchQuery) ||
+    token.address.toLowerCase().includes(searchQuery)
+  );
+
   return (
     <div className="fixed inset-0 flex justify-center items-center z-50">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
@@ -107,7 +126,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
         </div>
         
         <label className="input input-bordered flex items-center gap-2 mx-6 mb-6">
-          <input type="text" className="grow" placeholder="Search" />
+          <input type="text" className="grow" placeholder="Search" onChange={(e) => handleSearch(e.target.value)} />
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 16 16"
@@ -154,7 +173,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
               </div>
             ) : (
               <div className="mb-4">
-                {userTokens.map((userToken) => (
+                {filteredUserTokens.map((userToken) => (
                   <div 
                     key={userToken.token.address} 
                     className="flex justify-between items-center py-2 px-6 hover:bg-black hover:bg-opacity-20 cursor-pointer"
@@ -221,7 +240,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
           </div>
         ) : (
           <div>
-            {tokens.map((token) => (
+            {filteredTokens.map((token) => (
               <div 
                 key={token.address} 
                 className="flex justify-between items-center py-2 px-6 hover:bg-black hover:bg-opacity-20 cursor-pointer"
