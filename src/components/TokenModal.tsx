@@ -86,7 +86,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
       address: token.address,
       icon_url: token.icon_url || DEFAULT_TOKEN_ICON,
       balance,
-      decimals: token.decimals || token.decimals
+      decimals: decimals || token.decimals
     });
     onClose();
   };
