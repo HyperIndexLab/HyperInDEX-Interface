@@ -17,6 +17,7 @@ import { ArrowsUpDownIcon, Cog6ToothIcon, ChevronDownIcon } from '@heroicons/rea
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import { FACTORY_ABI, FACTORY_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexFactory';
+import { WETH_ABI } from '@/constant/ABI/weth';
 
 interface SwapContainerProps {
   token1?: string;
@@ -65,7 +66,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
 
   const { address: userAddress } = useAccount();
-  const { writeContract, data: hash, isPending: isWritePending, isSuccess: isWriteSuccess } = useWriteContract();
+  const { writeContract, data: hash, isPending: isWritePending, isSuccess: isWriteSuccess, isError: isWriteError } = useWriteContract();
   // 检查授权额度
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: token1Data?.address as `0x${string}`,
@@ -397,15 +398,45 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     try {
       if (!token1Data || !token2Data || !userAddress) return;
 
-      // 计算 amountOutMin
+      // 专门检查是否是 HSK -> WHSK 的情况
+      if (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') {
+        const params = {
+          address: WHSK as `0x${string}`,
+          abi: WETH_ABI,
+          functionName: 'deposit',
+          value: parseUnits(token1Amount, 18),
+        };
+
+        setCurrentTx('swap');
+        setTxStatus('pending');
+        
+        await writeContract(params);
+        return;
+      }
+
+      // 专门检查是否是 WHSK -> HSK 的情况
+      if (token1Data.symbol === 'WHSK' && token2Data.symbol === 'HSK') {
+        const params = {
+          address: WHSK as `0x${string}`,
+          abi: WETH_ABI,
+          functionName: 'withdraw',
+          args: [parseUnits(token1Amount, 18)],
+        };
+
+        setCurrentTx('swap');
+        setTxStatus('pending');
+        
+        await writeContract(params);
+        return;
+      }
+
+      // 其他代币对的常规 swap 逻辑
       const expectedAmount = parseUnits(token2Amount, Number(token2Data.decimals || '18'));
       const slippagePercent = Number(slippage);
       const amountOutMin = expectedAmount * BigInt(Math.floor((100 - slippagePercent) * 1000)) / BigInt(100000);
-
-      // 计算 deadline
       const deadlineTime = Math.floor(Date.now() / 1000 + Number(deadline) * 60);
 
-      // 构建交易路径
+
       let path: string[];
       if (token1Data.symbol === 'HSK') {
         path = [WHSK, token2Data.address];
@@ -415,15 +446,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         path = [token1Data.address, token2Data.address];
       }
 
-      // 准备交易参数
       const params = {
         address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
         abi: ROUTER_ABI,
-        functionName: token1Data.symbol === 'HSK' 
-          ? 'swapExactETHForTokens'
-          : token2Data.symbol === 'HSK'
-          ? 'swapExactTokensForETH'
-          : 'swapExactTokensForTokens',
+        functionName: token1Data.symbol === 'HSK' ? 'swapExactETHForTokens' : token2Data.symbol === 'HSK' ? 'swapExactTokensForETH' : 'swapExactTokensForTokens',
         args: token1Data.symbol === 'HSK' ? [
           amountOutMin,              // amountOutMin
           path,                      // path
@@ -439,12 +465,14 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         value: token1Data.symbol === 'HSK' ? parseUnits(token1Amount, 18) : undefined,
       };
 
+      console.log('swap params:', params);
+
       setCurrentTx('swap');
       setTxStatus('pending');
       
       await writeContract(params);
     } catch (error) {
-      console.error('Swap error:', error);
+      console.error('Swap failed:', error);
       toast.error('Swap failed');
       setTxStatus('failed');
     }
@@ -483,7 +511,12 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         setTxStatus('success');
         setCurrentTx('none');
     }
-  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash]);
+
+    if (isWriteError) {
+      toast.error('Swap failed');
+      setTxStatus('failed');
+    }
+  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, isWriteError]);
 
   const { data: hskBalance } = useBalance({
     address: userAddress,
@@ -899,7 +932,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
               readOnly
             />
             <button 
-              className="btn btn-ghost rounded-full h-10 px-3 hover:bg-white/5"
+              className="btn btn-ghost rounded-full h-10 px-3 hover:bg-base-200"
               onClick={() => {
                 setModalType('token2');
                 setShowModal(true);
