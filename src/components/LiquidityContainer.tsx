@@ -367,7 +367,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     let price1 = "0", price2 = "0";
     let token0Symbol = token1Data?.symbol || "";
     let token1Symbol = token2Data?.symbol || "";
-    
+
     if (isFirstProvider) {
       // 如果是第一个流动性提供者，使用输入值计算价格
       if (amount1 && amount2 && parseFloat(amount1) > 0 && parseFloat(amount2) > 0) {
@@ -376,18 +376,34 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       }
     } else if (poolInfo) {
       const pool = poolData.find(pool => pool.pairsAddress === poolInfo.pairAddress);
+     
       if (pool) {
         // 确定代币在池子中的顺序
         if (token1Data?.address === pool.token0) {
           token0Symbol = token1Data.symbol || "";
           token1Symbol = token2Data?.symbol || "";
-          price1 = (Number(poolInfo.reserve1) / Number(poolInfo.reserve0)).toFixed(6);
-          price2 = (Number(poolInfo.reserve0) / Number(poolInfo.reserve1)).toFixed(6);
+          const token0Decimals = Number(token1Data?.decimals || '18');
+          const token1Decimals = Number(token2Data?.decimals || '18');
+          
+          // 将 reserve 转换为实际数值
+          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, token0Decimals);
+          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, token1Decimals);
+
+          
+          price1 = (reserve1 / reserve0).toFixed(6);
+          price2 = (reserve0 / reserve1).toFixed(6);
         } else {
           token0Symbol = token2Data?.symbol || "";
           token1Symbol = token1Data?.symbol || "";
-          price1 = (Number(poolInfo.reserve0) / Number(poolInfo.reserve1)).toFixed(6);
-          price2 = (Number(poolInfo.reserve1) / Number(poolInfo.reserve0)).toFixed(6);
+          const token0Decimals = Number(token2Data?.decimals || '18');
+          const token1Decimals = Number(token1Data?.decimals || '18');
+          
+          // 将 reserve 转换为实际数值
+          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, token0Decimals);
+          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, token1Decimals);
+          
+          price1 = (reserve0 / reserve1).toFixed(6);
+          price2 = (reserve1 / reserve0).toFixed(6);
         }
       }
     }
