@@ -290,6 +290,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       }
     }
 
+
     if (amountsOut && baseAmountOut && token2Data && token1Data && token1Amount) {
       try {
         // 检查是否是 HSK 和 WHSK 的交易对
@@ -321,6 +322,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           const baseRate = (baseOutput * BigInt(10000)) / parseUnits('0.0001', Number(token1Data.decimals || '18'));
           const actualRate = (actualOutput * BigInt(10000)) / parseUnits(token1Amount, Number(token1Data.decimals || '18'));
           
+         
           const priceImpact = Math.abs(Number(actualRate - baseRate) / Number(baseRate) * 100);
           setPriceImpact(priceImpact.toFixed(2));
         }
