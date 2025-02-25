@@ -75,7 +75,9 @@ const tokenListSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchTokenList.fulfilled, (state, action) => {
-        state.items = action.payload;
+        state.items = action.payload.filter((token: Token) => 
+          token.name !== null && token.type === 'ERC-20'
+        );
         state.loading = false;
         state.lastUpdated = Date.now();
       })
@@ -88,7 +90,9 @@ const tokenListSlice = createSlice({
         state.error = null;
       })
       .addCase(refreshTokenList.fulfilled, (state, action) => {
-        state.items = action.payload;
+        state.items = action.payload.filter((token: Token) => 
+          token.name !== null && token.type === 'ERC-20'
+        );
         state.loading = false;
         state.lastUpdated = Date.now();
       });
