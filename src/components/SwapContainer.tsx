@@ -472,6 +472,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       
       await writeContract(params);
     } catch (error) {
+      console.error('Swap failed:', error);
       toast.error('Swap failed');
       setTxStatus('failed');
     }
