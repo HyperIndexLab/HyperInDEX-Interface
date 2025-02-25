@@ -177,20 +177,36 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       if (isToken1) {
         setAmount1(value);
         if (amount > 0) {
+          const token1Decimals = Number(token1Data?.decimals || '18');
+          const token2Decimals = Number(token2Data?.decimals || '18');
+          const decimalsDiff = token2Decimals - token1Decimals;
+          
           const ratio = isOrderMatched
             ? Number(poolInfo.reserve1) / Number(poolInfo.reserve0)
             : Number(poolInfo.reserve0) / Number(poolInfo.reserve1);
-          setAmount2((amount * ratio).toString());
+          
+          // 根据 decimals 差异调整比率
+          const adjustedRatio = ratio * Math.pow(10, decimalsDiff);
+          
+          setAmount2((amount * adjustedRatio).toString());
         } else {
           setAmount2("");
         }
       } else {
         setAmount2(value);
         if (amount > 0) {
+          const token1Decimals = Number(token1Data?.decimals || '18');
+          const token2Decimals = Number(token2Data?.decimals || '18');
+          const decimalsDiff = token1Decimals - token2Decimals;
+          
           const ratio = isOrderMatched
             ? Number(poolInfo.reserve0) / Number(poolInfo.reserve1)
             : Number(poolInfo.reserve1) / Number(poolInfo.reserve0);
-          setAmount1((amount * ratio).toString());
+          
+          // 根据 decimals 差异调整比率
+          const adjustedRatio = ratio * Math.pow(10, decimalsDiff);
+          
+          setAmount1((amount * adjustedRatio).toString());
         } else {
           setAmount1("");
         }
