@@ -18,6 +18,7 @@ import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import { FACTORY_ABI, FACTORY_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexFactory';
 import { WETH_ABI } from '@/constant/ABI/weth';
+import BigNumber from 'bignumber.js';
 
 interface SwapContainerProps {
   token1?: string;
@@ -131,25 +132,25 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         progress: undefined,
       });
     } finally {
-      if(isWriteSuccess && !isWritePending) {
-        toast.success('Approved successfully!', {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-        });
-      } else if (!isWriteSuccess && !isWritePending) { 
-        toast.error('Failed to Approve. Please try again.', {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-        });
-      }
-      setTxStatus('none');
-      setIsLoading(false);
+      // if(isWriteSuccess && !isWritePending) {
+      //   toast.success('Approved successfully!', {
+      //     position: "top-right",
+      //     autoClose: 5000,
+      //     hideProgressBar: false,
+      //     closeOnClick: true,
+      //     pauseOnHover: true,
+      //   });
+      // } else if (!isWriteSuccess && !isWritePending) { 
+      //   toast.error('Failed to Approve. Please try again.', {
+      //     position: "top-right",
+      //     autoClose: 5000,
+      //     hideProgressBar: false,
+      //     closeOnClick: true,
+      //     pauseOnHover: true,
+      //   });
+      // }
+      // setTxStatus('none');
+      // setIsLoading(false);
     }
   };
 
@@ -318,13 +319,29 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           // 计算价格影响
           const baseOutput = (baseAmountOut as bigint[])[1];
           const actualOutput = (amountsOut as bigint[])[1];
-          
-          const baseRate = (baseOutput * BigInt(10000)) / parseUnits('0.0001', Number(token1Data.decimals || '18'));
-          const actualRate = (actualOutput * BigInt(10000)) / parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-          
-         
-          const priceImpact = Math.abs(Number(actualRate - baseRate) / Number(baseRate) * 100);
-          setPriceImpact(priceImpact.toFixed(2));
+
+          // 添加零值检查
+          if (baseOutput === BigInt(0) || actualOutput === BigInt(0)) {
+            setPriceImpact('0');
+          } else {
+            // 转换为 BigNumber 进行计算
+            const baseOutputBN = new BigNumber(baseOutput.toString());
+            const actualOutputBN = new BigNumber(actualOutput.toString());
+            const baseAmountBN = new BigNumber(parseUnits('0.0001', Number(token1Data.decimals || '18')).toString());
+            const actualAmountBN = new BigNumber(parseUnits(token1Amount, Number(token1Data.decimals || '18')).toString());
+
+            // 计算比率
+            const baseRate = baseOutputBN.multipliedBy(10000).dividedBy(baseAmountBN);
+            const actualRate = actualOutputBN.multipliedBy(10000).dividedBy(actualAmountBN);
+
+            if (baseRate.isZero()) {
+              setPriceImpact('0');
+            } else {
+              // 计算价格影响
+              const impact = actualRate.minus(baseRate).multipliedBy(100).multipliedBy(100).dividedBy(baseRate);
+              setPriceImpact(Math.abs(impact.toNumber() / 100).toFixed(2));
+            }
+          }
         }
       } catch (error) {
         setToken2Amount('0');
@@ -480,13 +497,55 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     }
   };
 
+  // 修改 useBalance hook 的调用,解构出 refetch 函数
+  const { 
+    data: hskBalance, 
+    refetch: refetchHskBalance 
+  } = useBalance({
+    address: userAddress,
+    query: {
+      enabled: !!userAddress,
+    },
+  });
+
+  // 同样为 token1Balance 添加 refetch
+  const { 
+    data: token1Balance, 
+    refetch: refetchToken1Balance 
+  } = useBalance({
+    address: userAddress,
+    token: token1Data?.symbol !== 'HSK' ? token1Data?.address as `0x${string}` : undefined,
+    query: {
+      enabled: !!userAddress && !!token1Data && token1Data.symbol !== 'HSK',
+    },
+  });
+
+
+  const { data: token2Balance, refetch: refetchToken2Balance } = useBalance({
+    address: userAddress,
+    token: token2Data?.symbol !== 'HSK' ? token2Data?.address as `0x${string}` : undefined,
+    query: {
+      enabled: !!userAddress && !!token2Data && token2Data.symbol !== 'HSK',
+    },
+  });
+
+  // 添加新的 useEffect 来处理 token2 余额更新
+  useEffect(() => {
+    if (token2Data?.symbol !== 'HSK' && token2Balance?.value) {
+      setToken2Data(prev => ({
+        ...prev!,
+        balance: token2Balance.value.toString()
+      }));
+    }
+  }, [token2Balance?.value, token2Data?.symbol]);
+
+  // 修改原有的交易确认后的 useEffect
   useEffect(() => {
     if (isWritePending) {
         setTxStatus('pending');
         return;
     }
 
-    // 如果交易已广播到链上
     if (isWriteSuccess && currentTx === 'swap' && hash) {
         toast.info('Transaction submitted!', {
             position: "top-right",
@@ -494,7 +553,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         });
     }
 
-    // 如果交易已确认
     if (isTxConfirmed && currentTx === 'swap') {
         toast.success('Swap completed successfully!', {
             position: "top-right",
@@ -512,29 +570,31 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         setLpFee('0');
         setTxStatus('success');
         setCurrentTx('none');
+
+        // 重新获取余额
+        setTimeout(() => {
+          refetchHskBalance();
+          refetchToken1Balance();
+          refetchToken2Balance();
+        }, 1000);
+    }
+
+    if (isTxConfirmed && currentTx === 'approve') {
+      toast.success('Approve completed successfully!', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+      });
+      setCurrentTx('none');
+      setTxStatus('success');
+      refetchAllowance();
     }
 
     if (isWriteError) {
       toast.error('Swap failed');
       setTxStatus('failed');
     }
-  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, isWriteError]);
-
-  const { data: hskBalance } = useBalance({
-    address: userAddress,
-    query: {
-      enabled: !!userAddress,
-    },
-  });
-
-  // 1. 添加 useBalance hook 获取非 HSK 代币的余额
-  const { data: token1Balance } = useBalance({
-    address: userAddress,
-    token: token1Data?.symbol !== 'HSK' ? token1Data?.address as `0x${string}` : undefined,
-    query: {
-      enabled: !!userAddress && !!token1Data && token1Data.symbol !== 'HSK',
-    },
-  });
+  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, refetchHskBalance, refetchToken1Balance, refetchAllowance]);
 
   // 1. 修改 useReadContract hook 的调用，添加 enabled 条件的打印
   const { data: pairAddress } = useReadContract({
