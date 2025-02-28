@@ -77,7 +77,16 @@ const tokenListSlice = createSlice({
       .addCase(fetchTokenList.fulfilled, (state, action) => {
         const filteredTokens = action.payload.filter((token: Token) => 
           token.name !== null && token.type === 'ERC-20'
-        );
+        ).map((token: Token) => {
+          // 为USDC.e和WETH设置默认本地图标
+          if ((token.symbol === 'USDC.e' || token.symbol === 'WETH') && !token.icon_url) {
+            return {
+              ...token,
+              icon_url: `/img/${token.symbol.toLowerCase()}.svg`
+            };
+          }
+          return token;
+        });
         
         // 对tokens进行排序，将USDT、USDC、WETH排在前面
         state.items = filteredTokens.sort((a: Token, b: Token) => {
@@ -105,7 +114,16 @@ const tokenListSlice = createSlice({
       .addCase(refreshTokenList.fulfilled, (state, action) => {
         const filteredTokens = action.payload.filter((token: Token) => 
           token.name !== null && token.type === 'ERC-20'
-        );
+        ).map((token: Token) => {
+          // 为USDC.e和WETH设置默认本地图标
+          if ((token.symbol === 'USDC.e' || token.symbol === 'WETH') && !token.icon_url) {
+            return {
+              ...token,
+              icon_url: `/img/${token.symbol.toLowerCase()}.svg`
+            };
+          }
+          return token;
+        });
         
         // 对tokens进行排序，将USDT、USDC、WETH排在前面
         state.items = filteredTokens.sort((a: Token, b: Token) => {
