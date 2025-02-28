@@ -101,7 +101,29 @@ const TokenModal: React.FC<TokenModalProps> = ({
     userToken.token.symbol?.toLowerCase().includes(searchQuery) || 
     userToken.token.name?.toLowerCase().includes(searchQuery) ||
     userToken.token.address.toLowerCase().includes(searchQuery)
-  );
+  ).map(userToken => {
+    const token = userToken.token;
+    // 为特定代币设置默认本地图标
+    if (!token.icon_url) {
+      const symbolMap: { [key: string]: string } = {
+        'USDT': '/img/USDT.svg',
+        'USDC.e': '/img/USDC.e.svg',
+        'WETH': '/img/WETH.svg',
+        'WHSK': '/img/HSK-LOGO.png'
+      };
+      
+      if (token.symbol && symbolMap[token.symbol]) {
+        return {
+          ...userToken,
+          token: {
+            ...token,
+            icon_url: symbolMap[token.symbol]
+          }
+        };
+      }
+    }
+    return userToken;
+  });
 
   // 过滤所有代币列表
   const filteredTokens = tokens.filter(token => 
