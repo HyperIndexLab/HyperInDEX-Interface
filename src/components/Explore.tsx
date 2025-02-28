@@ -22,6 +22,23 @@ export const formatTradeVolume = (
   return `${volume} ${symbol}`;
 };
 
+const getTokenIcon = (symbol: string): string => {
+  const localIcons: Record<string, string> = {
+    'usdt': '/img/USDT.svg',
+    'whsk': '/img/HSK-LOGO.png',
+    'weth': '/img/WETH.svg',
+    'usdc.e': '/img/USDC.e.svg'
+  };
+
+  return localIcons[symbol.toLowerCase()] || 'https://hyperindex.4everland.store/index-coin.jpg';
+};
+
+// 添加获取池子代币图标的函数
+const getPoolTokenIcons = (pairName: string): [string, string] => {
+  const [token0, token1] = pairName.split('/');
+  return [getTokenIcon(token0), getTokenIcon(token1)];
+};
+
 // 激活的tab activeTab: 1: token, 2: pool
 export default function Explore({ activeTab }: { activeTab: number }) {
   const [tableTitleData, setTableTitleData]: any = useState([]);
@@ -288,11 +305,8 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                             <div className="avatar">
                               <div className="w-8 h-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
                                 <Image
-                                  src={
-                                    row.icon_url ||
-                                    "https://hyperindex.4everland.store/index-coin.jpg"
-                                  }
-                                  alt={row.symbol}
+                                  src={row.icon_url || getTokenIcon(row.symbol)}
+                                  alt={`${row.symbol} icon`}
                                   width={32}
                                   height={32}
                                   unoptimized
@@ -337,16 +351,31 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                         <Link href={`/explore/pools/${row.pairsAddress}`} className="flex items-center gap-3">
                           <div className="flex items-center gap-3">
                             <div className="flex -space-x-3">
-                              <div className="avatar">
-                                <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
-                                  <Image src="https://hyperindex.4everland.store/index-coin.jpg" alt={row.pairsName.split('/')[0]} width={48} height={48} unoptimized/>
-                                </div>
-                              </div>
-                              <div className="avatar">
-                                <div className="w-10 h-10 rounded-full ring-2 ring-base-100">
-                                  <Image src="https://hyperindex.4everland.store/index-coin.jpg" alt={row.pairsName.split('/')[1]} width={48} height={48} unoptimized/>
-                                </div>
-                              </div>
+                              {/* 更新图标逻辑 */}
+                              {(() => {
+                                const [icon0, icon1] = getPoolTokenIcons(row.pairsName);
+                                const [token0, token1] = row.pairsName.split('/');
+                                const specialTokens = ['usdt', 'whsk', 'weth', 'usdc.e'];
+                                
+                                return (
+                                  <>
+                                    <div className="avatar">
+                                      <div className={`w-10 h-10 rounded-full ${
+                                        !specialTokens.includes(token0.toLowerCase()) ? 'ring-2 ring-base-100' : ''
+                                      }`}>
+                                        <Image src={icon0} alt={token0} width={48} height={48} unoptimized style={{ objectFit: 'unset' }}/>
+                                      </div>
+                                    </div>
+                                    <div className="avatar">
+                                      <div className={`w-10 h-10 rounded-full ${
+                                        !specialTokens.includes(token1.toLowerCase()) ? 'ring-2 ring-base-100' : ''
+                                      }`}>
+                                        <Image src={icon1} alt={token1} width={48} height={48} unoptimized style={{ objectFit: 'unset' }}/>
+                                      </div>
+                                    </div>
+                                  </>
+                                );
+                              })()}
                             </div>
                             <div>
                               <div className="font-medium text-base">{row.pairsName}</div>
