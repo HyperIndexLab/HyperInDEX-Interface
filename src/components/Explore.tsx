@@ -24,10 +24,10 @@ export const formatTradeVolume = (
 
 const getTokenIcon = (symbol: string): string => {
   const localIcons: Record<string, string> = {
-    'usdt': '/img/USDT.svg',
+    'usdt': '/img/usdt.svg',
     'whsk': '/img/HSK-LOGO.png',
-    'weth': '/img/WETH.svg',
-    'usdc.e': '/img/USDC.e.svg'
+    'weth': '/img/weth.svg',
+    'usdc.e': '/img/usdc.e.svg'
   };
 
   return localIcons[symbol.toLowerCase()] || 'https://hyperindex.4everland.store/index-coin.jpg';
