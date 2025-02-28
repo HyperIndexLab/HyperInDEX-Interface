@@ -59,9 +59,12 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 	}
 
 	useEffect(() => {
-    if (address && userTokens.length === 0) {
+    if (address) {
       setIsLoading(true);
       dispatch(fetchUserTokens(address));
+      setTimeout(() => {
+        setIsLoading(false);
+      }, 1000);
     }
   }, [address, dispatch, tokens.length, userTokens.length]);
 
@@ -101,28 +104,38 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 
 	useEffect(() => {
 		if (tokenData.length > 0 && userTokens.length > 0) {
-			// 根据tokenData 和 userTokens 计算总额
 			let totalBalance = BigNumber(0);
+			const newTokenBalances: TokenTab[] = [];
 
 			userTokens.forEach(token => {
 				const balance = formatTokenBalance(token.value, token.token.decimals);
-
-				const tokenBalance = tokenData.find(t => t.address === token.token.address);
+				
+				// 特殊处理HSK和WHSK价格
+				let tokenBalance;
+				let price = '0';
+				
+				if (token.token.symbol?.toUpperCase() === 'HSK') {
+					// 如果是HSK，查找WHSK的价格
+					tokenBalance = tokenData.find(t => t.symbol?.toUpperCase() === 'WHSK');
+					price = tokenBalance?.price.replace('$', '') || '0';
+				} else {
+					tokenBalance = tokenData.find(t => t.address === token.token.address);
+					price = tokenBalance?.price.replace('$', '') || '0';
+				}
 			
 				if (tokenBalance) {
-					const price = parseFloat(tokenBalance.price.replace('$', ''));
-					totalBalance = BigNumber(totalBalance).plus(BigNumber(balance).multipliedBy(price));
-					
+					const priceValue = parseFloat(price);
+					totalBalance = BigNumber(totalBalance).plus(BigNumber(balance).multipliedBy(priceValue));
 				}
 
-				totalBalance = BigNumber(totalBalance).plus(parseFloat(balance));
+				newTokenBalances.push({
+					...token,
+					price
+				});
 			});
+			
 			setTotalBalance(totalBalance.toString());
-
-			setTokenBalances(userTokens.map(token => ({
-				...token,
-				price: tokenData.find(t => t.address === token.token.address)?.price.replace('$', '') || '0'
-			})))
+			setTokenBalances(newTokenBalances);
 			setIsLoading(false);
 		}
 	}, [setTotalBalance, tokenData, tokenData.length, userTokens, userTokens.length])

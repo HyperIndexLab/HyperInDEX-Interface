@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from './index';
-import { getApiBaseUrl } from '../utils/getApiBaseUrl';
+import { getApiBaseUrl, getNewApiBaseUrl } from '../utils/getApiBaseUrl';
 
 // 定义token的类型
 export interface Token {
@@ -34,8 +34,8 @@ export const fetchTokenList = createAsyncThunk(
   'tokenList/fetch',
   async () => {
     try {
-      const baseUrl = getApiBaseUrl();
-      const response = await fetch(`${baseUrl}/api/v2/tokens`);
+      const newBaseUrl = getNewApiBaseUrl();
+      const response = await fetch(`${newBaseUrl}/api/v2/tokens`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -51,8 +51,8 @@ export const fetchTokenList = createAsyncThunk(
 export const refreshTokenList = createAsyncThunk(
   'tokenList/refresh',
   async () => {
-    const baseUrl = getApiBaseUrl();
-    const response = await fetch(`${baseUrl}/api/v2/tokens`);
+    const newBaseUrl = getNewApiBaseUrl();
+    const response = await fetch(`${newBaseUrl}/api/v2/tokens`);
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -75,9 +75,22 @@ const tokenListSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchTokenList.fulfilled, (state, action) => {
-        state.items = action.payload.filter((token: Token) => 
+        const filteredTokens = action.payload.filter((token: Token) => 
           token.name !== null && token.type === 'ERC-20'
         );
+        
+        // 对tokens进行排序，将USDT、USDC、WETH排在前面
+        state.items = filteredTokens.sort((a: Token, b: Token) => {
+          const prioritySymbols = ['USDT', 'USDC.e', 'WETH'];
+          const aIndex = prioritySymbols.indexOf(a.symbol || '');
+          const bIndex = prioritySymbols.indexOf(b.symbol || '');
+          
+          if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+          if (aIndex !== -1) return -1;
+          if (bIndex !== -1) return 1;
+          return 0;
+        });
+        
         state.loading = false;
         state.lastUpdated = Date.now();
       })
@@ -90,9 +103,22 @@ const tokenListSlice = createSlice({
         state.error = null;
       })
       .addCase(refreshTokenList.fulfilled, (state, action) => {
-        state.items = action.payload.filter((token: Token) => 
+        const filteredTokens = action.payload.filter((token: Token) => 
           token.name !== null && token.type === 'ERC-20'
         );
+        
+        // 对tokens进行排序，将USDT、USDC、WETH排在前面
+        state.items = filteredTokens.sort((a: Token, b: Token) => {
+          const prioritySymbols = ['USDT', 'USDC.e', 'WETH'];
+          const aIndex = prioritySymbols.indexOf(a.symbol || '');
+          const bIndex = prioritySymbols.indexOf(b.symbol || '');
+          
+          if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+          if (aIndex !== -1) return -1;
+          if (bIndex !== -1) return 1;
+          return 0;
+        });
+        
         state.loading = false;
         state.lastUpdated = Date.now();
       });

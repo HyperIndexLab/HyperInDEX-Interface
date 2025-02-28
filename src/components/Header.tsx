@@ -14,7 +14,16 @@ import { particleWagmiWallet } from "./ParticleWallet/particleWagmiWallet";
 import { switchChain } from '@wagmi/core'
 import { MAINNET_CHAIN_ID, TESTNET_CHAIN_ID, wagmiConfig } from "./RainbowKitProvider";
 
-const MENU_MAP = [
+type MenuItem = {
+  path: string;
+  label: string;
+  icon: React.ReactNode;
+  target?: string;
+  rel?: string;
+  children?: MenuItem[];
+};
+
+const MENU_MAP: MenuItem[] = [
   {
     path: "/",
     label: "Trade",
@@ -113,7 +122,7 @@ const MENU_MAP = [
     ],
   },
   {
-    path: "/news",
+    path: "https://news.hyperindex.trade/",
     label: "News",
     icon: (
       <svg
@@ -130,6 +139,8 @@ const MENU_MAP = [
         />
       </svg>
     ),
+    target: "_blank",
+    rel: "noopener noreferrer",
   },
   {
     path: "/activity",
@@ -195,7 +206,7 @@ export default function Header() {
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       const chainIdInt = parseInt(chainId || '0', 16);
 
-      const changeChaindId = process.env.NODE_ENV !== 'development' ? MAINNET_CHAIN_ID : TESTNET_CHAIN_ID;
+      const changeChaindId = process.env.NODE_ENV === 'development' ? TESTNET_CHAIN_ID : MAINNET_CHAIN_ID;
    
       if (chainIdInt !== changeChaindId) {
         setIsWrongNetwork(true);
@@ -252,6 +263,8 @@ export default function Header() {
                 {!item.children ? (
                   <Link
                     href={item.path}
+                    target={item.target}
+                    rel={item.rel}
                     className={`rounded-lg px-3 flex items-center gap-2 hover:bg-base-200 transition-colors ${
                       pathname === item.path ? "bg-primary/20 text-primary border border-primary rounded-lg" : ""
                     }`}
@@ -277,6 +290,8 @@ export default function Header() {
                           <Link
                             key={child.path}
                             href={child.path}
+                            target={child.target}
+                            rel={child.rel}
                             className={`flex items-center gap-3 px-6 py-3 hover:bg-primary/20 transition-colors ${
                               pathname === child.path ? "text-primary" : ""
                             }`}
@@ -422,6 +437,8 @@ export default function Header() {
                             <li key={child.path}>
                               <Link
                                 href={child.path}
+                                target={child.target}
+                                rel={child.rel}
                                 className={`flex items-center gap-3 p-3 text-base rounded-lg hover:bg-base-300 ${
                                   pathname === child.path
                                     ? "bg-primary/10 text-primary"
