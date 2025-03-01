@@ -107,23 +107,24 @@ const TokenModal: React.FC<TokenModalProps> = ({
     if (!token.icon_url) {
       const symbolMap: { [key: string]: string } = {
         'USDT': '/img/usdt.svg',
-        'USDC.e': '/img/usdc.e.svg',
+        'USDC.E': '/img/usdc.e.svg',
         'WETH': '/img/weth.svg',
         'WHSK': '/img/HSK-LOGO.png'
       };
       
-      if (token.symbol && symbolMap[token.symbol]) {
+      if (token.symbol && symbolMap[token.symbol.toUpperCase()]) {
         return {
           ...userToken,
           token: {
             ...token,
-            icon_url: symbolMap[token.symbol]
+            icon_url: symbolMap[token.symbol.toUpperCase()]
           }
         };
       }
     }
     return userToken;
   });
+
 
   // 过滤所有代币列表
   const filteredTokens = tokens.filter(token => 
