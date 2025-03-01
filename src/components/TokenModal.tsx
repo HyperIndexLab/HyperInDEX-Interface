@@ -106,9 +106,9 @@ const TokenModal: React.FC<TokenModalProps> = ({
     // 为特定代币设置默认本地图标
     if (!token.icon_url) {
       const symbolMap: { [key: string]: string } = {
-        'USDT': '/img/USDT.svg',
-        'USDC.e': '/img/USDC.e.svg',
-        'WETH': '/img/WETH.svg',
+        'USDT': '/img/usdt.svg',
+        'USDC.e': '/img/usdc.e.svg',
+        'WETH': '/img/weth.svg',
         'WHSK': '/img/HSK-LOGO.png'
       };
       
