@@ -44,12 +44,22 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     const userBalanceBigInt = poolData.userBalance;
     const totalSupplyBigInt = poolData.totalSupply;
     const reservesTyped = poolData.reserves;
+    const token0Decimals = pool.token0Symbol === "USDT" ? 6 : 18;
+    const token1Decimals = pool.token1Symbol === "USDT" ? 6 : 18;
 
     const token0Amount = (reservesTyped[0] * userBalanceBigInt) / totalSupplyBigInt;
     const token1Amount = (reservesTyped[1] * userBalanceBigInt) / totalSupplyBigInt;
     
-    const token0Price = Number(formatEther(reservesTyped[1])) / Number(formatEther(reservesTyped[0]));
-    const token1Price = Number(formatEther(reservesTyped[0])) / Number(formatEther(reservesTyped[1]));
+    // 根据不同代币的精度来格式化数值
+    const formatTokenAmount = (amount: bigint, decimals: number) => {
+      return Number(amount) / 10 ** decimals;
+    };
+
+    const token0Formatted = formatTokenAmount(reservesTyped[0], token0Decimals);
+    const token1Formatted = formatTokenAmount(reservesTyped[1], token1Decimals);
+    
+    const token0Price = token1Formatted / token0Formatted;
+    const token1Price = token0Formatted / token1Formatted;
 
     return {
       token0Amount,
@@ -57,10 +67,11 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       token0Price: token0Price.toFixed(4),
       token1Price: token1Price.toFixed(4),
     };
-  }, [poolData]);
+  }, [pool.token0Symbol, pool.token1Symbol, poolData]);
 
-  const calculateTokenAmount = (amount: bigint, percentage: number) => {
-    return Number(formatEther(amount * BigInt(percentage) / 100n)).toFixed(4);
+  const calculateTokenAmount = (amount: bigint, percentage: number, decimals: number) => {
+    const rawAmount = (amount * BigInt(percentage)) / 100n;
+    return (Number(rawAmount) / 10 ** decimals).toFixed(4);
   };
 
   const { data: allowance } = useReadContract({
@@ -276,7 +287,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
                 {/* 第一个代币 */}
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-3xl">{calculateTokenAmount(amounts.token0Amount, percentage)}</div>
+                    <div className="text-3xl">{calculateTokenAmount(amounts.token0Amount, percentage, pool.token0Symbol === "USDT" ? 6 : 18)}</div>
                     <div className="text-sm text-base-content">
                       1 {pool.token0Symbol} = {amounts.token0Price} {pool.token1Symbol}
                     </div>
@@ -287,7 +298,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
                 {/* 第二个代币 */}
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-3xl">{calculateTokenAmount(amounts.token1Amount, percentage)}</div>
+                    <div className="text-3xl">{calculateTokenAmount(amounts.token1Amount, percentage, pool.token1Symbol === "USDT" ? 6 : 18)}</div>
                     <div className="text-sm text-base-content">
                       1 {pool.token1Symbol} = {amounts.token1Price} {pool.token0Symbol}
                     </div>
