@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAccount, useReadContract, useReadContracts } from "wagmi";
-import { erc20Abi, formatEther, type Abi, formatUnits } from "viem";
+import { erc20Abi, type Abi, formatUnits } from "viem";
 import {
   FACTORY_ABI,
   FACTORY_CONTRACT_ADDRESS,

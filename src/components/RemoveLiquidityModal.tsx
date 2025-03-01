@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePoolData } from '../hooks/usePoolData';
-import { formatEther } from 'viem';
 import { useRemoveLiquidity } from '../hooks/useRemoveLiquidity';
 import { Id, toast } from 'react-toastify';
 import { useReadContract } from 'wagmi';
