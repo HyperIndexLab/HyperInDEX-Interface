@@ -7,7 +7,7 @@ import {
   ChevronDownIcon,
   ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useBalance, useWriteContract } from "wagmi";
 import { WHSK } from "@/constant/value";
 import {
   ROUTER_CONTRACT_ADDRESS,
@@ -22,6 +22,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { fetchTokenList, selectTokens } from "@/store/tokenListSlice";
 import { AppDispatch } from "@/store";
 import { getPools, Pool } from "@/request/explore";
+import { formatTokenBalance } from "@/utils/formatTokenBalance";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -77,6 +78,26 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     isPending: isWritePending,
     isSuccess: isWriteSuccess,
   } = useWriteContract();
+
+  // 同样为 token1Balance 添加 refetch
+  const { 
+    data: token1Balance, 
+  } = useBalance({
+    address: userAddress,
+    token: token1Data?.symbol !== 'HSK' ? token1Data?.address as `0x${string}` : undefined,
+    query: {
+      enabled: !!userAddress && !!token1Data && token1Data.symbol !== 'HSK',
+    },
+  });
+
+
+  const { data: token2Balance } = useBalance({
+    address: userAddress,
+    token: token2Data?.symbol !== 'HSK' ? token2Data?.address as `0x${string}` : undefined,
+    query: {
+      enabled: !!userAddress && !!token2Data && token2Data.symbol !== 'HSK',
+    },
+  });
 
   // 获取池子的详细数据
   const [poolData, setPoolData] = useState<Pool[]>([]);
@@ -497,6 +518,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 <span className="text-md">{token1Data?.symbol}</span>
               </div>
             </div>
+            {/* 显示 token1Balance */}
+            <div className="flex justify-end items-center mt-2">
+              <span className="text-sm text-base-content/60">
+                Balance: {token1Balance ? formatTokenBalance(token1Balance.value.toString(), token1Data?.decimals || '18') : '0'} {token1Data ? token1Data.symbol : token1}
+              </span>
+            </div>
           </div>
 
           {/* Plus Icon */}
@@ -534,6 +561,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 <span className="text-md">{token2Data?.symbol}</span>
               </div>
             </div>
+            {/* 显示 token2Balance */}
+            <div className="flex justify-end items-center mt-2">
+            <span className="text-sm text-base-content/60">
+              Balance: {token2Balance ? formatTokenBalance(token2Balance.value.toString(), token2Data?.decimals || '18') : '0'} {token2Data ? token2Data.symbol : token2}
+            </span>
+          </div>
           </div>
         </div>
 
