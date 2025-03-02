@@ -82,7 +82,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   // 同样为 token1Balance 添加 refetch
   const { 
     data: token1Balance, 
-    refetch: refetchToken1Balance 
   } = useBalance({
     address: userAddress,
     token: token1Data?.symbol !== 'HSK' ? token1Data?.address as `0x${string}` : undefined,
@@ -92,7 +91,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   });
 
 
-  const { data: token2Balance, refetch: refetchToken2Balance } = useBalance({
+  const { data: token2Balance } = useBalance({
     address: userAddress,
     token: token2Data?.symbol !== 'HSK' ? token2Data?.address as `0x${string}` : undefined,
     query: {
