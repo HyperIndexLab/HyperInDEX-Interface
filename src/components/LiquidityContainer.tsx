@@ -187,9 +187,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           const ratio = isOrderMatched
             ? reserve1 / reserve0
             : reserve0 / reserve1;
-          
+         
+          // 根据代币小数位数调整计算结果
           const adjustedAmount = amount * ratio;
-          setAmount2(adjustedAmount.toString());
+          // 将结果格式化为指定小数位数
+          const formattedAmount = adjustedAmount.toFixed(Number(token2Data?.decimals || 18));
+          setAmount2(formattedAmount);
         } else {
           setAmount2("");
         }
@@ -207,8 +210,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             ? reserve0 / reserve1
             : reserve1 / reserve0;
           
+          // 根据代币小数位数调整计算结果
           const adjustedAmount = amount * ratio;
-          setAmount1(adjustedAmount.toString());
+          // 将结果格式化为指定小数位数
+          const formattedAmount = adjustedAmount.toFixed(Number(token1Data?.decimals || 18));
+          setAmount1(formattedAmount);
         } else {
           setAmount1("");
         }
@@ -248,10 +254,14 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     try {
       setIsPending(true);
 
-      const amount1Big = BigInt(Math.floor(parseFloat(amount1) * 1e18));
-      const amount2Big = BigInt(Math.floor(parseFloat(amount2) * 1e18));
+      // 根据代币的小数位数计算金额
+      const token1Decimals = Number(token1Data.decimals || '18');
+      const token2Decimals = Number(token2Data.decimals || '18');
+      
+      const amount1Big = BigInt(Math.floor(parseFloat(amount1) * Math.pow(10, token1Decimals)));
+      const amount2Big = BigInt(Math.floor(parseFloat(amount2) * Math.pow(10, token2Decimals)));
 
-      // 直接计算最小接收数量
+      // 计算最小接收数量
       const minAmount1 = (amount1Big * BigInt(99)) / BigInt(100);
       const minAmount2 = (amount2Big * BigInt(99)) / BigInt(100);
 
