@@ -531,13 +531,13 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
   // 添加新的 useEffect 来处理 token2 余额更新
   useEffect(() => {
-    if (token2Data?.symbol !== 'HSK' && token2Balance?.value) {
+    if (token2Data && token2Data.symbol !== 'HSK' && token2Balance?.value) {
       setToken2Data(prev => ({
         ...prev!,
         balance: token2Balance.value.toString()
       }));
     }
-  }, [token2Balance?.value, token2Data?.symbol]);
+  }, [token2Balance?.value, token2Data]);
 
   // 修改原有的交易确认后的 useEffect
   useEffect(() => {
