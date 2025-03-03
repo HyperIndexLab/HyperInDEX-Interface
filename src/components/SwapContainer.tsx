@@ -53,7 +53,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   const [token2Amount, setToken2Amount] = useState<string>('');
   const [priceImpact, setPriceImpact] = useState<string>('0');
   const [minimumReceived, setMinimumReceived] = useState<string>('0');
-  const [lpFee, setLpFee] = useState<string>('0');
+  const [, setLpFee] = useState<string>('0');
   const [slippage, setSlippage] = useState<string>('5.5');
   const [deadline, setDeadline] = useState<string>('30'); 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
