@@ -394,10 +394,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   };
 
   // 修改 LP Fee 显示
-  const displayLPFee = () => {
-    if (!token1Data) return '0';
-    return `${lpFee} ${displaySymbol(token1Data)}`;
-  };
+  // const displayLPFee = () => {
+  //   if (!token1Data) return '0';
+  //   return `${lpFee} ${displaySymbol(token1Data)}`;
+  // };
 
   // 添加一个函数来检查是否是高滑点
   const isHighSlippage = (value: string) => Number(value) > 5.5;
@@ -1050,7 +1050,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
                   </div>
                   <span className={getPriceImpactColor(Number(priceImpact))}>{priceImpact}%</span>
                 </div>
-                <div className="flex justify-between items-center">
+                {/* <div className="flex justify-between items-center">
                   <div className="flex items-center gap-1 text-base-content/60">
                     <span>LP Fee</span>
                     <div className="tooltip" data-tip="A portion of each trade (0.30%) goes to liquidity providers as a protocol incentive.">
@@ -1058,7 +1058,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
                     </div>
                   </div>
                   <span>{displayLPFee()}</span>
-                </div>
+                </div> */}
               </div>
             )}
           </>
