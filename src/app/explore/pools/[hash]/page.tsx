@@ -53,25 +53,32 @@ export default function Page() {
 	}, [])
 
 	useEffect(() => {
-		const pool = poolData.find((pool) => pool.pairsAddress === hash)
-		if (pool) {
+		dispatch(fetchTokenList() as any);
+	}, [ dispatch]);
+
+	useEffect(() => {
+		const pool = poolData.find((pool) => pool.pairsAddress === hash);
+		
+		if (pool && tokens.length > 0) {
 			// 从tokens中查找对应的代币信息
 			const token0Info = tokens.find(token => token.address.toLowerCase() === pool.token0.toLowerCase());
 			const token1Info = tokens.find(token => token.address.toLowerCase() === pool.token1.toLowerCase());
 			
-			if (!token0Info || !token1Info) {
-				// 如果缺少token信息，重新拉取所有token列表
-				dispatch(fetchTokenList() as any);
-				return;
-			}
-			
 			setPool({
 				...pool,
-				token0Info: token0Info as TokenData,
-				token1Info: token1Info as TokenData
+				token0Info: token0Info ? token0Info as TokenData : {
+					address: pool.token0,
+					symbol: pool.pairsName?.split('/')[0] || '',
+					icon_url: "https://hyperindex.4everland.store/index-coin.jpg"
+				} as TokenData,
+				token1Info: token1Info ? token1Info as TokenData : {
+					address: pool.token1,
+					symbol: pool.pairsName?.split('/')[1] || '',
+					icon_url: "https://hyperindex.4everland.store/index-coin.jpg"
+				} as TokenData
 			});
 		}
-	}, [hash, poolData, tokens, dispatch])
+	}, [hash, poolData, tokens]);
 
 	const handleRangeChange = async (range: '1d' | '1w') => {
 		switch (range) {
