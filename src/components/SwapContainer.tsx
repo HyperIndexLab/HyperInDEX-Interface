@@ -529,15 +529,33 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     },
   });
 
-  // 添加新的 useEffect 来处理 token2 余额更新
+  // 1. 修复 token 余额更新导致的循环
+  useEffect(() => {
+    if (token1Data && token1Data.symbol !== 'HSK' && token1Balance?.value) {
+      // 避免直接修改 token1Data，而是使用函数式更新，并且只在值真正变化时才更新
+      setToken1Data(prev => {
+        if (prev?.balance === token1Balance.value.toString()) return prev;
+        return {
+          ...prev!,
+          balance: token1Balance.value.toString()
+        };
+      });
+    }
+  }, [token1Balance?.value]);
+
+  // 2. 修复 token2 余额更新导致的循环
   useEffect(() => {
     if (token2Data && token2Data.symbol !== 'HSK' && token2Balance?.value) {
-      setToken2Data(prev => ({
-        ...prev!,
-        balance: token2Balance.value.toString()
-      }));
+      // 同样使用函数式更新，并且只在值真正变化时才更新
+      setToken2Data(prev => {
+        if (prev?.balance === token2Balance.value.toString()) return prev;
+        return {
+          ...prev!,
+          balance: token2Balance.value.toString()
+        };
+      });
     }
-  }, [token2Balance?.value, token2Data]);
+  }, [token2Balance?.value]);
 
   // 修改原有的交易确认后的 useEffect
   useEffect(() => {
@@ -610,12 +628,16 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     },
   });
 
-  // 添加调试日志
-  useEffect(() => {
-    console.log('token1Data:', token1Data);
-    console.log('token2Data:', token2Data);
-    console.log('pairAddress:', pairAddress);
-  }, [token1Data, token2Data, pairAddress]);
+  // 3. 移除或修改调试日志，避免它触发不必要的重新渲染
+  // 将这个 useEffect 改为条件性执行或完全移除
+  // useEffect(() => {
+  //   // 只在开发环境下打印日志
+   
+  //     console.log('token1Data:', token1Data);
+  //     console.log('token2Data:', token2Data);
+  //     console.log('pairAddress:', pairAddress);
+    
+  // }, [token1Data?.address, token2Data?.address, pairAddress]); // 只关注关键属性变化
 
   // 2. 检查余额是否足够
   const hasInsufficientBalance = () => {
