@@ -67,7 +67,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
 
   const { address: userAddress } = useAccount();
-  const { writeContract, data: hash, isPending: isWritePending, isSuccess: isWriteSuccess, isError: isWriteError } = useWriteContract();
+  const { writeContract, data: hash, isPending: isWritePending, isSuccess: isWriteSuccess, isError: isWriteError, error: writeError } = useWriteContract();
   // 检查授权额度
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
     address: token1Data?.address as `0x${string}`,
@@ -492,7 +492,15 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       await writeContract(params);
     } catch (error) {
       console.error('Swap failed:', error);
-      toast.error('Swap failed');
+      // 显示更详细的错误信息
+      const errorMessage = error instanceof Error ? error.message : 'unknown error';
+      toast.error(`swap failed: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+      });
       setTxStatus('failed');
     }
   };
@@ -609,10 +617,36 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     }
 
     if (isWriteError) {
-      toast.error('Swap failed');
+      // 显示更详细的错误信息
+      let errorMessage = 'unknown error';
+      
+      if (typeof writeError === 'object' && writeError !== null) {
+        if ('message' in writeError) {
+          const message = (writeError as any).message?.toLowerCase();
+          errorMessage = `error: ${message}`; 
+
+          if (message.includes("insufficient funds")) {
+            errorMessage = "insufficient funds, please ensure you have enough tokens and gas fees.";
+          } else if (message.includes("user rejected")) {
+            errorMessage = "user rejected the transaction.";
+          } else if (message.includes("deadline")) {
+            errorMessage = "transaction deadline, please try again.";
+          } else if (message.includes("slippage")) {
+            errorMessage = "slippage too high, please adjust the slippage tolerance or reduce the transaction amount.";
+          }
+        }
+      }
+
+      toast.error(`swap failed: ${errorMessage}`, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+      });
       setTxStatus('failed');
     }
-  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, refetchHskBalance, refetchToken1Balance, refetchAllowance]);
+  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchHskBalance, refetchToken1Balance, refetchAllowance]);
 
   // 1. 修改 useReadContract hook 的调用，添加 enabled 条件的打印
   const { data: pairAddress } = useReadContract({
