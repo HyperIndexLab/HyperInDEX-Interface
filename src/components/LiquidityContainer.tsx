@@ -77,6 +77,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     writeContract,
     isPending: isWritePending,
     isSuccess: isWriteSuccess,
+    isError: isWriteError,
+    error: writeError,
   } = useWriteContract();
 
   // 同样为 token1Balance 添加 refetch
@@ -367,6 +369,41 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
       }, 3000);
     }
+
+
+    if (isWriteError && writeError) {
+      setIsPending(false);
+      let errorMessage = "add liquidity failed, please try again.";
+      
+      // 尝试从错误对象中提取更具体的错误信息
+      if (typeof writeError === 'object' && writeError !== null) {
+        if ('message' in writeError) {
+          const message = (writeError as any).message?.toLowerCase();
+          errorMessage = `error: ${message}`; 
+
+          if (message.includes("insufficient funds")) {
+            errorMessage = "insufficient funds, please ensure you have enough tokens and gas fees.";
+          } else if (message.includes("user rejected")) {
+            errorMessage = "user rejected the transaction.";
+          } else if (message.includes("deadline")) {
+            errorMessage = "transaction deadline, please try again.";
+          } else if (message.includes("slippage")) {
+            errorMessage = "slippage too high, please adjust the slippage tolerance or reduce the transaction amount.";
+          }
+        }
+      }
+      
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+      });
+    }
+
   }, [isWriteSuccess, isWritePending]);
 
   // 添加一个清除 step2 数据的函数
