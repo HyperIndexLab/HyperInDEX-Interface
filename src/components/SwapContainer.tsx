@@ -18,7 +18,7 @@ import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import { FACTORY_ABI, FACTORY_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexFactory';
 import { WETH_ABI } from '@/constant/ABI/weth';
-import BigNumber from 'bignumber.js';
+import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
 
 interface SwapContainerProps {
   token1?: string;
@@ -84,6 +84,37 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   const { isLoading: isWaitingTx, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({
     hash: hash as `0x${string}`,
   });
+  // 添加一个辅助函数来获取用于查询的地址
+  const getQueryAddress = (token: TokenData) => {
+    return token.symbol === 'HSK' ? WHSK : token.address;
+  };
+
+  // 1. 修改 useReadContract hook 的调用，添加 enabled 条件的打印
+  const { data: pairAddress } = useReadContract({
+    address: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
+    abi: FACTORY_ABI,
+    functionName: 'getPair',
+    args: token1Data && token2Data ? [
+      getQueryAddress(token1Data),
+      getQueryAddress(token2Data)
+    ] : undefined,
+    query: {
+      enabled: !!(token1Data && token2Data),
+    },
+  });
+
+  // 添加获取 token0 地址的调用
+  const { data: token0Address } = useReadContract({
+    address: pairAddress as `0x${string}`,
+    abi: PAIR_ABI,
+    functionName: 'token0',
+    args: [],
+    query: {
+      enabled: !!pairAddress,
+    },
+  });
+
+    
   // 在代币选择或金额变化时检查授权
   useEffect(() => {
     if (token1Data && token1Data.symbol !== 'HSK') {
@@ -131,26 +162,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         draggable: true,
         progress: undefined,
       });
-    } finally {
-      // if(isWriteSuccess && !isWritePending) {
-      //   toast.success('Approved successfully!', {
-      //     position: "top-right",
-      //     autoClose: 5000,
-      //     hideProgressBar: false,
-      //     closeOnClick: true,
-      //     pauseOnHover: true,
-      //   });
-      // } else if (!isWriteSuccess && !isWritePending) { 
-      //   toast.error('Failed to Approve. Please try again.', {
-      //     position: "top-right",
-      //     autoClose: 5000,
-      //     hideProgressBar: false,
-      //     closeOnClick: true,
-      //     pauseOnHover: true,
-      //   });
-      // }
-      // setTxStatus('none');
-      // setIsLoading(false);
     }
   };
 
@@ -217,49 +228,44 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     }
   };
 
-  // 添加一个辅助函数来获取用于查询的地址
-  const getQueryAddress = (token: TokenData) => {
-    return token.symbol === 'HSK' ? WHSK : token.address;
-  };
+  // // 修改 useReadContract hook 调用
+  // const { data: amountsOut } = useReadContract({
+  //   address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+  //   abi: ROUTER_ABI,
+  //   functionName: 'getAmountsOut',
+  //   args: token1Data && token2Data && token1Amount && Number(token1Amount) > 0 ? [
+  //     parseUnits(token1Amount, Number(token1Data.decimals || '18')),
+  //     [
+  //       getQueryAddress(token1Data),
+  //       getQueryAddress(token2Data)
+  //     ]
+  //   ] : undefined,
+  //   query: {
+  //     enabled: !!(
+  //       token1Data && 
+  //       token2Data && 
+  //       token1Amount && 
+  //       Number(token1Amount) > 0
+  //     )
+  //   }
+  // });
 
-  // 修改 useReadContract hook 调用
-  const { data: amountsOut } = useReadContract({
-    address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-    abi: ROUTER_ABI,
-    functionName: 'getAmountsOut',
-    args: token1Data && token2Data && token1Amount && Number(token1Amount) > 0 ? [
-      parseUnits(token1Amount, Number(token1Data.decimals || '18')),
-      [
-        getQueryAddress(token1Data),
-        getQueryAddress(token2Data)
-      ]
-    ] : undefined,
-    query: {
-      enabled: !!(
-        token1Data && 
-        token2Data && 
-        token1Amount && 
-        Number(token1Amount) > 0
-      )
-    }
-  });
-
-  // 获取基准价格（用很小的数量计算）
-  const { data: baseAmountOut } = useReadContract({
-    address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-    abi: ROUTER_ABI,
-    functionName: 'getAmountsOut',
-    args: token1Data && token2Data ? [
-      parseUnits('0.0001', Number(token1Data.decimals || '18')),  // 用很小的数量计算基准价格
-      [
-        getQueryAddress(token1Data),
-        getQueryAddress(token2Data)
-      ]
-    ] : undefined,
-    query: {
-      enabled: !!(token1Data && token2Data),
-    },
-  });
+  // // 获取基准价格（用很小的数量计算）
+  // const { data: baseAmountOut } = useReadContract({
+  //   address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+  //   abi: ROUTER_ABI,
+  //   functionName: 'getAmountsOut',
+  //   args: token1Data && token2Data ? [
+  //     parseUnits('0.0001', Number(token1Data.decimals || '18')),  // 用很小的数量计算基准价格
+  //     [
+  //       getQueryAddress(token1Data),
+  //       getQueryAddress(token2Data)
+  //     ]
+  //   ] : undefined,
+  //   query: {
+  //     enabled: !!(token1Data && token2Data),
+  //   },
+  // });
 
   // 错误处理
   useEffect(() => {
@@ -273,6 +279,17 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       setInputError(null);
     }
   }, [error, token1Data, token2Data, token1Amount]);
+
+  // 在 SwapContainer 组件内添加 getReserves 的调用
+  const { data: reserves } = useReadContract({
+    address: pairAddress as `0x${string}`,
+    abi: PAIR_ABI,
+    functionName: 'getReserves',
+    args: [],
+    query: {
+      enabled: !!pairAddress,
+    },
+  });
 
   // 修改价格计算相关的 useEffect
   useEffect(() => {
@@ -288,70 +305,87 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         setMinimumReceived(token1Amount);
         setPriceImpact('0');
         setLpFee('0');
+        return;
       }
-    }
 
+      if (reserves && token1Amount && pairAddress && token0Address) {
+        try {
+          const [reserve0, reserve1] = reserves as [bigint, bigint];
+          
+          // 根据实际的 token0 地址确定储备金顺序
+          const token0 = getQueryAddress(token1Data);
+        
+          const [tokenInReserve, tokenOutReserve] = 
+            token0 === token0Address ? [reserve0, reserve1] : [reserve1, reserve0];
 
-    if (amountsOut && baseAmountOut && token2Data && token1Data && token1Amount) {
-      try {
-        // 检查是否是 HSK 和 WHSK 的交易对
-        const isHskWhskPair = (
-          (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') ||
-          (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
-        );
-
-        if (!isHskWhskPair)  {
-          // 正常的代币交易计算
           // 计算输出金额
-          const outputAmount = (amountsOut as bigint[])[1];
-          const formattedOutput = formatTokenBalance(outputAmount.toString(), token2Data.decimals || '18');
+          const amountIn = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+          const amountInWithFee = amountIn * BigInt(997);
+          const numerator = amountInWithFee * tokenOutReserve;
+          const denominator = (tokenInReserve * BigInt(1000)) + amountInWithFee;
+          const amountOut = numerator / denominator;
+
+          // 设置输出金额
+          const formattedOutput = formatTokenBalance(amountOut.toString(), token2Data.decimals || '18');
           setToken2Amount(formattedOutput);
-          
+
           // 计算最小接收数量 (根据滑点设置)
-          const minReceived = (outputAmount * BigInt(995)) / BigInt(1000);
+          const slippageBps = Math.floor((100 - Number(slippage)) * 10); // 将百分比转换为基点
+          const minReceived = (amountOut * BigInt(slippageBps)) / BigInt(1000);
           setMinimumReceived(formatTokenBalance(minReceived.toString(), token2Data.decimals || '18'));
-          
+
           // 计算 LP 费用 (0.3%)
-          const inputAmountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-          const lpFeeAmount = (inputAmountBigInt * BigInt(3)) / BigInt(1000);
+          const lpFeeAmount = (amountIn * BigInt(3)) / BigInt(1000);
           setLpFee(formatTokenBalance(lpFeeAmount.toString(), token1Data.decimals || '18'));
-          
-          // 计算价格影响
-          const baseOutput = (baseAmountOut as bigint[])[1];
-          const actualOutput = (amountsOut as bigint[])[1];
 
-          // 添加零值检查
-          if (baseOutput === BigInt(0) || actualOutput === BigInt(0)) {
-            setPriceImpact('0');
-          } else {
-            // 转换为 BigNumber 进行计算
-            const baseOutputBN = new BigNumber(baseOutput.toString());
-            const actualOutputBN = new BigNumber(actualOutput.toString());
-            const baseAmountBN = new BigNumber(parseUnits('0.0001', Number(token1Data.decimals || '18')).toString());
-            const actualAmountBN = new BigNumber(parseUnits(token1Amount, Number(token1Data.decimals || '18')).toString());
+          // 修改价格影响计算
+          // 只有当储备都不为零时才计算价格影响
+          const tokenInDecimals = Number(token1Data.decimals || '18');
+          const tokenOutDecimals = Number(token2Data.decimals || '18');
 
-            // 计算比率
-            const baseRate = baseOutputBN.multipliedBy(10000).dividedBy(baseAmountBN);
-            const actualRate = actualOutputBN.multipliedBy(10000).dividedBy(actualAmountBN);
+          // 将储备金额统一到18位精度
+          const normalizedTokenInReserve = tokenInDecimals < 18 
+            ? tokenInReserve * BigInt(10 ** (18 - tokenInDecimals))
+            : tokenInReserve;
 
-            if (baseRate.isZero()) {
-              setPriceImpact('0');
+          const normalizedTokenOutReserve = tokenOutDecimals < 18
+            ? tokenOutReserve * BigInt(10 ** (18 - tokenOutDecimals))
+            : tokenOutReserve;
+
+          // 同样将交易金额统一到18位精度
+          const normalizedAmountIn = tokenInDecimals < 18
+            ? amountIn * BigInt(10 ** (18 - tokenInDecimals))
+            : amountIn;
+
+          const normalizedAmountOut = tokenOutDecimals < 18
+            ? amountOut * BigInt(10 ** (18 - tokenOutDecimals))
+            : amountOut;
+
+          if (normalizedTokenInReserve > BigInt(0) && normalizedTokenOutReserve > BigInt(0)) {
+            // 使用统一精度后的数值计算价格
+            const spotPrice = (normalizedTokenInReserve * BigInt(1e18)) / normalizedTokenOutReserve;
+            const executionPrice = (normalizedAmountIn * BigInt(1e18)) / normalizedAmountOut;
+
+            if (spotPrice > BigInt(0)) {
+              const priceImpactBps = ((executionPrice - spotPrice) * BigInt(10000)) / spotPrice;
+              setPriceImpact((Number(priceImpactBps) / 100).toFixed(2));
             } else {
-              // 计算价格影响
-              const impact = actualRate.minus(baseRate).multipliedBy(100).multipliedBy(100).dividedBy(baseRate);
-              setPriceImpact(Math.abs(impact.toNumber() / 100).toFixed(2));
+              setPriceImpact('0');
             }
+          } else {
+            setPriceImpact('0');
           }
+
+        } catch (error) {
+          console.error('Error calculating swap:', error);
+          setToken2Amount('0');
+          setMinimumReceived('0');
+          setPriceImpact('0');
+          setLpFee('0');
         }
-      } catch (error) {
-        setToken2Amount('0');
-        setMinimumReceived('0');
-        setPriceImpact('0');
-        setLpFee('0');
-        console.error(error);
       }
     }
-  }, [amountsOut, baseAmountOut, token2Data, token1Amount, token1Data]);
+  }, [reserves, token1Amount, token1Data, token2Data, pairAddress, token0Address]);
 
   // 根据url中的参数设置初始化的token
   useEffect(() => {
@@ -648,30 +682,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     }
   }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchHskBalance, refetchToken1Balance, refetchAllowance]);
 
-  // 1. 修改 useReadContract hook 的调用，添加 enabled 条件的打印
-  const { data: pairAddress } = useReadContract({
-    address: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
-    abi: FACTORY_ABI,
-    functionName: 'getPair',
-    args: token1Data && token2Data ? [
-      getQueryAddress(token1Data),
-      getQueryAddress(token2Data)
-    ] : undefined,
-    query: {
-      enabled: !!(token1Data && token2Data),
-    },
-  });
-
-  // 3. 移除或修改调试日志，避免它触发不必要的重新渲染
-  // 将这个 useEffect 改为条件性执行或完全移除
-  // useEffect(() => {
-  //   // 只在开发环境下打印日志
-   
-  //     console.log('token1Data:', token1Data);
-  //     console.log('token2Data:', token2Data);
-  //     console.log('pairAddress:', pairAddress);
-    
-  // }, [token1Data?.address, token2Data?.address, pairAddress]); // 只关注关键属性变化
 
   // 2. 检查余额是否足够
   const hasInsufficientBalance = () => {
