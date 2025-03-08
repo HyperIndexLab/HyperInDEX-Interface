@@ -314,6 +314,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           
           // 根据实际的 token0 地址确定储备金顺序
           const token0 = getQueryAddress(token1Data);
+        
           const [tokenInReserve, tokenOutReserve] = 
             token0 === token0Address ? [reserve0, reserve1] : [reserve1, reserve0];
 
@@ -329,7 +330,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           setToken2Amount(formattedOutput);
 
           // 计算最小接收数量 (根据滑点设置)
-          const minReceived = (amountOut * BigInt(995)) / BigInt(1000);
+          const slippageBps = Math.floor((100 - Number(slippage)) * 10); // 将百分比转换为基点
+          const minReceived = (amountOut * BigInt(slippageBps)) / BigInt(1000);
           setMinimumReceived(formatTokenBalance(minReceived.toString(), token2Data.decimals || '18'));
 
           // 计算 LP 费用 (0.3%)
