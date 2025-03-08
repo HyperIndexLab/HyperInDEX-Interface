@@ -103,6 +103,17 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     },
   });
 
+  // 添加获取 token0 地址的调用
+  const { data: token0Address } = useReadContract({
+    address: pairAddress as `0x${string}`,
+    abi: PAIR_ABI,
+    functionName: 'token0',
+    args: [],
+    query: {
+      enabled: !!pairAddress,
+    },
+  });
+
     
   // 在代币选择或金额变化时检查授权
   useEffect(() => {
@@ -151,26 +162,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         draggable: true,
         progress: undefined,
       });
-    } finally {
-      // if(isWriteSuccess && !isWritePending) {
-      //   toast.success('Approved successfully!', {
-      //     position: "top-right",
-      //     autoClose: 5000,
-      //     hideProgressBar: false,
-      //     closeOnClick: true,
-      //     pauseOnHover: true,
-      //   });
-      // } else if (!isWriteSuccess && !isWritePending) { 
-      //   toast.error('Failed to Approve. Please try again.', {
-      //     position: "top-right",
-      //     autoClose: 5000,
-      //     hideProgressBar: false,
-      //     closeOnClick: true,
-      //     pauseOnHover: true,
-      //   });
-      // }
-      // setTxStatus('none');
-      // setIsLoading(false);
     }
   };
 
@@ -317,18 +308,14 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         return;
       }
 
-      if (reserves && token1Amount && pairAddress) {
+      if (reserves && token1Amount && pairAddress && token0Address) {
         try {
           const [reserve0, reserve1] = reserves as [bigint, bigint];
-
           
-          // 确定代币顺序
-          const token0Address = getQueryAddress(token1Data).toLowerCase();
-          const token1Address = getQueryAddress(token2Data).toLowerCase();
-          
-          // 根据地址排序确定正确的储备
+          // 根据实际的 token0 地址确定储备金顺序
+          const token0 = getQueryAddress(token1Data);
           const [tokenInReserve, tokenOutReserve] = 
-            token0Address < token1Address ? [reserve0, reserve1] : [reserve1, reserve0];
+            token0 === token0Address ? [reserve0, reserve1] : [reserve1, reserve0];
 
           // 计算输出金额
           const amountIn = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
@@ -351,11 +338,33 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
           // 修改价格影响计算
           // 只有当储备都不为零时才计算价格影响
-          if (tokenInReserve > BigInt(0) && tokenOutReserve > BigInt(0)) {
-            const spotPrice = (tokenInReserve * BigInt(1000)) / tokenOutReserve;
-            const executionPrice = (amountIn * BigInt(1000)) / amountOut;
-            
-            if (spotPrice > BigInt(0)) {  // 添加额外检查
+          const tokenInDecimals = Number(token1Data.decimals || '18');
+          const tokenOutDecimals = Number(token2Data.decimals || '18');
+
+          // 将储备金额统一到18位精度
+          const normalizedTokenInReserve = tokenInDecimals < 18 
+            ? tokenInReserve * BigInt(10 ** (18 - tokenInDecimals))
+            : tokenInReserve;
+
+          const normalizedTokenOutReserve = tokenOutDecimals < 18
+            ? tokenOutReserve * BigInt(10 ** (18 - tokenOutDecimals))
+            : tokenOutReserve;
+
+          // 同样将交易金额统一到18位精度
+          const normalizedAmountIn = tokenInDecimals < 18
+            ? amountIn * BigInt(10 ** (18 - tokenInDecimals))
+            : amountIn;
+
+          const normalizedAmountOut = tokenOutDecimals < 18
+            ? amountOut * BigInt(10 ** (18 - tokenOutDecimals))
+            : amountOut;
+
+          if (normalizedTokenInReserve > BigInt(0) && normalizedTokenOutReserve > BigInt(0)) {
+            // 使用统一精度后的数值计算价格
+            const spotPrice = (normalizedTokenInReserve * BigInt(1e18)) / normalizedTokenOutReserve;
+            const executionPrice = (normalizedAmountIn * BigInt(1e18)) / normalizedAmountOut;
+
+            if (spotPrice > BigInt(0)) {
               const priceImpactBps = ((executionPrice - spotPrice) * BigInt(10000)) / spotPrice;
               setPriceImpact((Number(priceImpactBps) / 100).toFixed(2));
             } else {
@@ -374,7 +383,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         }
       }
     }
-  }, [reserves, token1Amount, token1Data, token2Data, pairAddress]);
+  }, [reserves, token1Amount, token1Data, token2Data, pairAddress, token0Address]);
 
   // 根据url中的参数设置初始化的token
   useEffect(() => {
