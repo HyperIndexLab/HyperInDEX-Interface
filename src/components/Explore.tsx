@@ -246,7 +246,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
         </div>
 
         {/* Table Card */}
-        <div className="card bg-base-100/90 backdrop-blur-xl shadow-xl">
+        <div className="card bg-base-100/90 backdrop-blur-xl shadow-xl overflow-hidden">
           <div className="card-body p-0">
             <div className="overflow-x-auto">
               <table className="table">

@@ -5,7 +5,7 @@ import '@rainbow-me/rainbowkit/styles.css';
 import {
   RainbowKitProvider,
 } from '@rainbow-me/rainbowkit';
-import { WagmiProvider } from 'wagmi'
+import { fallback, http, WagmiProvider } from 'wagmi'
 
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import {
@@ -32,6 +32,9 @@ const hashkeyMainnet = {
 		default: {
 			http: ['https://mainnet.hsk.xyz'],
 		},
+		public: {
+			http: ['https://mainnet.0xhsk.xyz'],
+		}
 	},
 	blockExplorers: {
 		default: {
@@ -59,6 +62,12 @@ const wagmiConfig = getDefaultConfig({
 	chains: [
 		process.env.NODE_ENV === 'development' ? hashkeyTestnet : hashkeyMainnet,
 	],
+	transports: {
+		[hashkeyMainnet.id]: fallback([
+			http('https://mainnet.hsk.xyz'),
+			http('https://mainnet.0xhsk.xyz'),
+		]),
+	},
 	ssr: true,
 });
 		
