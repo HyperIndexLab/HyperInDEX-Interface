@@ -15,7 +15,7 @@ const AdPopover = ({ imageUrl, linkUrl, width = 300, height = 160 }: AdPopoverPr
   return (
     <>
       {isVisible && (
-        <div className="md:fixed md:bottom-12 md:right-12 sm:mt-0 mt-[-1.5rem] mx-4 mx-auto max-w-[400px] 
+        <div className="md:fixed md:bottom-12 md:right-12  mx-4 mx-auto max-w-[400px] 
           md:w-auto z-50 shadow-xl bg-[#1c1d22]/30 bg-opacity-20 border border-white/5 
           rounded-lg md:overflow-hidden">
           {/* 关闭按钮 */}
