@@ -15,7 +15,9 @@ const AdPopover = ({ imageUrl, linkUrl, width = 300, height = 160 }: AdPopoverPr
   return (
     <>
       {isVisible && (
-        <div className="fixed bottom-12 right-12 z-50 shadow-xl bg-[#1c1d22]/30 bg-opacity-20 border border-white/5 rounded-lg overflow-hidden">
+        <div className="md:fixed md:bottom-12 md:right-12 sm:mt-0 mt-[-1.5rem] mx-4 mx-auto max-w-[400px] 
+          md:w-auto z-50 shadow-xl bg-[#1c1d22]/30 bg-opacity-20 border border-white/5 
+          rounded-lg md:overflow-hidden">
           {/* 关闭按钮 */}
           <div className="relative w-full flex justify-end p-2">
             <button 
@@ -34,7 +36,7 @@ const AdPopover = ({ imageUrl, linkUrl, width = 300, height = 160 }: AdPopoverPr
               alt="Advertisement"
               width={width}
               height={height}
-              className="object-cover"
+              className="w-full md:w-auto object-cover"
             />
           </Link>
         </div>
