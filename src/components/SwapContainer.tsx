@@ -6,7 +6,7 @@ import TokenModal from './TokenModal';
 import { formatTokenBalance } from '../utils/formatTokenBalance';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
 import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
-import { parseUnits } from 'viem';
+import { parseEther, parseUnits } from 'viem';
 import { WHSK } from '../constant/value';
 import { useAccount } from 'wagmi';
 import { erc20Abi } from 'viem';
@@ -18,7 +18,8 @@ import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-toastify';
 import { FACTORY_ABI, FACTORY_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexFactory';
 import { WETH_ABI } from '@/constant/ABI/weth';
-import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
+import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";;
+import { estimateAndCheckGas } from '@/utils';
 
 interface SwapContainerProps {
   token1?: string;
@@ -131,7 +132,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     }
   }, [allowance, token1Amount, token1Data, userAddress]);
 
-  // 处理授权
+
+  // 修改 handleApprove 函数使用封装的 gas 检查
   const handleApprove = async () => {
     if (!token1Data || !token1Amount) return;
     
@@ -141,19 +143,29 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       
       const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
       
-      writeContract({
+      const params = {
         address: token1Data.address as `0x${string}`,
         abi: erc20Abi,
-        functionName: 'approve',
-        args: [ROUTER_CONTRACT_ADDRESS, amountToApprove],
-      });
+        functionName: 'approve' as const,
+        args: [ROUTER_CONTRACT_ADDRESS as `0x${string}`, amountToApprove] as const,
+      };
+
+      // 使用封装的 gas 检查函数
+      const canProceed = await estimateAndCheckGas(params);
+      if (!canProceed) {
+        toast.error('Insufficient gas, please deposit HSK first');
+        setIsLoading(false);
+        return;
+      }
+      
+      writeContract(params);
       
       setCurrentTx('approve');
       setTxStatus('pending');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Approval failed');
       setTxStatus('none');
-      toast.error('Failed to Approve. Please try again.', {
+      toast.error('授权失败，请重试', {
         position: "top-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -162,6 +174,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         draggable: true,
         progress: undefined,
       });
+      setIsLoading(false);
     }
   };
 
@@ -447,6 +460,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     return 'text-success';
   };
 
+  // 修改 handleSwap 函数使用封装的 gas 检查
   const handleSwap = async () => {
     try {
       if (!token1Data || !token2Data || !userAddress) return;
@@ -459,6 +473,13 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           functionName: 'deposit',
           value: parseUnits(token1Amount, 18),
         };
+
+        // 使用封装的 gas 检查函数
+        const canProceed = await estimateAndCheckGas(params);
+        if (!canProceed) {
+          toast.error('Insufficient gas, please deposit HSK first');
+          return;
+        }
 
         setCurrentTx('swap');
         setTxStatus('pending');
@@ -476,6 +497,13 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           args: [parseUnits(token1Amount, 18)],
         };
 
+        // 使用封装的 gas 检查函数
+        const canProceed = await estimateAndCheckGas(params);
+        if (!canProceed) {
+          toast.error('Insufficient gas, please deposit HSK first');
+          return;
+        }
+
         setCurrentTx('swap');
         setTxStatus('pending');
         
@@ -488,7 +516,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       const slippagePercent = Number(slippage);
       const amountOutMin = expectedAmount * BigInt(Math.floor((100 - slippagePercent) * 1000)) / BigInt(100000);
       const deadlineTime = Math.floor(Date.now() / 1000 + Number(deadline) * 60);
-
 
       let path: string[];
       if (token1Data.symbol === 'HSK') {
@@ -518,7 +545,12 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         value: token1Data.symbol === 'HSK' ? parseUnits(token1Amount, 18) : undefined,
       };
 
-      console.log('swap params:', params);
+      // 使用封装的 gas 检查函数
+      const canProceed = await estimateAndCheckGas(params);
+      if (!canProceed) {
+        toast.error('Insufficient gas, please deposit HSK first');
+        return;
+      }
 
       setCurrentTx('swap');
       setTxStatus('pending');
@@ -528,7 +560,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       console.error('Swap failed:', error);
       // 显示更详细的错误信息
       const errorMessage = error instanceof Error ? error.message : 'unknown error';
-      toast.error(`swap failed: ${errorMessage}`, {
+      toast.error(`交易失败: ${errorMessage}`, {
         position: "top-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -549,6 +581,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       enabled: !!userAddress,
     },
   });
+
+
 
   // 同样为 token1Balance 添加 refetch
   const { 

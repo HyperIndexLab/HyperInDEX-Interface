@@ -29,7 +29,6 @@ async function getNewsArticles() {
     // 使用 gray-matter 解析文件的元数据部分
     const { data } = matter(fileContents);
     
-    console.log('data===', data);
     // 返回带有 slug 和元数据的对象
     return {
       slug,

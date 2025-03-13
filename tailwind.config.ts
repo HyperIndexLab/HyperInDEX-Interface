@@ -26,6 +26,7 @@ export default {
         // 设置默认字体为 Geist
         sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
         mono: ['var(--font-geist-mono)', 'monospace'],
+        sora: ['Sora', 'sans-serif'],
       },
     },
   },

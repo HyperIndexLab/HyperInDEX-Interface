@@ -23,6 +23,7 @@ import { fetchTokenList, selectTokens } from "@/store/tokenListSlice";
 import { AppDispatch } from "@/store";
 import { getPools, Pool } from "@/request/explore";
 import { formatTokenBalance } from "@/utils/formatTokenBalance";
+import { estimateAndCheckGas } from "@/utils";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -80,6 +81,17 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     isError: isWriteError,
     error: writeError,
   } = useWriteContract();
+
+
+  const { 
+    data: hskBalance,
+  } = useBalance({
+    address: userAddress,
+    query: {
+      enabled: !!userAddress,
+    },
+  });
+
 
   // 同样为 token1Balance 添加 refetch
   const { 
@@ -497,6 +509,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
     // 处理按钮点击
     const handleButtonClick = async () => {
+      const canProceed = await estimateAndCheckGas(hskBalance);
+      if (!canProceed) {
+        toast.error('Insufficient gas, please deposit HSK first');
+        return;
+      }
       if (needsApproval) {
         // 如果需要授权，先处理授权
         await handleApprove(needApprove.token1);
