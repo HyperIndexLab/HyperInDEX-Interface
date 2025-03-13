@@ -333,7 +333,6 @@ const TokenModal: React.FC<TokenModalProps> = ({
               address: '0x0000000000000000000000000000000000000000',  // HSK 的地址
               icon_url: "https://hyperindex.4everland.store/index-coin.jpg",
               decimals: '18',
-              source_platform: 'default'
             })}
           >
             <div className="flex items-center">
