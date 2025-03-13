@@ -6,7 +6,7 @@ import TokenModal from './TokenModal';
 import { formatTokenBalance } from '../utils/formatTokenBalance';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
 import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
-import { parseEther, parseUnits } from 'viem';
+import { parseUnits } from 'viem';
 import { WHSK } from '../constant/value';
 import { useAccount } from 'wagmi';
 import { erc20Abi } from 'viem';
