@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from './index';
-import { getNewApiBaseUrl } from '../utils/getApiBaseUrl';
+import { getMyApiBaseUrl } from '../utils/getApiBaseUrl';
 
 // 定义token的类型
 export interface Token {
@@ -11,6 +11,7 @@ export interface Token {
   total_supply: string | null;
   type: string;
   icon_url: string | null;
+  source_platform: string;
 }
 
 // State类型
@@ -34,13 +35,29 @@ export const fetchTokenList = createAsyncThunk(
   'tokenList/fetch',
   async () => {
     try {
-      const newBaseUrl = getNewApiBaseUrl();
-      const response = await fetch(`${newBaseUrl}/api/v2/tokens`);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const newBaseUrl = getMyApiBaseUrl();
+      let allTokens: Token[] = [];
+      let page = 1;
+      const pageSize = 20;
+      let hasMoreData = true;
+      
+      while (hasMoreData) {
+        const response = await fetch(`${newBaseUrl}/api/tokenlist?page=${page}&pageSize=${pageSize}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        allTokens = [...allTokens, ...data.items];
+        
+        // 检查是否还有更多数据
+        if (data.items.length < pageSize || page * pageSize >= data.total) {
+          hasMoreData = false;
+        } else {
+          page++;
+        }
       }
-      const data = await response.json();
-      return data.items;
+      
+      return allTokens;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : '获取token列表失败');
     }
@@ -51,13 +68,29 @@ export const fetchTokenList = createAsyncThunk(
 export const refreshTokenList = createAsyncThunk(
   'tokenList/refresh',
   async () => {
-    const newBaseUrl = getNewApiBaseUrl();
-    const response = await fetch(`${newBaseUrl}/api/v2/tokens`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+    const newBaseUrl = getMyApiBaseUrl();
+    let allTokens: Token[] = [];
+    let page = 1;
+    const pageSize = 20;
+    let hasMoreData = true;
+    
+    while (hasMoreData) {
+      const response = await fetch(`${newBaseUrl}/api/tokenlist?page=${page}&pageSize=${pageSize}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      allTokens = [...allTokens, ...data.items];
+      
+      // 检查是否还有更多数据
+      if (data.items.length < pageSize || page * pageSize >= data.total) {
+        hasMoreData = false;
+      } else {
+        page++;
+      }
     }
-    const data = await response.json();
-    return data.items;
+    
+    return allTokens;
   }
 );
 

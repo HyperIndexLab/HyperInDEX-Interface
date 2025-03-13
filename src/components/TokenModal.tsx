@@ -17,6 +17,7 @@ interface Token {
   address: string;
   icon_url: string | null;
   decimals: string | null;
+  source_platform?: string;
 }
 
 interface TokenData {
@@ -26,6 +27,7 @@ interface TokenData {
   icon_url: string | null;
   balance?: string;
   decimals?: string | null;
+  source_platform?: string;
 }
 
 interface PairInfo {
@@ -87,7 +89,8 @@ const TokenModal: React.FC<TokenModalProps> = ({
       address: token.address,
       icon_url: token.icon_url || DEFAULT_TOKEN_ICON,
       balance,
-      decimals: decimals || token.decimals
+      decimals: decimals || token.decimals,
+      source_platform: token.source_platform
     });
     onClose();
   };
@@ -132,6 +135,28 @@ const TokenModal: React.FC<TokenModalProps> = ({
     token.name?.toLowerCase().includes(searchQuery) ||
     token.address.toLowerCase().includes(searchQuery)
   );
+
+  // 渲染源平台标签的函数
+  const renderSourcePlatform = (source_platform?: string) => {
+    if (!source_platform) return null;
+    
+    // 为不同平台设置不同的颜色
+    const platformColors: {[key: string]: string} = {
+      'MintClub': 'bg-emerald-100 text-emerald-800',
+      'LaunchPool': 'bg-blue-100 text-blue-800',
+      'Airdrop': 'bg-purple-100 text-purple-800',
+      'IDO': 'bg-amber-100 text-amber-800',
+      'default': 'bg-gray-100 text-gray-800'
+    };
+    
+    const colorClass = platformColors[source_platform] || platformColors.default;
+    
+    return (
+      <span className={`text-xs px-2 py-0.5 rounded-full ${colorClass}`}>
+        {source_platform}
+      </span>
+    );
+  };
 
   return (
     <div className="fixed inset-0 flex justify-center items-center z-50">
@@ -217,7 +242,12 @@ const TokenModal: React.FC<TokenModalProps> = ({
                         }}
                       />
                       <div>
-                        <div className="text-base-content font-medium">{userToken.token.symbol || '-'}</div>
+                        <div className="text-base-content font-medium">
+                          {userToken.token.symbol || '-'}
+                          {userToken.token.source_platform && (
+                            <span className="ml-2">{renderSourcePlatform(userToken.token.source_platform)}</span>
+                          )}
+                        </div>
                         <div className="text-xs text-neutral">{userToken.token.name || 'Unknown Token'}</div>
                       </div>
                     </div>
@@ -280,7 +310,12 @@ const TokenModal: React.FC<TokenModalProps> = ({
                     }}
                   />
                   <div>
-                    <div className="text-base-content font-medium">{token.symbol || '-'}</div>
+                    <div className="text-base-content font-medium">
+                      {token.symbol || '-'}
+                      {token.source_platform && (
+                        <span className="ml-2">{renderSourcePlatform(token.source_platform)}</span>
+                      )}
+                    </div>
                     <div className="text-xs text-neutral">{token.name || 'Unknown Token'}</div>
                   </div>
                 </div>
@@ -297,7 +332,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
               name: 'HyperSwap Token',
               address: '0x0000000000000000000000000000000000000000',  // HSK 的地址
               icon_url: "https://hyperindex.4everland.store/index-coin.jpg",
-              decimals: '18'
+              decimals: '18',
             })}
           >
             <div className="flex items-center">

@@ -10,6 +10,7 @@ interface Token {
   symbol: string | null;
   type: string;
   icon_url: string | null;
+  source_platform: string;
 }
 
 // 定义用户token的类型

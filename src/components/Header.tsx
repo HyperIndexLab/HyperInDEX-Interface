@@ -122,7 +122,7 @@ const MENU_MAP: MenuItem[] = [
     ],
   },
   {
-    path: "https://news.hyperindex.trade/",
+    path: "/news",
     label: "News",
     icon: (
       <svg
@@ -139,7 +139,6 @@ const MENU_MAP: MenuItem[] = [
         />
       </svg>
     ),
-    target: "_blank",
     rel: "noopener noreferrer",
   },
   {

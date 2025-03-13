@@ -67,6 +67,9 @@ const wagmiConfig = getDefaultConfig({
 			http('https://mainnet.hsk.xyz'),
 			http('https://mainnet.0xhsk.xyz'),
 		]),
+		[hashkeyTestnet.id]: fallback([
+			http('https://hashkeychain-testnet.alt.technology'),
+		]),
 	},
 	ssr: true,
 });

@@ -197,7 +197,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
   };
 
   return (
-    <div className="min-h-screen p-4 lg:p-12">
+    <div className="min-h-screen p-4 lg:p-12 font-sora">
       <div className="max-w-7xl mx-auto">
         {/* Tabs */}
         <div className="flex items-center justify-between mb-8">
