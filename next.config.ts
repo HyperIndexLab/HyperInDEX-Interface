@@ -1,11 +1,13 @@
 import type { NextConfig } from "next";
 import createMDX from '@next/mdx';
 import remarkGfm from 'remark-gfm';
+import remarkFrontmatter from 'remark-frontmatter';
+import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
 
 const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
-    remarkPlugins: [remarkGfm], // 支持 GitHub 风格 Markdown
+    remarkPlugins: [remarkGfm, remarkFrontmatter, remarkMdxFrontmatter], // 支持 GitHub 风格 Markdown
   },
 });
 
