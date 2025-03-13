@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from './index';
-import { getMyApiBaseUrl, getNewApiBaseUrl } from '../utils/getApiBaseUrl';
+import { getMyApiBaseUrl } from '../utils/getApiBaseUrl';
 
 // 定义token的类型
 export interface Token {

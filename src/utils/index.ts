@@ -39,7 +39,7 @@ export const formatNumber = (value: number | string, decimals: number = 2): stri
 
 export const estimateAndCheckGas = async (hskBalance: any): Promise<boolean> => {
   try {
-    const defaultGas = BigInt(21000); // 基本交易的默认 gas
+    // const defaultGas = BigInt(21000); // 基本交易的默认 gas
     
     // 检查用户是否有足够的 gas
     if (hskBalance && hskBalance.value <= 0) {
