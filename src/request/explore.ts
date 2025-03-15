@@ -60,8 +60,7 @@ export const getTokens = async (): Promise<Token[]> => {
 	const res = await api.get(requestUrl)
 	
 	// 过滤掉symbol为"Pump"的代币
-	const filteredTokens = (res.data as Token[]).filter(token => token.symbol !== "Pump");
-	return filteredTokens;
+	return res.data as Token[]
 }
 
 export const getPools = async (): Promise<Pool[]> => {
