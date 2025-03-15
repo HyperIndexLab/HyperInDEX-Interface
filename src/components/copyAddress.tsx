@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { toast } from "react-toastify";
+import { useToast } from "./ToastContext";
+
 
 export default function CopyAddress({
   address,
@@ -11,6 +12,7 @@ export default function CopyAddress({
   tailLength?: number;
 }) {
   const [, setCopied] = useState(false);
+  const { toast } = useToast();
 
   const handleCopy = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -18,7 +20,10 @@ export default function CopyAddress({
     navigator.clipboard.writeText(address);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-    toast.success("Copied");
+    toast({
+      type: 'error',
+      message: 'Copied Success'
+    });
   };
 
   const truncateAddress = (

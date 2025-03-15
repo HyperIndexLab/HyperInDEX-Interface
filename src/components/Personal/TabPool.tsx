@@ -9,6 +9,8 @@ import { PlusIcon } from "@heroicons/react/24/outline";
 interface TabPoolProps extends PoolInfo {
   rate: string; // 汇率
   userLPBalance: string; // 用户的 LP Token 数量
+  token0IconUrl?: string;
+  token1IconUrl?: string;
 }
 
 // 池子骨架屏组件
@@ -44,8 +46,8 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
 
   useEffect(() => {
     const positions = pools.map((pool) => {
-      // const token0 = tokenData.find(token => token.address === pool.token0Address);
-      // const token1 = tokenData.find(token => token.address === pool.token1Address);
+      const token0 = tokenData.find(token => token.address === pool.token0Address);
+      const token1 = tokenData.find(token => token.address === pool.token1Address);
 
       // 计算汇率
       const reserve0 = BigNumber(pool.token0Amount);
@@ -59,10 +61,14 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
         ...pool,
         rate,
         userLPBalance,
+        token0IconUrl: token0?.icon_url || "",
+        token1IconUrl: token1?.icon_url || "",
       };
     });
     setTabPools(positions);
   }, [pools, tokenData]);
+
+  
 
   if (isLoading) {
     return <PoolSkeleton />;
@@ -87,7 +93,7 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
                 <div className="flex items-center">
                   <div className="relative w-12 h-6">
                     <Image
-                      src="https://hyperindex.4everland.store/index-coin.jpg"
+                      src={pool.token0IconUrl || "https://hyperindex.4everland.store/index-coin.jpg"}
                       alt={pool.token0Symbol}
                       width={24}
                       height={24}
@@ -95,7 +101,7 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
                       className="w-6 h-6 rounded-full absolute left-0 border border-[#2a2f42] shadow-lg"
                     />
                     <Image
-                      src="https://hyperindex.4everland.store/index-coin.jpg"
+                      src={pool.token1IconUrl || "https://hyperindex.4everland.store/index-coin.jpg"}
                       alt={pool.token1Symbol}
                       width={24}
                       height={24}
