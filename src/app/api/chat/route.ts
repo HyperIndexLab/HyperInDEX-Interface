@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
     // 准备发送给OpenRouter的请求
     const payload = {
       messages: finalMessages,
-      model: "openai/gpt-3.5-turbo", // 默认模型，你可以根据需要更改
+      model: "deepseek/deepseek-r1:free", // 默认模型，你可以根据需要更改
       max_tokens: 1000,
       temperature: 0.7,
       // OpenRouter特定的路由字段

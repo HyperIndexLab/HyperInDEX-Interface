@@ -63,6 +63,31 @@ const safeParseFloat = (value: unknown): number => {
   return 0;
 };
 
+// 添加一个专门处理TVL值的函数
+const parseTVL = (tvlString: string): number => {
+  if (!tvlString || typeof tvlString !== 'string') return 0;
+  
+  // 移除美元符号和空格
+  const cleanValue = tvlString.replace(/[$\s]/g, '');
+  
+  // 处理K后缀 (千)
+  if (cleanValue.endsWith('K')) {
+    return parseFloat(cleanValue.replace('K', '')) * 1000;
+  }
+  
+  // 处理M后缀 (百万)
+  if (cleanValue.endsWith('M')) {
+    return parseFloat(cleanValue.replace('M', '')) * 1000000;
+  }
+  
+  // 处理B后缀 (十亿)
+  if (cleanValue.endsWith('B')) {
+    return parseFloat(cleanValue.replace('B', '')) * 1000000000;
+  }
+  
+  return parseFloat(cleanValue || '0');
+};
+
 const ChatAgent: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -226,34 +251,35 @@ const ChatAgent: React.FC = () => {
     if (explorePools.length === 0) {
       return "I don't have enough data yet to analyze pool returns. Please try again later when more market data is available.";
     }
-    
-    // 分析指标：TVL、APY、交易量、交易对组合
-    // 根据实际数据计算得分
+
+    // 计算每个池子的综合得分
     const poolScores = explorePools.map(pool => {
       let score = 0;
       
-      // 添加TVL得分，使用安全解析函数
-      const tvl = safeParseFloat(pool.TVL);
-      score += tvl * 2;
+      // TVL得分 (占比较高)
+      const tvl = parseTVL(pool.TVL);
+      if (tvl > 1000000) score += 50;
+      else if (tvl > 500000) score += 40;
+      else if (tvl > 100000) score += 30;
+      else if (tvl > 10000) score += 20;
+      else if (tvl > 1000) score += 10;
       
-      // 添加APY得分
-      score += pool.APY * 5;
+      // APY得分
+      if (pool.APY > 100) score += 25;
+      else if (pool.APY > 50) score += 20;
+      else if (pool.APY > 20) score += 15;
+      else if (pool.APY > 10) score += 10;
+      else if (pool.APY > 0) score += 5;
       
-      // 添加交易量得分
-      score += pool.tradingVolume1D * 2;
-      score += pool.tradingVolume30D * 0.5;
+      // 交易量得分
+      if (pool.tradingVolume1D > 10000) score += 15;
+      else if (pool.tradingVolume1D > 5000) score += 10;
+      else if (pool.tradingVolume1D > 1000) score += 5;
       
-      // 分析交易对的特性
-      const pairSymbols = pool.pairsName.split('/');
-      
-      // 如果包含稳定币，加分
-      if (pairSymbols.some(s => s.includes('HUSDT') || s.includes('USDC'))) {
-        score += 20; // 稳定币对通常更安全
-      }
-      
-      // 如果包含原生代币对，加分
-      if (pairSymbols.some(s => s === 'HSK')) {
-        score += 15; // 原生代币通常流动性更好
+      // 稳定币池加分（通常风险较低）
+      if (pool.pairsName.toLowerCase().includes('husdt') || 
+          pool.pairsName.toLowerCase().includes('usdc')) {
+        score += 10;
       }
       
       return {
@@ -262,16 +288,18 @@ const ChatAgent: React.FC = () => {
       };
     });
     
-    // 排序并取前三名
+    // 按综合得分排序
     poolScores.sort((a, b) => b.score - a.score);
-    const topPools = poolScores.slice(0, 3);
+    
+    // 取前三名
+    const bestPools = poolScores.slice(0, 3);
     
     // 生成分析报告
     let response = `Based on my analysis of current data, here are the liquidity pools with the best potential returns on HyperIndex:\n\n`;
     
-    topPools.forEach((item, index) => {
+    bestPools.forEach((item, index) => {
       const pool = item.pool;
-      response += `**${index + 1}. ${pool.pairsName} Pool**\n`;
+      response += `**${index + 1}. ${pool.pairsName}**\n`;
       
       // 添加TVL信息
       response += `- Total Value Locked: ${pool.TVL}\n`;
