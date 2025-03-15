@@ -53,7 +53,7 @@ export interface TokenPriceData {
 	timestamp: string
 }
 export const getTokens = async (): Promise<Token[]> => {
-	const requestUrl = process.env.NODE_ENV !== 'development' 
+	const requestUrl = process.env.NODE_ENV === 'development' 
    	? '/api/testnet-explore/tokens'
 		// ? '/api/explore/tokens'
     : '/api/explore/tokens';
@@ -64,7 +64,7 @@ export const getTokens = async (): Promise<Token[]> => {
 }
 
 export const getPools = async (): Promise<Pool[]> => {
-	const requestUrl = process.env.NODE_ENV !== 'development' 
+	const requestUrl = process.env.NODE_ENV === 'development' 
     ? '/api/testnet-explore/pools'
 		// ? '/api/explore/pools'
     : '/api/explore/pools';
