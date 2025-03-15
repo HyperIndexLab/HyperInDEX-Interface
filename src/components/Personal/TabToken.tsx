@@ -68,7 +68,7 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 				const balance = formatTokenBalance(token.value, token.token.decimals);
 				
 				// 计算代币价值
-				let tokenValue = tokenPrice === '0' 
+				const tokenValue = tokenPrice === '0' 
 					? balance 
 					: BigNumber(tokenPrice).multipliedBy(BigNumber(balance)).toString();
 				
