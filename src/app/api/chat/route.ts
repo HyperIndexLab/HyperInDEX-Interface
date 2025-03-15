@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     incrementRateLimit(clientIp);
 
     // 如果用户没有指定系统消息，添加默认的系统消息
-    let hasSystemMessage = messages.some(m => m.role === 'system');
+    const hasSystemMessage = messages.some(m => m.role === 'system');
     
     const finalMessages = hasSystemMessage 
       ? messages 

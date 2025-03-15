@@ -8,7 +8,6 @@ import remarkGfm from 'remark-gfm';
 import { useSelector } from 'react-redux';
 import { selectTokens } from '@/store/tokenListSlice';
 import { getTokens, getPools, type Token as ExploreToken, type Pool } from '@/request/explore';
-import { Token as StoreToken } from '@/store/tokenListSlice';
 
 // 预定义问题选项
 const QUICK_QUESTIONS = [
@@ -130,7 +129,7 @@ const ChatAgent: React.FC = () => {
 
     // 分析指标：交易量、价格变化、流动性池参与度
     // 根据实际数据计算得分
-    let tokenScores = allTokens.map(token => {
+    const tokenScores = allTokens.map(token => {
       let score = 0;
       
       // 计算该代币参与了多少个流动性池
@@ -230,7 +229,7 @@ const ChatAgent: React.FC = () => {
     
     // 分析指标：TVL、APY、交易量、交易对组合
     // 根据实际数据计算得分
-    let poolScores = explorePools.map(pool => {
+    const poolScores = explorePools.map(pool => {
       let score = 0;
       
       // 添加TVL得分，使用安全解析函数
@@ -426,7 +425,6 @@ const ChatAgent: React.FC = () => {
       });
 
       // 获取速率限制信息
-      const rateLimitLimit = response.headers.get('X-RateLimit-Limit');
       const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
       const rateLimitReset = response.headers.get('X-RateLimit-Reset');
 
