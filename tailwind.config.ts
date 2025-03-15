@@ -21,6 +21,7 @@ export default {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        'custom-purple': 'oklch(0.28 0.07 261.98)',
       },
       fontFamily: {
         // 设置默认字体为 Geist

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import BigNumber from "bignumber.js";
 import Image from "next/image";
 import Link from "next/link";
+import { PlusIcon } from "@heroicons/react/24/outline";
 
 interface TabPoolProps extends PoolInfo {
   rate: string; // 汇率
@@ -14,7 +15,7 @@ interface TabPoolProps extends PoolInfo {
 const PoolSkeleton = () => (
   <div className="mt-4 space-y-4 animate-pulse">
     {[...Array(3)].map((_, i) => (
-      <div key={i} className="bg-white/[0.08] rounded-2xl p-4 space-y-4">
+      <div key={i} className="bg-white/[0.08] rounded-xl p-4 space-y-4">
         {/* Token Pair */}
         <div className="flex items-center">
           <div className="relative w-12 h-6">
@@ -72,58 +73,82 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
       {tabPools.length > 0 ? (
         tabPools.map((pool) => (
           <div
-            className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-4 mb-4 hover:bg-base-200/50 transition-all duration-300 cursor-pointer"
+            className="bg-[#131629]/60 border border-[#2a2f42] rounded-xl p-5 mb-4 hover:bg-[#1a1f36]/80 transition-all duration-300 cursor-pointer relative overflow-hidden"
             key={pool.pairAddress}
           >
-            <div className="flex items-center">
-              <div className="relative w-12 h-6">
-                <Image
-                  src="https://hyperindex.4everland.store/index-coin.jpg"
-                  alt={pool.token0Symbol}
-                  width={24}
-                  height={24}
-                  unoptimized
-                  className="w-6 h-6 rounded-full absolute left-0"
-                />
-                <Image
-                  src="https://hyperindex.4everland.store/index-coin.jpg"
-                  alt={pool.token1Symbol}
-                  width={24}
-                  height={24}
-                  unoptimized
-                  className="w-6 h-6 rounded-full absolute left-4"
-                />
+            {/* Background subtle gradients for DeFi look */}
+            <div className="absolute -right-20 -top-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
+            <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl"></div>
+            
+            {/* Content with better layout */}
+            <div className="relative">
+              {/* Top section with token pair */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="relative w-12 h-6">
+                    <Image
+                      src="https://hyperindex.4everland.store/index-coin.jpg"
+                      alt={pool.token0Symbol}
+                      width={24}
+                      height={24}
+                      unoptimized
+                      className="w-6 h-6 rounded-full absolute left-0 border border-[#2a2f42] shadow-lg"
+                    />
+                    <Image
+                      src="https://hyperindex.4everland.store/index-coin.jpg"
+                      alt={pool.token1Symbol}
+                      width={24}
+                      height={24}
+                      unoptimized
+                      className="w-6 h-6 rounded-full absolute left-4 border border-[#2a2f42] shadow-lg"
+                    />
+                  </div>
+                  <div className="text-sm font-bold ml-2">
+                    {pool.token0Symbol}/{pool.token1Symbol}
+                  </div>
+                </div>
+                
+                <div className="bg-[#212746] text-[#8c93b8] rounded-full px-3 py-1 text-xs font-medium">
+                  {pool.poolShare}
+                </div>
               </div>
-              <div className="text-sm">
-                {pool.token0Symbol}/{pool.token1Symbol}
+              
+              {/* Middle section with details in a grid */}
+              <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="bg-[#141830]/80 rounded-lg p-3">
+                  <div className="text-xs text-[#8c93b8] mb-1">Your LP Tokens</div>
+                  <div className="font-bold text-[17px]">{pool.userLPBalance}</div>
+                </div>
+                
+                <div className="bg-[#141830]/80 rounded-lg p-3">
+                  <div className="text-xs text-[#8c93b8] mb-1">Rate</div>
+                  <div className="font-medium text-sm">
+                    1 {pool.token0Symbol} = <span className="text-white">{pool.rate}</span> {pool.token1Symbol}
+                  </div>
+                </div>
               </div>
-              <div className="opacity-50 bg-base-200 ml-2 rounded-full px-2 py-1 text-xs">
-                {pool.poolShare}
+              
+              {/* Bottom section with add button */}
+              <div className="mt-4 flex justify-end">
+                <Link
+                  href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
+                  className="bg-custom-purple text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center transition-colors"
+                >
+                  Add
+                </Link>
               </div>
-            </div>
-            <div className="mt-4">
-              <div className="text-sm opacity-50">Your LP Tokens</div>
-              <div className="font-medium">{pool.userLPBalance}</div>
-              <div className="text-sm opacity-50">Rate</div>
-              <div className="font-medium">
-                1 {pool.token0Symbol} = {pool.rate} {pool.token1Symbol}
-              </div>
-            </div>
-            <div className="mt-4 flex gap-2">
-              <Link
-                href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
-                className="btn btn-primary"
-              >
-                Add
-              </Link>
             </div>
           </div>
         ))
       ) : (
-        <div className="flex flex-col items-center justify-center h-full mt-8">
-          <span className="text-base-content/50">No pools yet</span>
-          <Link href="/liquidity" className="btn btn-primary mt-4">
-            + New position
+        <div className="flex flex-col items-center justify-center mt-10 py-10 bg-[#131629]/60 border border-[#2a2f42] rounded-xl">
+          <span className="text-[#8c93b8]">No pools yet</span>
+          <Link 
+            href="/liquidity" 
+            className="mt-4 bg-[#2172e5] hover:bg-[#1a66d6] text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center transition-colors"
+          >
+            <PlusIcon className="w-4 h-4 mr-1" />
+            New position
           </Link>
         </div>
       )}
