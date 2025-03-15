@@ -12,7 +12,9 @@ export default function CopyAddress({
 }) {
   const [, setCopied] = useState(false);
 
-  const handleCopy = () => {
+  const handleCopy = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    e.preventDefault();
     navigator.clipboard.writeText(address);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -40,7 +42,7 @@ export default function CopyAddress({
       <p className="hover:text-primary text-sm">
         {truncateAddress(address, headLength, tailLength)}
       </p>
-      <button>
+      <button className="hover:text-primary">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"

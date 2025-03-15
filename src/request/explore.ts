@@ -18,7 +18,7 @@ export interface Pool {
 	id: string
 	token0: string
 	token1: string
-	TVL: number
+	TVL: string
 	APY: number
 	tradingVolume1D: number
 	tradingVolume30D: number
@@ -58,6 +58,8 @@ export const getTokens = async (): Promise<Token[]> => {
 		// ? '/api/explore/tokens'
     : '/api/explore/tokens';
 	const res = await api.get(requestUrl)
+	
+	// 过滤掉symbol为"Pump"的代币
 	return res.data as Token[]
 }
 

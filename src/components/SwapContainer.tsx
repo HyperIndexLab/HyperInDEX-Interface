@@ -856,11 +856,17 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   // 添加 ref
   const settingsRef = useRef<HTMLDivElement>(null);
 
-  // 添加点击外部关闭弹窗的效果
+  // 添加点击外部关闭弹窗的效果，并在关闭时验证slippage
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (settingsRef.current && !settingsRef.current.contains(event.target as Node)) {
         setShowSettingsPopup(false);
+        
+        // 验证slippage值，如果不合法或为空，设置为5.5
+        const numValue = parseFloat(slippage);
+        if (slippage === '' || isNaN(numValue) || numValue <= 0 || numValue > 50) {
+          setSlippage('5.5');
+        }
       }
     };
 
@@ -868,7 +874,18 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, []);
+  }, [slippage]);
+
+  // 监听弹窗状态变化，当关闭时验证slippage
+  useEffect(() => {
+    if (!showSettingsPopup) {
+      // 当弹窗关闭时验证slippage值
+      const numValue = parseFloat(slippage);
+      if (slippage === '' || isNaN(numValue) || numValue <= 0 || numValue > 50) {
+        setSlippage('5.5');
+      }
+    }
+  }, [showSettingsPopup, slippage]);
 
   // 添加处理百分比点击的函数
   const handlePercentageClick = (percentage: number) => {
@@ -915,28 +932,30 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
             {showSettingsPopup && (
               <div 
                 ref={settingsRef}
-                className="absolute right-0 top-10 w-[320px] bg-[#1c1d22] rounded-2xl p-4 shadow-2xl z-50"
+                className="absolute right-0 top-10 w-[320px] bg-[#1c1d22] rounded-2xl p-4 shadow-2xl z-50 border border-gray-800/20"
               >
                 {/* Slippage Settings */}
-                <div className="mb-6">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-lg text-base-content/80">Max slippage</span>
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-gray-300 font-medium">Max slippage</span>
                     <div className="tooltip" data-tip="Your transaction will revert if the price changes unfavorably by more than this percentage.">
-                      <InformationCircleIcon className="w-5 h-5 text-base-content/60" />
+                      <InformationCircleIcon className="w-4 h-4 text-gray-500" />
                     </div>
                   </div>
                   {isHighSlippage(slippage) && (
-                    <div className="flex items-center gap-2 mb-3 text-warning">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <div className="flex items-center gap-2 mb-2 text-amber-400 text-xs">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                         <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
                       </svg>
-                      <span>High slippage</span>
+                      <span>High slippage increases risk of price impact</span>
                     </div>
                   )}
                   <div className="relative">
                     <input
                       type="text"
-                      className={`input bg-[#2c2d33] border-0 w-full pr-24 focus:outline-none ${isHighSlippage(slippage) ? 'text-warning' : ''}`}
+                      className={`w-full py-2 px-3 rounded-xl bg-[#242631] text-sm text-white focus:outline-none focus:ring-1 ${
+                        isHighSlippage(slippage) ? 'focus:ring-amber-400' : 'focus:ring-blue-500'
+                      }`}
                       value={slippage}
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^\d.]/g, '');
@@ -954,8 +973,14 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
                       }}
                       placeholder="Custom slippage"
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <span className={`${Number(slippage) ? (isHighSlippage(slippage) ? 'text-warning' : 'text-primary') : 'text-base-content/60'} font-medium bg-base-100 px-4 py-2 rounded-full`}>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-lg ${
+                        Number(slippage) === 5.5 
+                          ? 'bg-blue-500/20 text-blue-400' 
+                          : isHighSlippage(slippage)
+                            ? 'bg-amber-500/20 text-amber-400'
+                            : 'bg-gray-700 text-gray-300'
+                      }`}>
                         {Number(slippage) === 5.5 ? 'Auto' : 'Custom'}
                       </span>
                     </div>
@@ -964,16 +989,16 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
                 {/* Transaction Deadline */}
                 <div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="text-lg text-base-content/80">Tx. deadline</span>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-gray-300 font-medium">Tx. deadline</span>
                     <div className="tooltip" data-tip="Your transaction will revert if it is pending for more than this period of time.">
-                      <InformationCircleIcon className="w-5 h-5 text-base-content/60" />
+                      <InformationCircleIcon className="w-4 h-4 text-gray-500" />
                     </div>
                   </div>
                   <div className="relative">
                     <input
                       type="text"
-                      className="input bg-[#2c2d33] border-0 w-full pr-16 focus:outline-none"
+                      className="w-full py-2 px-3 rounded-xl bg-[#242631] text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={deadline}
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^\d.]/g, '');
@@ -987,7 +1012,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
                       }}
                       placeholder="Enter deadline"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-base-content/60">minutes</span>
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">minutes</span>
                   </div>
                 </div>
               </div>

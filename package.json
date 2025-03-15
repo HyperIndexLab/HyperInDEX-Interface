@@ -31,6 +31,7 @@
     "react-daisyui": "^5.0.5",
     "react-dom": "^19.0.0",
     "react-jazzicon": "^1.0.4",
+    "react-markdown": "^10.1.0",
     "react-redux": "^9.2.0",
     "react-toastify": "^11.0.3",
     "react-tsparticles": "^2.12.2",

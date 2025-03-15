@@ -12,6 +12,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import ParticlesBackground from '../components/ParticlesBackground';
 import { Suspense } from "react";
+import ChatAgent from '@/components/ChatAgent';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -60,6 +61,7 @@ export default function RootLayout({
             </AuthCoreContextProvider>
           </Theme>
           <ToastContainer />
+          <ChatAgent />
         </body>
       </html>
     </Provider>

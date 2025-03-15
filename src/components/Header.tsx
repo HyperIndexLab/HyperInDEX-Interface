@@ -114,7 +114,7 @@ const MENU_MAP: MenuItem[] = [
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
+              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
             />
           </svg>
         ),
@@ -245,7 +245,7 @@ export default function Header() {
   
 
   return (
-    <div className="w-full top-0 z-50">
+    <div className="w-full top-0 z-50 font-sora">
       <div className="navbar h-14 max-w-[1200px] mx-auto px-4">
         {/* Logo 部分 */}
         <div className="flex-1">
@@ -256,7 +256,7 @@ export default function Header() {
 
         {/* 菜单部分 */}
         <div className="flex-none hidden lg:block">
-          <ul className="menu menu-horizontal gap-1">
+          <ul className="menu menu-horizontal gap-1 font-sora">
             {MENU_MAP.map((item) => (
               <li key={item.path} className="relative">
                 {!item.children ? (
@@ -264,8 +264,10 @@ export default function Header() {
                     href={item.path}
                     target={item.target}
                     rel={item.rel}
-                    className={`rounded-lg px-3 flex items-center gap-2 hover:bg-base-200 transition-colors ${
-                      pathname === item.path ? "bg-primary/20 text-primary border border-primary rounded-lg" : ""
+                    className={`px-3 flex items-center gap-2 transition-colors ${
+                      pathname === item.path 
+                        ? "text-white font-medium" 
+                        : "text-gray-400 hover:text-gray-200"
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -276,7 +278,7 @@ export default function Header() {
                 ) : (
                   <div className="group">
                     <button
-                      className={`flex items-center gap-2 rounded-lg px-3`}
+                      className="flex items-center gap-2 px-3 text-gray-400 hover:text-gray-200"
                     >
                       {item.icon}
                       {item.label}
@@ -284,15 +286,15 @@ export default function Header() {
                     
                     {/* 简化的二级菜单 */}
                     <div className="absolute left-[-8px] top-full pt-2">  {/* 增加 padding 确保鼠标移动时不会失去 hover */}
-                      <div className="bg-primary/10 rounded-2xl shadow-lg overflow-hidden w-52 hidden group-hover:block">
+                      <div className="bg-black/90 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden w-52 hidden group-hover:block border border-gray-800">
                         {item.children.map((child) => (
                           <Link
                             key={child.path}
                             href={child.path}
                             target={child.target}
                             rel={child.rel}
-                            className={`flex items-center gap-3 px-6 py-3 hover:bg-primary/20 transition-colors ${
-                              pathname === child.path ? "text-primary" : ""
+                            className={`flex items-center gap-3 px-6 py-3 hover:bg-gray-800/30 transition-colors ${
+                              pathname === child.path ? "text-white font-medium" : "text-gray-400"
                             }`}
                           >
                             {child.icon}
@@ -338,7 +340,7 @@ export default function Header() {
                   return (
                     <button
                       onClick={openConnectModal}
-                      className="btn btn-outline px-4 h-10 min-h-0 border border-surface-button hover:bg-surface-button-hover border-none rounded-full font-normal text-sm"
+                      className="font-sora bg-[#243056] hover:bg-[#384f80] text-white rounded-full px-5 h-10 text-sm font-medium transition-colors flex items-center justify-center"
                     >
                       Connect Wallet
                     </button>
@@ -348,16 +350,16 @@ export default function Header() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setOpen(true)}
-                      className="btn btn-outline px-4 h-10 min-h-0 border border-surface-button hover:bg-surface-button-hover rounded-full font-normal text-sm"
+                      className="font-sora bg-[#1a1f2a] hover:bg-[#2c3340] text-white rounded-full px-5 h-10 text-sm font-medium transition-colors flex items-center justify-center gap-2"
                     >
+                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
                       {account.displayName}
-                      
                     </button>
                     {isWrongNetwork && (
-                         <div className="top-full  text-center">
-                          <span className="text-error text-sm">Wrong Network</span>
-                        </div>
-                      )}
+                      <div className="top-full text-center">
+                        <span className="text-error text-sm">Wrong Network</span>
+                      </div>
+                    )}
                   </div>
                 );
               }}
@@ -378,14 +380,29 @@ export default function Header() {
         />
         <div className="drawer-side z-[100]">
           <label htmlFor="my-drawer" className="drawer-overlay"></label>
-          <div className="w-full max-w-[320px] min-h-screen bg-base-200 text-base-content">
+          <div className="w-full max-w-[320px] min-h-screen bg-black/90 backdrop-blur-md text-gray-300 font-sora">
             {/* 关闭按钮 */}
-            <div className="sticky top-0 flex justify-between items-center p-4 bg-base-200">
-              <span className="text-lg font-medium">Menu</span>
+            <div className="sticky top-0 flex justify-between items-center p-4 border-b border-gray-800">
+              <span className="text-lg font-medium text-white">Menu</span>
               <button
                 className="btn btn-ghost btn-circle"
                 onClick={() => setIsMobileMenuOpen(false)}
-              ></button>
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
 
             {/* 菜单列表 */}
@@ -396,10 +413,10 @@ export default function Header() {
                     {!item.children ? (
                       <Link
                         href={item.path}
-                        className={`flex items-center gap-3 p-3 text-base rounded-lg hover:bg-base-300 ${
+                        className={`flex items-center gap-3 p-3 text-base transition-colors ${
                           pathname === item.path
-                            ? "bg-primary/10 text-primary"
-                            : ""
+                            ? "text-white font-medium"
+                            : "text-gray-400 hover:text-gray-200"
                         }`}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
@@ -409,10 +426,10 @@ export default function Header() {
                     ) : (
                       <details className="group">
                         <summary
-                          className={`w-full flex items-center gap-3 p-3 text-base rounded-lg hover:bg-base-300 marker:content-none ${
+                          className={`w-full flex items-center gap-3 p-3 text-base transition-colors cursor-pointer ${
                             pathname === item.path
-                              ? "bg-primary/10 text-primary"
-                              : ""
+                              ? "text-white font-medium"
+                              : "text-gray-400 hover:text-gray-200"
                           }`}
                         >
                           {item.icon}
@@ -438,10 +455,10 @@ export default function Header() {
                                 href={child.path}
                                 target={child.target}
                                 rel={child.rel}
-                                className={`flex items-center gap-3 p-3 text-base rounded-lg hover:bg-base-300 ${
+                                className={`flex items-center gap-3 p-3 text-base transition-colors ${
                                   pathname === child.path
-                                    ? "bg-primary/10 text-primary"
-                                    : ""
+                                    ? "text-white font-medium"
+                                    : "text-gray-400 hover:text-gray-200"
                                 }`}
                                 onClick={() => setIsMobileMenuOpen(false)}
                               >
