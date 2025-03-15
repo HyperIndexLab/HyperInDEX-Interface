@@ -32,6 +32,10 @@ export default function RootLayout({
   return (
     <Provider store={store}>
       <html lang="en" data-theme="dark">
+        <head>
+          <title>Hyper Index</title>
+          <meta name="description" content="Hyper Index: The premier decentralized exchange (DEX) on HashKey Chain offering seamless trading, liquidity provision, and DeFi services. Experience low fees, high security, and advanced trading tools for the HashKey ecosystem." />
+        </head>
         <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}>
           <Theme dataTheme="dark">
             <AuthCoreContextProvider
