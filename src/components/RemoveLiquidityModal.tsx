@@ -164,12 +164,14 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
 
 
       if (result.success) {
-        toast({
-          type: 'success',
-          message: 'Successfully removed liquidity',
-          isAutoClose: true
-        });
-        onClose();
+        if (isSuccess) {
+          toast({
+            type: 'success',
+            message: 'Successfully removed liquidity',
+            isAutoClose: true
+          });
+          onClose();
+        }
       } else {
         toast({
           type: 'error',
