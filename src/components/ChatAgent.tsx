@@ -63,6 +63,51 @@ const safeParseFloat = (value: unknown): number => {
   return 0;
 };
 
+// 修改格式化价格的函数，正确处理科学计数法
+const formatPrice = (priceString: string | undefined): number => {
+  if (!priceString) return 0;
+  
+  // 检查是否为 NaN
+  if (priceString.includes('NaN') || priceString === 'undefined') {
+    return 0;
+  }
+  
+  try {
+    // 处理科学计数法格式，包括可能有空格的情况如 "1.71 e-6"
+    if (priceString.includes('e-') || priceString.includes('E-')) {
+      
+      // 移除美元符号
+      const cleanString = priceString.replace('$', '');
+      
+      // 转换科学计数法为普通数字
+      const floatValue = parseFloat(cleanString);
+      
+      // 检查是否为 NaN
+      if (isNaN(floatValue)) {
+        return 0;
+      }
+      
+      return floatValue;
+    }
+    
+    // 移除美元符号和其他非数字字符（保留小数点和负号）
+    const numericValue = priceString.replace(/[^\d.-]/g, '');
+    
+    // 普通数字处理
+    const floatValue = parseFloat(numericValue);
+    
+    // 检查是否为 NaN
+    if (isNaN(floatValue)) {
+      return 0;
+    }
+    
+    return floatValue;
+  } catch (error) {
+    console.error('Error formatting price:', error);
+    return 0; // 任何解析错误都返回零
+  }
+}
+
 // 添加一个专门处理TVL值的函数
 const parseTVL = (tvlString: string): number => {
   if (!tvlString || typeof tvlString !== 'string') return 0;
@@ -86,6 +131,48 @@ const parseTVL = (tvlString: string): number => {
   }
   
   return parseFloat(cleanValue || '0');
+};
+
+// 修正函数来处理大整数格式的交易量，使用 decimals
+const extractNumericValue = (volumeString: string | number | undefined, decimals?: string | number | null): number => {
+  if (!volumeString) return 0;
+  
+  // 确定要使用的 decimals 值
+  let decimalPlaces = 18; // 默认值
+  if (decimals !== undefined && decimals !== null) {
+    // 如果提供了 decimals，尝试转换为数字
+    const parsedDecimals = parseInt(String(decimals), 10);
+    if (!isNaN(parsedDecimals)) {
+      decimalPlaces = parsedDecimals;
+    }
+  }
+  
+  try {
+    // 如果已经是数字类型
+    if (typeof volumeString === 'number') {
+      return volumeString / (10 ** decimalPlaces);
+    }
+    
+    // 处理字符串格式
+    if (typeof volumeString === 'string') {
+      // 移除所有非数字字符
+      const cleanedString = volumeString.replace(/[^\d.-]/g, '');
+      
+      // 将字符串转换为数字并除以 10^decimals
+      const numericValue = parseFloat(cleanedString) / (10 ** decimalPlaces);
+      
+      // 检查是否为有效数字
+      if (isNaN(numericValue)) {
+        return 0;
+      }
+      
+      return numericValue;
+    }
+  } catch (error) {
+    console.error('Error processing volume:', error);
+  }
+  
+  return 0;
 };
 
 const ChatAgent: React.FC = () => {
@@ -162,19 +249,33 @@ const ChatAgent: React.FC = () => {
         pool.token0 === token.address || pool.token1 === token.address
       ).length;
       
-      // 添加交易量得分，使用安全解析函数
-      const volume = safeParseFloat(token.tradingVolume);
-      score += volume;
+      // 添加交易量与价格相乘的得分，使用安全解析函数和 decimals
+      const volume = extractNumericValue(token.tradingVolume, token.decimals);
+      const price = formatPrice(token.price?.replace('$', '') || '0');
       
-      // 添加价格变化得分 (如果有)
+      // 交易量与价格相乘，但需要归一化处理，避免数值过大
+      // 使用对数函数来压缩大数值
+      const volumeValue = volume * price;
+      const volumeScore = Math.log10(volumeValue + 1) * 10; // +1 避免对数为负
+      score += volumeScore;
+      
+      // 添加价格变化得分 (如果有)，使用归一化处理
       if (token.change24H && !token.change24H.includes('NaN')) {
         const change = safeParseFloat(token.change24H);
-        // 正变化加分，负变化减分
-        score += change;
+        
+        // 归一化处理价格变化
+        // 使用 sigmoid 函数将任何范围的变化值映射到一个合理的范围
+        // 这样极端的价格变化不会过度影响总分
+        const normalizedChange = 20 * (2 / (1 + Math.exp(-0.1 * change)) - 1);
+        
+        score += normalizedChange;
       }
       
-      // 流动性池参与度
-      score += poolCount * 10; // 每个池加10分
+      // 流动性池参与度 - 根据交易量调整权重
+      // 如果交易量很低，则参与度的权重下降
+      const poolWeight = 15; // 默认权重
+      
+      score += poolCount * poolWeight;
       
       // 如果是原生或稳定币加分
       if (token.symbol === 'HUSDT' || (token.name && typeof token.name === 'string' && token.name.includes('Stable'))) {
@@ -184,10 +285,11 @@ const ChatAgent: React.FC = () => {
       return {
         token,
         score,
-        poolCount
+        poolCount,
+        volumeValue, // 保存计算后的交易量价值，用于显示
+        poolWeight // 保存池权重，用于调试
       };
     });
-    
     // 排序并取前三名
     tokenScores.sort((a, b) => b.score - a.score);
     const topTokens = tokenScores.slice(0, 3);
@@ -199,9 +301,14 @@ const ChatAgent: React.FC = () => {
       const token = item.token;
       response += `**${index + 1}. ${token.symbol || 'Unknown'} (${token.name || 'Unknown Token'})**\n`;
       
-      // 添加价格信息
+      // 添加价格信息 - 使用数字格式化显示
       if (token.price && token.price !== '$0.00') {
-        response += `- Current price: ${token.price}\n`;
+        const priceValue = formatPrice(token.price);
+        if (priceValue < 0.000001) {
+          response += `- Current price: $${priceValue.toExponential(2)}\n`;
+        } else {
+          response += `- Current price: $${priceValue.toFixed(priceValue < 0.01 ? 8 : 2)}\n`;
+        }
       }
       
       // 添加24小时变化
@@ -213,13 +320,14 @@ const ChatAgent: React.FC = () => {
       // 添加交易量
       if (token.tradingVolume && token.tradingVolume !== '0') {
         response += `- Trading volume: ${token.tradingVolume}\n`;
+        response += `- Volume value: $${item.volumeValue.toFixed(2)}\n`;
       }
       
       // 添加流动性池信息
       response += `- Present in ${item.poolCount} liquidity pools\n`;
       
       // 添加简短分析
-      response += `- ${getTokenAnalysis(token)}\n\n`;
+      response += `- ${getTokenAnalysis(token, item.volumeValue)}\n\n`;
     });
     
     // 添加建议
@@ -228,20 +336,28 @@ const ChatAgent: React.FC = () => {
     return response;
   };
   
-  // 获取代币分析
-  const getTokenAnalysis = (token: any) => {
+  // 获取代币分析 - 添加交易量参数
+  const getTokenAnalysis = (token: any, volumeValue: number) => {
     const symbol = token.symbol?.toLowerCase() || '';
     
+    // 基于交易量添加额外分析
+    let volumeAnalysis = '';
+    if (volumeValue > 10000) {
+      volumeAnalysis = " with strong trading activity";
+    } else if (volumeValue < 100) {
+      volumeAnalysis = " though currently with limited trading activity";
+    }
+    
     if (symbol.includes('usdt') || symbol.includes('usdc')) {
-      return "Stablecoins provide reduced volatility and are useful for preserving value during market fluctuations";
+      return "Stablecoins provide reduced volatility and are useful for preserving value during market fluctuations" + volumeAnalysis;
     } else if (symbol === 'fee') {
-      return "May be used for protocol fee distribution, potentially beneficial as platform adoption grows";
+      return "May be used for protocol fee distribution, potentially beneficial as platform adoption grows" + volumeAnalysis;
     } else if (symbol === 'mint') {
-      return "If used for creating new tokens, could gain value as the platform expands";
+      return "If used for creating new tokens, could gain value as the platform expands" + volumeAnalysis;
     } else if (symbol === 'basic') {
-      return "Core token with fundamental utility in the ecosystem";
+      return "Core token with fundamental utility in the ecosystem" + volumeAnalysis;
     } else {
-      return "Shows potential based on current metrics and network position";
+      return "Shows potential based on current metrics and network position" + volumeAnalysis;
     }
   };
 
