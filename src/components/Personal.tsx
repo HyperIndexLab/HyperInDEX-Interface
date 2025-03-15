@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAccount, useDisconnect } from 'wagmi';
 import CopyAddress from './copyAddress';
-import Jazzicon, { jsNumberForAddress } from 'react-jazzicon';
 import Image from 'next/image';
 import {  selectTokens } from '@/store/tokenListSlice';
 import { useDispatch, useSelector } from 'react-redux';
@@ -12,11 +11,22 @@ import { getTokens, Token } from '@/request/explore';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
 import TabPool from './Personal/TabPool';
 import BigNumber from 'bignumber.js';
+import { XMarkIcon, DocumentDuplicateIcon } from '@heroicons/react/24/outline';
+import { ArrowDownCircleIcon, BuildingLibraryIcon } from '@heroicons/react/24/solid';
 
 export interface TokenBalance {
   address: string;
   balance: string;
 }
+
+// CEX列表数据
+const CEX_LIST = [
+  { name: 'HashKey Global', icon: 'https://hyperindex.4everland.store/hashkey.jpeg', link: 'https://global.hashkey.com/en-US/spot/HSK_USDT' },
+  { name: 'Gate.io', icon: 'https://hyperindex.4everland.store/gate.png', link: 'https://www.gate.io/trade/HSK_USDT' },
+  { name: 'KuCoin', icon: 'https://hyperindex.4everland.store/kucoin.png', link: 'https://www.kucoin.com/trade/HSK-USDT' },
+  { name: 'BitKan', icon: 'https://hyperindex.4everland.store/bitkan.png', link: 'https://bitkan.com/zh/trade/HSK-USDT' },
+  { name: 'MEXC', icon: 'https://hyperindex.4everland.store/mexc.png', link: 'https://www.mexc.com/exchange/HSK_USDT?_from=search' },
+];
 
 // 骨架屏组件
 const TokenSkeleton = () => (
@@ -52,6 +62,9 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 	const [totalBalance, setTotalBalance] = useState<string>('0');
 	const [tokenBalances, setTokenBalances] = useState<TokenTab[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
+  // 新增状态用于控制弹窗显示
+  const [showBuyModal, setShowBuyModal] = useState(false);
+  const [showReceiveModal, setShowReceiveModal] = useState(false);
 
 	const logout = () => {
 		disconnect();
@@ -140,6 +153,43 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 		}
 	}, [setTotalBalance, tokenData, tokenData.length, userTokens, userTokens.length])
 
+  // 格式化余额，分离整数和小数部分
+  const formatBalanceWithDecimals = (balance: string) => {
+    // 转为数字
+    const num = parseFloat(balance);
+    
+    // 判断是否为0（或接近0）
+    const isZero = Math.abs(num) < 0.000001;
+    
+    // 如果是0，显示2位小数，否则显示6位小数
+    const decimalPlaces = isZero ? 2 : 6;
+    const formattedNum = num.toFixed(decimalPlaces);
+    
+    // 分离整数和小数部分
+    const parts = formattedNum.split('.');
+    
+    // 处理小数部分，移除末尾的0，但如果是0值，保留2位小数
+    let decimal = parts.length > 1 ? parts[1] : '';
+    
+    // 如果不是0值，移除末尾的0
+    if (!isZero) {
+      while (decimal.length > 0 && decimal.endsWith('0')) {
+        decimal = decimal.slice(0, -1);
+      }
+    } else {
+      // 如果是0值，确保有2位小数
+      decimal = decimal.padEnd(2, '0');
+    }
+    
+    // 如果小数部分为空，不显示小数点，否则添加小数点
+    const decimalPart = decimal.length > 0 ? '.' + decimal : '';
+    
+    return {
+      integer: parts[0],
+      decimal: decimalPart
+    };
+  };
+
   return (
     <>
       {/* 侧边栏遮罩 */}
@@ -148,6 +198,94 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
           className="fixed inset-0 bg-black/60 z-40 transition-opacity"
           onClick={() => setOpen(false)}
         />
+      )}
+
+      {/* Buy Modal */}
+      {showBuyModal && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center">
+          <div className="bg-[#121212] border border-gray-800 w-[90%] max-w-md rounded-2xl p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-extrabold flex items-center gap-2">Buy <img className="w-6 h-6 rounded-full" src="https://hyperindex.4everland.store/HSK-LOGO.png" alt="HSK" /> HSK from this CEX</h2>
+              <button 
+                className="text-gray-400 hover:text-white"
+                onClick={() => setShowBuyModal(false)}
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {CEX_LIST.map((cex, index) => (
+                <a 
+                  key={index} 
+                  href={cex.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-4 p-3 bg-[#1E1E1E] hover:bg-[#252525] rounded-xl transition-colors"
+                >
+                  <img src={cex.icon} alt={cex.name} className="w-8 h-8 rounded-full" />
+                  <span className="flex-1">{cex.name}</span>
+                  <ArrowDownCircleIcon className="w-5 h-5 transform rotate-[-135deg] text-gray-400" />
+                </a>
+              ))}
+            </div>
+            
+            <div className="mt-6 text-sm text-gray-400 text-center">
+              Select an exchange to buy HSK tokens
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Receive Modal */}
+      {showReceiveModal && (
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center">
+          <div className="bg-[#121212] border border-gray-800 w-[90%] max-w-md rounded-2xl p-6 shadow-xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold">Receive crypto</h2>
+              <button 
+                className="text-gray-400 hover:text-white"
+                onClick={() => setShowReceiveModal(false)}
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <p className="text-gray-400 text-center mb-8">
+              Fund your wallet by transferring crypto from another wallet or account
+            </p>
+            
+            <div className="bg-[#1B1B1B] p-2 rounded-2xl mb-6 w-full">
+              {address && (
+                <div className="flex items-center justify-between px-4">
+                  <div className="flex items-center justify-center gap-2 rounded-full">
+                    <img 
+                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      alt="HyperIndex Logo" 
+                      className="w-6 h-6 rounded-full" 
+                    />
+                    <p className="text-gray-400 text-base font-extrabold">
+                      {address.slice(0, 6)}...{address.slice(-4)}
+                    </p>
+                  </div>
+                  
+                  <div className="flex items-center justify-center gap-4">
+                    <button 
+                      className="w-8 h-8 bg-[#252525] rounded-full flex items-center justify-center hover:bg-[#2a2a2a] transition-colors"
+                      onClick={() => navigator.clipboard.writeText(address || '')}
+                    >
+                      <DocumentDuplicateIcon className='w-5 h-5 text-gray-400' />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="text-sm text-gray-400 text-center">
+              Only send assets on HashKey chain to this address
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 收起按钮 - 固定在抽屉外部左侧 */}
@@ -173,7 +311,16 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
           <div className="flex items-center justify-between px-6 py-5 border-b border-white/[0.08]">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Jazzicon diameter={32} seed={jsNumberForAddress(address || '')} />
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-purple-700">
+                  <Image 
+                    src="https://hyperindex.4everland.store/index-coin.jpg" 
+                    alt="User Avatar" 
+                    width={32} 
+                    height={32}
+                    className="rounded-full object-cover"
+                    unoptimized
+                  />
+                </div>
                 <Image 
                   className="absolute -bottom-1 -right-1 rounded-full" 
                   src={`/img/${connectorName}.png`} 
@@ -195,17 +342,39 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
           </div>
 
           {/* 总资产 */}
-          <div className="px-6 py-4">
+          <div className="px-2 py-4">
             <div className="text-sm font-medium text-gray-400 mb-1">Total Balance</div>
             {isLoading ? (
               <div className="h-8 w-48 bg-white/[0.08] rounded animate-pulse" />
             ) : (
-              <div className="text-[32px] font-medium tracking-[-0.02em]">${totalBalance}</div>
+              <div className="text-[32px] font-medium tracking-[-0.02em]">
+                <span className="text-white mr-1">$</span>
+                <span className="text-white">{formatBalanceWithDecimals(totalBalance).integer}</span>
+                <span className="text-gray-500">{formatBalanceWithDecimals(totalBalance).decimal}</span>
+              </div>
             )}
+            
+            {/* Buy 和 Receive 按钮 */}
+            <div className="flex gap-4 mt-4 h-20">
+              <button 
+                className="flex-1 flex flex-col items-start px-6 h-full justify-center rounded-2xl gap-2 transition-all hover:opacity-90 bg-custom-purple"
+                onClick={() => setShowBuyModal(true)}
+              >
+                <BuildingLibraryIcon className="w-5 h-5 text-primary" />
+                <span className="text-primary font-extrabold">Buy</span>
+              </button>
+              <button 
+                className="flex-1 flex flex-col items-start px-6 h-full justify-center rounded-2xl gap-2 transition-all hover:opacity-90 bg-custom-purple"
+                onClick={() => setShowReceiveModal(true)}
+              >
+                <ArrowDownCircleIcon className="w-5 h-5 text-primary"  />
+                <span className="text-primary font-extrabold">Receive</span>
+              </button>
+            </div>
           </div>
 
           {/* 导航切换 */}
-          <div className="flex px-6 border-b border-white/[0.08]">
+          <div className="flex px-2 border-b border-white/[0.08]">
             <button
               className={`py-4 px-1 text-base font-medium relative ${
                 activeTab === 'token' 
