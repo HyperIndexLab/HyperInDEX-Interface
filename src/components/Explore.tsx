@@ -5,7 +5,6 @@ import { formatUnits } from "viem";
 import { formatNumber } from "@/utils";
 import Image from "next/image";
 import CopyAddress from "./copyAddress";
-import { Button } from "react-daisyui";
 
 export const formatTradeVolume = (
   value: any,
