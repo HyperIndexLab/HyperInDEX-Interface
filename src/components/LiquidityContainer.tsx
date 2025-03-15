@@ -16,7 +16,7 @@ import {
 import { useLiquidityPool } from "@/hooks/useLiquidityPool";
 import { useTokenApproval } from "@/hooks/useTokenApproval";
 import { StepIndicator } from "./StepIndicator";
-import { toast } from "react-toastify";
+
 import Image from "next/image";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTokenList, selectTokens } from "@/store/tokenListSlice";
@@ -24,6 +24,7 @@ import { AppDispatch } from "@/store";
 import { getPools, Pool } from "@/request/explore";
 import { formatTokenBalance } from "@/utils/formatTokenBalance";
 import { estimateAndCheckGas } from "@/utils";
+import { useToast } from "@/components/ToastContext";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -81,6 +82,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     isError: isWriteError,
     error: writeError,
   } = useWriteContract();
+  const { toast } = useToast();
 
 
   const { 
@@ -349,14 +351,10 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     } catch (error) {
       console.error("Supply failed:", error);
       setIsPending(false);
-      toast.error("Failed to add liquidity. Please try again.", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+      toast({
+        type: 'error',
+        message: 'Failed to add liquidity. Please try again.',
+        isAutoClose: true
       });
     }
   };
@@ -370,15 +368,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         setAmount2("");
         setStep(1);
         setIsPending(false);
-        toast.success("Successfully added liquidity!", {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-          progress: undefined,
-        });
+        toast({
+          type: 'success',
+          message: 'Successfully added liquidity!',
+          isAutoClose: true
+        });   
       }, 3000);
     }
 
@@ -405,14 +399,10 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         }
       }
       
-      toast.error(errorMessage, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+      toast({
+        type: 'error',
+        message: errorMessage,
+        isAutoClose: false
       });
     }
 
@@ -429,14 +419,10 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   useEffect(() => {
     if (isApproveSuccess) {
       // 如果授权成功，刷新授权状态
-      toast.success("Token approved successfully!", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+      toast({
+        type: 'success',
+        message: 'Token approved successfully!',
+        isAutoClose: true
       });
     }
   }, [isApproveSuccess]);
@@ -511,7 +497,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     const handleButtonClick = async () => {
       const canProceed = await estimateAndCheckGas(hskBalance);
       if (!canProceed) {
-        toast.error('Insufficient gas, please deposit HSK first');
+        toast({
+          type: 'error',
+          message: 'Insufficient gas, please deposit HSK first',
+          isAutoClose: true
+        });
         return;
       }
       if (needsApproval) {

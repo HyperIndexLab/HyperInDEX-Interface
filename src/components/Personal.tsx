@@ -126,26 +126,51 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 				// 特殊处理HSK和WHSK价格
 				let tokenBalance;
 				let price = '0';
+				let icon_url = '';
 				
 				if (token.token.symbol?.toUpperCase() === 'HSK') {
 					// 如果是HSK，查找WHSK的价格
 					tokenBalance = tokenData.find(t => t.symbol?.toUpperCase() === 'WHSK');
 					price = tokenBalance?.price.replace('$', '') || '0';
+					// HSK使用WHSK的图标
+					icon_url = tokenBalance?.icon_url || '/img/HSK-LOGO.png';
 				} else {
 					tokenBalance = tokenData.find(t => t.address === token.token.address);
 					price = tokenBalance?.price.replace('$', '') || '0';
+					icon_url = tokenBalance?.icon_url || '';
 				}
-			
+				
+				// 特殊处理常见代币图标
+				const symbol = token.token.symbol?.toLowerCase();
+				if (!icon_url && symbol) {
+					const iconMap: Record<string, string> = {
+						'usdt': '/img/usdt.svg',
+						'whsk': '/img/HSK-LOGO.png',
+						'weth': '/img/weth.svg',
+						'usdc.e': '/img/usdc.e.svg',
+						'hsk': '/img/HSK-LOGO.png'
+					};
+					
+					icon_url = iconMap[symbol] || '';
+				}
+				
 				if (tokenBalance) {
 					const priceValue = parseFloat(price);
 					totalBalance = BigNumber(totalBalance).plus(BigNumber(balance).multipliedBy(priceValue));
 				}
 
 				newTokenBalances.push({
-					...token,
-					price
+					price,
+					token: {
+            ...token.token,
+            icon_url: icon_url
+          },
+          token_id: token.token.address,
+          token_instance: null,
+          value: token.value
 				});
 			});
+
 			
 			setTotalBalance(totalBalance.toString());
 			setTokenBalances(newTokenBalances);
@@ -202,7 +227,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 
       {/* Buy Modal */}
       {showBuyModal && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/75 z-[100] flex items-center justify-center">
           <div className="bg-[#121212] border border-gray-800 w-[90%] max-w-md rounded-2xl p-6 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-extrabold flex items-center gap-2">Buy <img className="w-6 h-6 rounded-full" src="https://hyperindex.4everland.store/HSK-LOGO.png" alt="HSK" /> HSK from this CEX</h2>
@@ -239,7 +264,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 
       {/* Receive Modal */}
       {showReceiveModal && (
-        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 bg-black/75 z-[100] flex items-center justify-center">
           <div className="bg-[#121212] border border-gray-800 w-[90%] max-w-md rounded-2xl p-6 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Receive crypto</h2>

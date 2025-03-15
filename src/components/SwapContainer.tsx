@@ -15,7 +15,7 @@ import { fetchTokenList, selectTokens } from '@/store/tokenListSlice';
 import { AppDispatch } from '@/store';
 import { ArrowsUpDownIcon, Cog6ToothIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { InformationCircleIcon } from '@heroicons/react/24/outline';
-import { toast } from 'react-toastify';
+import { useToast } from '@/components/ToastContext';
 import { FACTORY_ABI, FACTORY_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexFactory';
 import { WETH_ABI } from '@/constant/ABI/weth';
 import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";;
@@ -66,6 +66,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   const [inputError, setInputError] = useState<string | null>(null);
   const [currentTx, setCurrentTx] = useState<'none' | 'approve' | 'swap'>('none');
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
+  const { toast } = useToast();
 
   const { address: userAddress } = useAccount();
   const { writeContract, data: hash, isPending: isWritePending, isSuccess: isWriteSuccess, isError: isWriteError, error: writeError } = useWriteContract();
@@ -153,7 +154,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       // 使用封装的 gas 检查函数
       const canProceed = await estimateAndCheckGas(params);
       if (!canProceed) {
-        toast.error('Insufficient gas, please deposit HSK first');
+        toast({
+          type: 'error',
+          message: 'Insufficient gas, please deposit HSK first'
+        });
         setIsLoading(false);
         return;
       }
@@ -165,14 +169,9 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Approval failed');
       setTxStatus('none');
-      toast.error('授权失败，请重试', {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
+      toast({
+        type: 'error',
+        message: 'Approval failed, please try again'
       });
       setIsLoading(false);
     }
@@ -477,7 +476,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         // 使用封装的 gas 检查函数
         const canProceed = await estimateAndCheckGas(params);
         if (!canProceed) {
-          toast.error('Insufficient gas, please deposit HSK first');
+          toast({
+            type: 'error',
+            message: 'Insufficient gas, please deposit HSK first'
+          });
           return;
         }
 
@@ -500,7 +502,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         // 使用封装的 gas 检查函数
         const canProceed = await estimateAndCheckGas(params);
         if (!canProceed) {
-          toast.error('Insufficient gas, please deposit HSK first');
+          toast({
+            type: 'error',
+            message: 'Insufficient gas, please deposit HSK first'
+          });
           return;
         }
 
@@ -548,7 +553,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       // 使用封装的 gas 检查函数
       const canProceed = await estimateAndCheckGas(params);
       if (!canProceed) {
-        toast.error('Insufficient gas, please deposit HSK first');
+        toast({
+          type: 'error',
+          message: 'Insufficient gas, please deposit HSK first'
+        });
         return;
       }
 
@@ -560,13 +568,12 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       console.error('Swap failed:', error);
       // 显示更详细的错误信息
       const errorMessage = error instanceof Error ? error.message : 'unknown error';
-      toast.error(`交易失败: ${errorMessage}`, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
+      
+      toast({
+        type: 'error',
+        message: `Swap failed: ${errorMessage}`
       });
+
       setTxStatus('failed');
     }
   };
@@ -641,19 +648,18 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     }
 
     if (isWriteSuccess && currentTx === 'swap' && hash) {
-        toast.info('Transaction submitted!', {
-            position: "top-right",
-            autoClose: 3000,
+        toast({
+          type: 'info',
+          message: 'Transaction submitted!',
+          isAutoClose: true
         });
     }
 
     if (isTxConfirmed && currentTx === 'swap') {
-        toast.success('Swap completed successfully!', {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
+        toast({
+          type: 'success',
+          message: 'Swap completed successfully!',
+          isAutoClose: true
         });
         
         // 重置状态
@@ -674,10 +680,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     }
 
     if (isTxConfirmed && currentTx === 'approve') {
-      toast.success('Approve completed successfully!', {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
+      toast({
+        type: 'success',
+        message: 'Approve completed successfully!',
+        isAutoClose: true
       });
       setCurrentTx('none');
       setTxStatus('success');
@@ -705,13 +711,12 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         }
       }
 
-      toast.error(`swap failed: ${errorMessage}`, {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
+      toast({
+        type: 'error',
+        message: `Swap failed: ${errorMessage}`,
+        isAutoClose: false
       });
+
       setTxStatus('failed');
     }
   }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchHskBalance, refetchToken1Balance, refetchAllowance]);

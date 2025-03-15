@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { usePoolData } from '../hooks/usePoolData';
 import { useRemoveLiquidity } from '../hooks/useRemoveLiquidity';
-import { Id, toast } from 'react-toastify';
+import { useToast } from '@/components/ToastContext';
+
 import { useReadContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
@@ -31,7 +32,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
 }) => {
   const [percentage, setPercentage] = useState(0);
   const networkFee = "0.0001";
-  const toastId = React.useRef<Id | null>(null);
+  const { toast } = useToast();
   
   const { data: poolData, loading } = usePoolData(pool.pairAddress, pool.userAddress);
   const { remove, approve, isRemoving, isApproving, isWaiting, isSuccess } = useRemoveLiquidity();
@@ -97,39 +98,33 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     if (!amounts || !poolData) return;
     
     const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
-    toastId.current = toast.loading("Approving...", {
-      position: "top-right",
-      autoClose: false,
-      closeOnClick: false,
-      pauseOnHover: true,
-      draggable: true,
-      theme: "dark",
+    toast({
+      type: 'info',
+      message: 'Approving...',
+      isAutoClose: true
     });
 
     try {
       const result = await approve(pool.pairAddress, lpAmount);
       if (result.success) {
-        toast.update(toastId.current, {
-          render: "Successfully approved",
-          type: "success",
-          isLoading: false,
-          autoClose: 5000
+        toast({
+          type: 'success',
+          message: 'Successfully approved',
+          isAutoClose: true
         });
         setNeedsApproval(false);
       } else {
-        toast.update(toastId.current, {
-          render: result.error || "Failed to approve",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000
+        toast({
+          type: 'error',
+          message: result.error || "Failed to approve",
+          isAutoClose: true
         });
       }
     } catch (error) {
-      toast.update(toastId.current, {
-        render: "Failed to approve",
-        type: "error",
-        isLoading: false,
-        autoClose: 5000
+      toast({
+        type: 'error',
+        message: "Failed to approve",
+        isAutoClose: true
       });
       console.error(error);
     }
@@ -149,14 +144,12 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     const amount0 = amounts.token0Amount * BigInt(percentage) / 100n;
     const amount1 = amounts.token1Amount * BigInt(percentage) / 100n;
 
-    toastId.current = toast.loading("Removing liquidity...", {
-      position: "top-right",
-      autoClose: false,
-      closeOnClick: false,
-      pauseOnHover: true,
-      draggable: true,
-      theme: "dark",
+    toast({
+      type: 'info',
+      message: 'Removing liquidity...',
+      isAutoClose: true
     });
+
 
     try {
       const result = await remove({
@@ -172,28 +165,25 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
 
       if (result.success) {
         if (isSuccess) {
-          toast.update(toastId.current, {
-            render: "Successfully removed liquidity",
-            type: "success",
-            isLoading: false,
-            autoClose: 5000
+          toast({
+            type: 'success',
+            message: 'Successfully removed liquidity',
+            isAutoClose: true
           });
           onClose();
         }
       } else {
-        toast.update(toastId.current, {
-          render: result.error || "Failed to remove liquidity",
-          type: "error",
-          isLoading: false,
-          autoClose: 5000
+        toast({
+          type: 'error',
+          message: result.error || "Failed to remove liquidity",
+          isAutoClose: true
         });
       }
     } catch (error) {
-      toast.update(toastId.current, {
-        render: "Failed to remove liquidity",
-        type: "error",
-        isLoading: false,
-        autoClose: 5000
+      toast({ 
+        type: 'error',
+        message: "Failed to remove liquidity",
+        isAutoClose: true
       });
       console.error(error);
     }

@@ -3,7 +3,8 @@ import { useReadContract, useWriteContract } from "wagmi";
 import { TokenData } from "@/types/liquidity";
 import { erc20Abi } from "viem";
 import { ROUTER_CONTRACT_ADDRESS } from "@/constant/ABI/HyperIndexRouter";
-import { toast } from "react-toastify";
+import { useToast } from "@/components/ToastContext";
+
 export function useTokenApproval(
   token1Data: TokenData | null,
   token2Data: TokenData | null,
@@ -16,6 +17,7 @@ export function useTokenApproval(
     token2: false,
   });
   const { writeContract, isPending, isSuccess } = useWriteContract();
+  const { toast } = useToast();
 
   // 检查 token1 授权
   const { data: allowance1 } = useReadContract({
@@ -85,22 +87,18 @@ export function useTokenApproval(
         functionName: "approve",
         args: [ROUTER_CONTRACT_ADDRESS, maxApproval],
       });
-      toast.success("Successfully Approved!", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
+      toast({
+        type: 'success',
+        message: 'Successfully Approved!',
+        isAutoClose: true
       });
     } catch (error) {
       console.error("Approval failed:", error);
-      toast.error("Approval failed!", {
-        position: "top-right",
-        autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-      }); 
+      toast({
+        type: 'error',
+        message: 'Approval failed!',
+        isAutoClose: true
+      });
     }
   };
 
