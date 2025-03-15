@@ -298,16 +298,16 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                     tokenData.map((row) => (
                       <tr
                         key={row.id}
-                        className="hover:bg-base-200/30 transition-colors duration-200"
+                        className="hover:bg-base-200/30 transition-colors duration-200 cursor-pointer"
+                        onClick={() => {
+                          window.location.href = `/explore/tokens/${row.address}`;
+                        }}
                       >
                         <td className="font-mono text-sm text-base-content/70">
                           {row.id}
                         </td>
                         <td>
-                          <Link
-                            href={`/explore/tokens/${row.address}`}
-                            className="flex items-center gap-3"
-                          >
+                          <div className="flex items-center gap-3">
                             <div className="avatar">
                               <div className="w-8 h-8 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
                                 <Image
@@ -341,7 +341,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                                 <CopyAddress address={row.address as `0x${string}`} />
                               </div>
                             </div>
-                          </Link>
+                          </div>
                         </td>
                         <td className="font-medium">
                           {row.price}
