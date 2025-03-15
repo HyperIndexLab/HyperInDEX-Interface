@@ -21,7 +21,7 @@ export default function CopyAddress({
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     toast({
-      type: 'error',
+      type: 'success',
       message: 'Copied Success'
     });
   };
