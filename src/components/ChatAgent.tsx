@@ -224,14 +224,51 @@ const ChatAgent: React.FC = () => {
     fetchData();
   }, [isOpen, dataLoaded]);
 
+  // 抽象的AI请求函数
+  const requestAIAnalysis = async (prompt: string, systemPrompt: string = '') => {
+    const messages = [
+      ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
+      { role: 'user', content: prompt }
+    ];
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ messages }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`API responded with status ${response.status}`);
+    }
+
+    const data: ChatCompletionResponse = await response.json();
+    return data.choices[0].message.content;
+  };
+
   // 分析函数：找出潜力最大的代币
-  const analyzeBestToken = () => {
+  const analyzeBestToken = async () => {
     // 合并两个来源的token数据并转换为统一类型
     const allTokens: TokenData[] = [
-      ...storeTokens.map(t => t as unknown as TokenData), 
+      ...storeTokens.map(t => {
+        // storeTokens 中没有 price 字段，我们需要从 exploreTokens 中查找匹配的代币
+        const matchingExploreToken = exploreTokens.find(et => et.address === t.address);
+        
+        return {
+          ...t,
+          // 如果在 exploreTokens 中找到匹配的代币，使用其价格；否则默认为 '0'
+          price: matchingExploreToken?.price || '0',
+        } as unknown as TokenData
+      }), 
       ...exploreTokens.filter(t => 
         !storeTokens.some(st => st.address === t.address)
-      ).map(t => t as unknown as TokenData)
+      ).map(t => {
+        return {
+          ...t,
+          price: t.price || '0', // 确保 price 字段存在
+        } as unknown as TokenData
+      })
     ];
     
     // 如果没有数据可分析，返回默认消息
@@ -290,79 +327,50 @@ const ChatAgent: React.FC = () => {
         poolWeight // 保存池权重，用于调试
       };
     });
-    // 排序并取前三名
+    
+    // 排序并取前十名
     tokenScores.sort((a, b) => b.score - a.score);
-    const topTokens = tokenScores.slice(0, 3);
+    const topTokens = tokenScores.slice(0, 10);
     
-    // 生成分析报告
-    let response = `Based on my analysis of current data, here are the tokens with the highest potential on HyperIndex:\n\n`;
-    
-    topTokens.forEach((item, index) => {
+    // 准备发送给AI的数据
+    const tokenData = topTokens.map((item, index) => {
       const token = item.token;
-      response += `**${index + 1}. ${token.symbol || 'Unknown'} (${token.name || 'Unknown Token'})**\n`;
-      
-      // 添加价格信息 - 使用数字格式化显示
-      if (token.price && token.price !== '$0.00') {
-        const priceValue = formatPrice(token.price);
-        if (priceValue < 0.000001) {
-          response += `- Current price: $${priceValue.toExponential(2)}\n`;
-        } else {
-          response += `- Current price: $${priceValue.toFixed(priceValue < 0.01 ? 8 : 2)}\n`;
-        }
-      }
-      
-      // 添加24小时变化
-      if (token.change24H && !token.change24H.includes('NaN')) {
-        const change = token.change24H;
-        response += `- 24h change: ${change}\n`;
-      }
-      
-      // 添加交易量
-      if (token.tradingVolume && token.tradingVolume !== '0') {
-        response += `- Trading volume: ${token.tradingVolume}\n`;
-        response += `- Volume value: $${item.volumeValue.toFixed(2)}\n`;
-      }
-      
-      // 添加流动性池信息
-      response += `- Present in ${item.poolCount} liquidity pools\n`;
-      
-      // 添加简短分析
-      response += `- ${getTokenAnalysis(token, item.volumeValue)}\n\n`;
+      return {
+        rank: index + 1,
+        symbol: token.symbol || 'Unknown',
+        name: token.name || 'Unknown Token',
+        price: token.price ? formatPrice(token.price) : 0,
+        change24H: token.change24H && !token.change24H.includes('NaN') ? token.change24H : 'N/A',
+        tradingVolume: token.tradingVolume || '0',
+        volumeValue: item.volumeValue,
+        poolCount: item.poolCount,
+        score: item.score
+      };
     });
     
-    // 添加建议
-    response += `**Remember:** Token potential depends on many factors including project development, community growth, and market adoption. The above analysis is based on current on-chain metrics only.\n\nAlways conduct your own research before investing.`;
+    const systemPrompt = `You are a cryptocurrency analyst specializing in token evaluation. 
+                         You will analyze token data and provide insights on their potential.
+                         Format your response as a professional analysis report with markdown formatting.`;
+                         
+    const userPrompt = `Based on the following token data from HyperIndex, analyze the top 3-5 tokens with the highest potential.
+                           The tokens are already ranked by a scoring algorithm that considers trading volume, price changes, and liquidity pool participation.
+                           
+                           Token Data: ${JSON.stringify(tokenData, null, 2)}
+                           
+                           Please provide:
+                           1. A brief introduction
+                           2. Analysis of the top 3-5 tokens with their key metrics (price, 24h change, trading volume, liquidity pools)
+                           3. A short explanation of why each token shows potential
+                           4. A conclusion with general investment advice
+                           
+                           Format the response with proper markdown, including bold headers and bullet points.`;
     
-    return response;
-  };
-  
-  // 获取代币分析 - 添加交易量参数
-  const getTokenAnalysis = (token: any, volumeValue: number) => {
-    const symbol = token.symbol?.toLowerCase() || '';
-    
-    // 基于交易量添加额外分析
-    let volumeAnalysis = '';
-    if (volumeValue > 10000) {
-      volumeAnalysis = " with strong trading activity";
-    } else if (volumeValue < 100) {
-      volumeAnalysis = " though currently with limited trading activity";
-    }
-    
-    if (symbol.includes('usdt') || symbol.includes('usdc')) {
-      return "Stablecoins provide reduced volatility and are useful for preserving value during market fluctuations" + volumeAnalysis;
-    } else if (symbol === 'fee') {
-      return "May be used for protocol fee distribution, potentially beneficial as platform adoption grows" + volumeAnalysis;
-    } else if (symbol === 'mint') {
-      return "If used for creating new tokens, could gain value as the platform expands" + volumeAnalysis;
-    } else if (symbol === 'basic') {
-      return "Core token with fundamental utility in the ecosystem" + volumeAnalysis;
-    } else {
-      return "Shows potential based on current metrics and network position" + volumeAnalysis;
-    }
+    return await requestAIAnalysis(userPrompt, systemPrompt);
   };
 
+
   // 分析函数：找出收益最好的流动性池
-  const analyzeBestPool = () => {
+  const analyzeBestPool = async () => {
     // 如果没有池数据可分析，返回默认消息
     if (explorePools.length === 0) {
       return "I don't have enough data yet to analyze pool returns. Please try again later when more market data is available.";
@@ -407,65 +415,44 @@ const ChatAgent: React.FC = () => {
     // 按综合得分排序
     poolScores.sort((a, b) => b.score - a.score);
     
-    // 取前三名
-    const bestPools = poolScores.slice(0, 3);
+    // 取前十名
+    const topPools = poolScores.slice(0, 10);
     
-    // 生成分析报告
-    let response = `Based on my analysis of current data, here are the liquidity pools with the best potential returns on HyperIndex:\n\n`;
-    
-    bestPools.forEach((item, index) => {
+    // 准备发送给AI的数据
+    const poolData = topPools.map((item, index) => {
       const pool = item.pool;
-      response += `**${index + 1}. ${pool.pairsName}**\n`;
-      
-      // 添加TVL信息
-      response += `- Total Value Locked: ${pool.TVL}\n`;
-      
-      // 添加APY信息
-      if (pool.APY > 0) {
-        response += `- APY: ${pool.APY}%\n`;
-      } else {
-        response += `- APY: Data not available yet\n`;
-      }
-      
-      // 添加交易量信息
-      if (pool.tradingVolume1D > 0 || pool.tradingVolume30D > 0) {
-        response += `- 24h Trading Volume: ${formatVolume(pool.tradingVolume1D)}\n`;
-        response += `- 30d Trading Volume: ${formatVolume(pool.tradingVolume30D)}\n`;
-      } else {
-        response += `- Trading Volume: Data accumulating\n`;
-      }
-      
-      // 添加简短分析
-      response += `- ${getPoolAnalysis(pool)}\n\n`;
+      return {
+        rank: index + 1,
+        pairsName: pool.pairsName,
+        TVL: pool.TVL,
+        APY: pool.APY,
+        tradingVolume1D: formatVolume(pool.tradingVolume1D),
+        tradingVolume30D: formatVolume(pool.tradingVolume30D),
+        hasStablecoin: pool.pairsName.toLowerCase().includes('husdt') || pool.pairsName.toLowerCase().includes('usdc'),
+        hasNativeToken: pool.pairsName.toLowerCase().includes('hsk') || pool.pairsName.toLowerCase().includes('whsk'),
+        hasFeeToken: pool.pairsName.toLowerCase().includes('fee'),
+        score: item.score
+      };
     });
     
-    // 添加建议
-    response += `**Important to remember:** Providing liquidity carries risks, including impermanent loss. Higher APY often comes with higher risk. The above analysis is based on current metrics only.\n\nMonitor your positions regularly and adjust your strategy as market conditions change.`;
+    const systemPrompt = `You are a DeFi analyst specializing in liquidity pool evaluation.
+                         You will analyze pool data and provide insights on their potential returns.
+                         Format your response as a professional analysis report with markdown formatting.`;
+                         
+    const userPrompt = `Based on the following liquidity pool data from HyperIndex, analyze the top 3-5 pools with the best potential returns.
+                           The pools are already ranked by a scoring algorithm that considers TVL, APY, and trading volume.
+                           
+                           Pool Data: ${JSON.stringify(poolData, null, 2)}
+                           
+                           Please provide:
+                           1. A brief introduction
+                           2. Analysis of the top 3-5 pools with their key metrics (TVL, APY, trading volume)
+                           3. A short explanation of why each pool shows potential
+                           4. A conclusion with general advice about liquidity provision and risks
+                           
+                           Format the response with proper markdown, including bold headers and bullet points.`;
     
-    return response;
-  };
-  
-  // 格式化交易量
-  const formatVolume = (volume: number) => {
-    if (volume === 0) return '$0.00';
-    if (volume < 1000) return `$${volume.toFixed(2)}`;
-    if (volume < 1000000) return `$${(volume/1000).toFixed(2)}K`;
-    return `$${(volume/1000000).toFixed(2)}M`;
-  };
-  
-  // 获取流动性池分析
-  const getPoolAnalysis = (pool: Pool) => {
-    const pairName = pool.pairsName.toLowerCase();
-    
-    if (pairName.includes('husdt') || pairName.includes('usdc')) {
-      return "Pools with stablecoins typically experience less impermanent loss, making them safer options for liquidity providers";
-    } else if (pairName.includes('hsk') || pairName.includes('whsk')) {
-      return "Includes the chain's native token, which often receives additional incentives and tends to have higher trading volume";
-    } else if (pairName.includes('fee')) {
-      return "May receive special incentives if FEE token is used for protocol fee distribution";
-    } else {
-      return "Shows potential based on current metrics and token composition";
-    }
+    return await requestAIAnalysis(userPrompt, systemPrompt);
   };
 
   // 自动滚动到最新消息
@@ -534,12 +521,12 @@ const ChatAgent: React.FC = () => {
       // 检查是否是关于代币潜力的问题
       if (lastMessage.toLowerCase().includes('token') && 
           (lastMessage.toLowerCase().includes('potential') || lastMessage.toLowerCase().includes('highest'))) {
-        aiResponse = analyzeBestToken();
+        aiResponse = await analyzeBestToken();
       } 
       // 检查是否是关于流动性池收益的问题
       else if ((lastMessage.toLowerCase().includes('pool') || lastMessage.toLowerCase().includes('liquidity')) && 
                (lastMessage.toLowerCase().includes('best') || lastMessage.toLowerCase().includes('return'))) {
-        aiResponse = analyzeBestPool();
+        aiResponse = await analyzeBestPool();
       }
       
       // 如果是特殊问题，使用自定义回答
@@ -688,6 +675,14 @@ const ChatAgent: React.FC = () => {
       setMessages(updatedMessages);
       await getAIResponse(updatedMessages);
     }
+  };
+
+  // 格式化交易量
+  const formatVolume = (volume: number) => {
+    if (volume === 0) return '$0.00';
+    if (volume < 1000) return `$${volume.toFixed(2)}`;
+    if (volume < 1000000) return `$${(volume/1000).toFixed(2)}K`;
+    return `$${(volume/1000000).toFixed(2)}M`;
   };
 
   return (
