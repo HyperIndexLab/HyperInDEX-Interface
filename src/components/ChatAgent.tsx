@@ -225,7 +225,10 @@ const ChatAgent: React.FC = () => {
   }, [isOpen, dataLoaded]);
 
   // 分析函数：找出潜力最大的代币
-  const analyzeBestToken = () => {
+  const analyzeBestToken = async () => {
+    // 添加模拟加载延迟
+    await new Promise(resolve => setTimeout(resolve, 4000));
+  
     // 合并两个来源的token数据并转换为统一类型
     const allTokens: TokenData[] = [
       ...storeTokens.map(t => t as unknown as TokenData), 
@@ -362,7 +365,10 @@ const ChatAgent: React.FC = () => {
   };
 
   // 分析函数：找出收益最好的流动性池
-  const analyzeBestPool = () => {
+  const analyzeBestPool = async () => {
+    // 添加模拟加载延迟
+    await new Promise(resolve => setTimeout(resolve, 4000));
+
     // 如果没有池数据可分析，返回默认消息
     if (explorePools.length === 0) {
       return "I don't have enough data yet to analyze pool returns. Please try again later when more market data is available.";
@@ -534,12 +540,12 @@ const ChatAgent: React.FC = () => {
       // 检查是否是关于代币潜力的问题
       if (lastMessage.toLowerCase().includes('token') && 
           (lastMessage.toLowerCase().includes('potential') || lastMessage.toLowerCase().includes('highest'))) {
-        aiResponse = analyzeBestToken();
+        aiResponse = await analyzeBestToken();
       } 
       // 检查是否是关于流动性池收益的问题
       else if ((lastMessage.toLowerCase().includes('pool') || lastMessage.toLowerCase().includes('liquidity')) && 
                (lastMessage.toLowerCase().includes('best') || lastMessage.toLowerCase().includes('return'))) {
-        aiResponse = analyzeBestPool();
+        aiResponse = await analyzeBestPool();
       }
       
       // 如果是特殊问题，使用自定义回答
