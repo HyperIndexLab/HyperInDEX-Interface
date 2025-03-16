@@ -21,6 +21,9 @@ const nextConfig: NextConfig = {
     ],
   },
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'mdx'],
+  serverRuntimeConfig: {
+    apiTimeout: 60000,
+  },
 };
 
 export default withMDX(nextConfig);
