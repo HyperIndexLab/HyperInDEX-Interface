@@ -87,7 +87,7 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 									<span className="text-base font-medium">{token.token.symbol}</span>
 									<button 
 										className="ml-2 p-1 text-gray-400 hover:text-white rounded-full hover:bg-white/10"
-										onClick={() => window.open(`https://hashkeyscan.io/token/${token.token.address}`, '_blank')}
+										onClick={() => window.open(`https://hashkey.blockscout.com/token/${token.token.address}`, '_blank')}
 									>
 										<ArrowTopRightOnSquareIcon className="w-4 h-4" />
 									</button>
