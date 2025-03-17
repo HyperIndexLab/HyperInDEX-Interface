@@ -62,7 +62,7 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
                 },
                 formatter: function (params: any) {
                     if (params.length > 0) {
-                        const price = params[0].data[1];
+                        const price = parseFloat(params[0].data[1]).toFixed(2);
                         
                         return `Price: ${price}`;
                     }
@@ -79,12 +79,23 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
                 type: 'value',
                 position: 'right', // 将 y 轴移动到右侧
                 axisLine: { show: false }, // 去掉 y 轴的横线
-                axisLabel: { color: '#666' },
+                axisLabel: { 
+                    color: '#666',
+                    formatter: function(value: number) {
+                        return value.toFixed(2); // 将y轴标签格式化为2位小数
+                    }
+                },
                 splitLine: { show: false }, // 去掉 y 轴的分隔线
                 boundaryGap: [0, '100%'],
-								min: function (value: any) {
-									return Math.floor(value.min / 2); 
-							}
+                min: function (value: any) {
+                    // 计算数据中的最小值和最大值
+                    const minPrice = Math.min(...data.map(item => item.price));
+                    const maxPrice = Math.max(...data.map(item => item.price));
+                    // 计算数据范围的一定比例
+                    const range = maxPrice - minPrice;
+                    // 返回最小值减去范围的10%，这样波动会更明显
+                    return parseFloat((minPrice - range * 0.5).toFixed(2)); // 保留2位小数
+                }
             },
             series: [
                 {

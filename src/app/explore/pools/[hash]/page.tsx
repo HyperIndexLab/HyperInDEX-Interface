@@ -4,7 +4,7 @@ import { getPoolPriceData, getPools, Pool, PoolPriceData } from '@/request/explo
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import {  isAddress } from 'viem';
-import { formatNumber } from '@/utils';
+import { formatNumber, formatNumberToUnit } from '@/utils';
 import Link from 'next/link';
 import Image from 'next/image';
 import Chart from '@/components/Chart';
@@ -13,6 +13,12 @@ import { useSelector, useDispatch } from 'react-redux';
 import { selectTokens, fetchTokenList } from '@/store/tokenListSlice';
 import { TokenData } from '@/types/liquidity';
 import SwapContainer from '@/components/SwapContainer';
+import { useReadContract } from 'wagmi';
+import { PAIR_ABI } from '@/constant/ABI/HyperIndexPair';
+import { formatTokenBalance } from '@/utils/formatTokenBalance';
+import { wagmiConfig } from '@/components/RainbowKitProvider';
+import { readContract } from 'wagmi/actions';
+import { getNewApiBaseUrl } from '@/utils/getApiBaseUrl';
 
 interface PoolWithTokens extends Pool {
 	token0Info: TokenData;
@@ -29,6 +35,7 @@ export default function Page() {
 	const [showSwap, setShowSwap] = useState(false);
 	const [poolPriceData, setPoolPriceData] = useState<PoolPriceData[]>([]);
 	const [isReversed, setIsReversed] = useState(false);
+	const [reserves, setReserves] = useState<string[]>([]);
 
 	const fetchPools = async () => {
 		setLoading(true)
@@ -55,6 +62,29 @@ export default function Page() {
 	useEffect(() => {
 		dispatch(fetchTokenList() as any);
 	}, [ dispatch]);
+
+	useEffect(() => {
+		const reserves = async () => {
+			const reserves = await readContract(wagmiConfig, {
+				address: hash as `0x${string}`,
+				abi: PAIR_ABI,
+				functionName: 'getReserves',
+				args: [],
+			}) as [bigint, bigint]
+			
+			// 格式化reserves以显示 - 使用对应代币的小数位数
+			const formattedReserves = [
+				formatTokenBalance(reserves[0].toString(), pool?.token0Info?.decimals || '18'),
+				formatTokenBalance(reserves[1].toString(), pool?.token1Info?.decimals || '18')
+			];
+			
+			setReserves(formattedReserves)
+		}
+		
+		if (pool && hash) {
+			reserves()
+		}
+	}, [hash, pool])
 
 	useEffect(() => {
 		const pool = poolData.find((pool) => pool.pairsAddress === hash);
@@ -138,6 +168,100 @@ export default function Page() {
 											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
 										</svg>
 									</button>
+									<div className="dropdown dropdown-end absolute right-7">
+										<button className="btn btn-circle btn-sm" onClick={(e) => e.stopPropagation()}>
+											<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+												<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+											</svg>
+										</button>
+										<div tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-box w-72 left-1/2 -translate-x-1/2 mt-2">
+											<div className="p-2">
+												<a 
+													href={`${getNewApiBaseUrl()}/address/${hash}`} 
+													target="_blank" 
+													rel="noopener noreferrer"
+													className="block mb-2 hover:bg-base-300 p-2 rounded-lg transition-colors flex justify-between"
+												>
+													<div className="flex items-center gap-2">
+														<div className="avatar">
+															<div className="w-4 h-4 rounded-full">
+																<Image src={pool?.token0Info?.icon_url || "https://hyperindex.4everland.store/index-coin.jpg"} 
+																	alt={pool?.token0Info?.symbol || ''} 
+																	width={16} height={16} 
+																	unoptimized />
+															</div>
+															<div className="avatar">
+																<div className="w-4 h-4 rounded-full">
+																	<Image src={pool?.token1Info?.icon_url || "https://hyperindex.4everland.store/index-coin.jpg"} 
+																		alt={pool?.token1Info?.symbol || ''} 
+																		width={16} height={16} 
+																		unoptimized />
+																</div>
+															</div>
+														</div>
+														<div className="text-sm opacity-70">Pool</div>
+														<div className="flex items-center gap-2">
+															<div className="text-sm">
+																{(hash as string).substring(0, 6)}...{(hash as string).substring((hash as string).length - 4)}
+															</div>
+														</div>
+													</div>
+													<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+													</svg>
+												</a>
+												<a 
+													href={`${getNewApiBaseUrl()}/token/${pool?.token0}`} 
+													target="_blank"
+													rel="noopener noreferrer"
+													className="block mb-2 hover:bg-base-300 p-2 rounded-lg transition-colors flex justify-between items-center"
+												>
+													<div className="flex items-center gap-2">
+														<div className="avatar">
+															<div className="w-4 h-4 rounded-full">
+																<Image src={pool?.token0Info?.icon_url || "https://hyperindex.4everland.store/index-coin.jpg"} 
+																	alt={pool?.token0Info?.symbol || ''} 
+																	width={16} height={16} 
+																	unoptimized />
+															</div>
+														</div>
+														<div className="text-sm opacity-70">{pool?.token0Info?.symbol}</div>
+														<div className="text-sm">
+															{pool?.token0?.substring(0, 6)}...{pool?.token0?.substring((pool?.token0?.length || 0) - 4)}
+														</div>
+													</div>
+													<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+													</svg>
+												</a>
+												<a 
+													href={`${getNewApiBaseUrl()}/token/${pool?.token1}`} 
+													target="_blank" 
+													rel="noopener noreferrer"
+													className="block hover:bg-base-300 p-2 rounded-lg transition-colors flex justify-between items-center"
+												>
+													<div className="flex items-center gap-2">
+														<div className="avatar">
+															<div className="w-4 h-4 rounded-full">
+																<Image src={pool?.token1Info?.icon_url || "https://hyperindex.4everland.store/index-coin.jpg"} 
+																	alt={pool?.token1Info?.symbol || ''} 
+																	width={16} height={16} 
+																	unoptimized />
+															</div>
+														</div>
+														<div className="text-sm opacity-70">{pool?.token1Info?.symbol}</div>
+														<div className="text-sm">
+															{pool?.token1?.substring(0, 6)}...{pool?.token1?.substring((pool?.token1?.length || 0) - 4)}
+														</div>
+													
+													</div>
+													<svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+														<path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+													</svg>
+												</a>
+											</div>
+										</div>
+									</div>
 								</>
 							)}
 						</div>
@@ -205,6 +329,45 @@ export default function Page() {
 							) : (
 								<>
 									<div className="stat bg-base-200 rounded-box p-4">
+										<div className="stat-title text-sm mb-4">Pool Balance</div>
+										<div className="flex justify-between items-center mb-4">
+											<div className="flex items-center gap-2">
+												<div className="avatar">
+													<div className="w-6 h-6 rounded-full">
+														<Image src={pool?.token0Info?.icon_url || "https://hyperindex.4everland.store/index-coin.jpg"} 
+															  alt={pool?.token0Info?.symbol || ''} 
+															  width={24} height={24} 
+															  unoptimized />
+													</div>
+												</div>
+												<span>{reserves.length > 0 ? formatNumberToUnit(parseFloat(reserves[0])) : 0} {pool?.token0Info?.symbol}</span>
+											</div>
+											<div className="flex items-center gap-2">
+												<div className="avatar">
+													<div className="w-6 h-6 rounded-full">
+														<Image src={pool?.token1Info?.icon_url || "https://hyperindex.4everland.store/index-coin.jpg"} 
+															  alt={pool?.token1Info?.symbol || ''} 
+															  width={24} height={24} 
+															  unoptimized />
+													</div>
+												</div>
+												<span>{reserves.length > 0 ? formatNumberToUnit(parseFloat(reserves[1])) : 0} {pool?.token1Info?.symbol}</span>
+											</div>
+										</div>
+										<div className="w-full h-2 bg-base-300 rounded-full overflow-hidden">
+											<div className="h-full flex">
+												<div 
+													className="bg-primary" 
+													style={{ width: `${pool ? ( Number(reserves[0]) / (Number(reserves[0]) + Number(reserves[1])) * 100) : 50}%` }}
+												></div>
+												<div 
+													className="bg-secondary" 
+													style={{ width: `${pool ? (Number(reserves[1]) / (Number(reserves[0]) + Number(reserves[1])) * 100) : 50}%` }}
+												></div>
+											</div>
+										</div>
+									</div>
+									<div className="stat bg-base-200 rounded-box p-4">
 										<div className="stat-title text-sm">APY</div>
 										<div className={`stat-value text-xl ${Number(pool?.APY) >= 0 ? 'text-success' : 'text-error'}`}>
 											{formatNumber(pool?.APY || 0, 3)}%
@@ -232,7 +395,7 @@ export default function Page() {
 			<div className="flex justify-center items-center min-h-screen">
 				<div className="alert alert-error">
 					<svg xmlns="http://www.w3.org/2000/svg" className="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-					<span>无效的池子地址</span>
+					<span>Invalid pool address</span>
 				</div>
 			</div>
 		)
