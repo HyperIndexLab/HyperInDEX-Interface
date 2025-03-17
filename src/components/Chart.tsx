@@ -87,7 +87,7 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
                 },
                 splitLine: { show: false }, // 去掉 y 轴的分隔线
                 boundaryGap: [0, '100%'],
-                min: function (value: any) {
+                min: function () {
                     // 计算数据中的最小值和最大值
                     const minPrice = Math.min(...data.map(item => item.price));
                     const maxPrice = Math.max(...data.map(item => item.price));
