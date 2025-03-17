@@ -66,6 +66,7 @@ export const formatNumberWithCommas = (value: string | number | undefined | null
     // 如果转换结果是NaN，返回0
     if (numStr === 'NaN') return '0';
   } catch (error) {
+    console.error('formatNumberWithCommas error:', error);
     return '0';
   }
   

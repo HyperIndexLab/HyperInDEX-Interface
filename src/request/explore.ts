@@ -53,22 +53,6 @@ export interface TokenPriceData {
 	timestamp: string
 }
 
-// 添加缓存对象
-const cache = {
-  tokens: {
-    data: null as Token[] | null,
-    timestamp: 0,
-    expireTime: 5 * 60 * 1000, // 5分钟过期时间
-  },
-  pools: {
-    data: null as Pool[] | null,
-    timestamp: 0,
-    expireTime: 5 * 60 * 1000,
-  },
-  poolPriceData: {} as Record<string, { data: PoolPriceData[] | null, timestamp: number }>,
-  tokenPriceData: {} as Record<string, { data: TokenPriceData[] | null, timestamp: number }>,
-};
-
 // 请求管理器 - 用于缓存和去重
 class RequestManager<T> {
   private cache: { data: T | null; timestamp: number; expireTime: number };
