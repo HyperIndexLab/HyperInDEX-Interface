@@ -273,50 +273,11 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     fetchTokenPrices();
   }, []);
 
+
+
+
   // 修改价格计算相关的 useEffect
   useEffect(() => {
-    if (tokenPrice.length > 0) {
-      // 修改查找逻辑，特殊处理 HSK 和 WHSK
-      let token1PriceData;
-      let token2PriceData;
-      
-      if (token1Data?.symbol === 'HSK' || token1Data?.symbol === 'WHSK') {
-        // HSK 和 WHSK 共享相同的价格
-        token1PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
-      } else {
-        token1PriceData = tokenPrice.find(t => t.address === token1Data?.address);
-      }
-      
-      if (token2Data?.symbol === 'HSK' || token2Data?.symbol === 'WHSK') {
-        // HSK 和 WHSK 共享相同的价格
-        token2PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
-      } else {
-        token2PriceData = tokenPrice.find(t => t.address === token2Data?.address);
-      }
-      
-      
-      if (token1PriceData) {
-        // 先去掉价格中的 $ 符号，然后格式化
-        const priceString = token1PriceData.price.replace('$', '');
-        const formattedPrice = parseFloat(priceString);
-        setToken1Price((formattedPrice * parseFloat(token1Amount) || 0).toFixed(2));
-      } else {
-        setToken1Price('-');
-      }
-
-      console.log('token1PriceData', token1PriceData);
-      console.log('token2PriceData', token2PriceData);
-      
-      if (token2PriceData) {
-        // 先去掉价格中的 $ 符号，然后格式化
-        const priceString = token2PriceData.price.replace('$', '');
-        const formattedPrice = parseFloat(priceString);
-        setToken2Price((formattedPrice * parseFloat(token2Amount) || 0).toFixed(2));
-      } else {
-        setToken2Price('-');
-      }
-    }
-
     if (token1Data && token2Data) {
       // 检查是否是 HSK 和 WHSK 的交易对 1:1 兑换
       const isHskWhskPair = (
@@ -411,8 +372,52 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         }
       }
     }
+
+    
   }, [reserves, token1Amount, token1Data, token2Data, pairAddress, token0Address]);
 
+
+  useEffect(() => {
+    if (tokenPrice.length > 0) {
+      // 修改查找逻辑，特殊处理 HSK 和 WHSK
+      let token1PriceData;
+      let token2PriceData;
+      
+      if (token1Data?.symbol === 'HSK' || token1Data?.symbol === 'WHSK') {
+        // HSK 和 WHSK 共享相同的价格
+        token1PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
+      } else {
+        token1PriceData = tokenPrice.find(t => t.address === token1Data?.address);
+      }
+      
+      if (token2Data?.symbol === 'HSK' || token2Data?.symbol === 'WHSK') {
+        // HSK 和 WHSK 共享相同的价格
+        token2PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
+      } else {
+        token2PriceData = tokenPrice.find(t => t.address === token2Data?.address);
+      }
+      
+      
+      if (token1PriceData) {
+        // 先去掉价格中的 $ 符号，然后格式化
+        const priceString = token1PriceData.price.replace('$', '');
+        const formattedPrice = parseFloat(priceString);
+        setToken1Price((formattedPrice * parseFloat(token1Amount) || 0).toFixed(2));
+      } else {
+        setToken1Price('-');
+      }
+      
+      if (token2PriceData) {
+        // 先去掉价格中的 $ 符号，然后格式化
+        const priceString = token2PriceData.price.replace('$', '');
+        const formattedPrice = parseFloat(priceString);
+        console.log('formattedPrice', formattedPrice, token2Amount);
+        setToken2Price((formattedPrice * parseFloat(token2Amount) || 0).toFixed(2));
+      } else {
+        setToken2Price('-');
+      }
+    }
+  }, [token1Amount, token2Amount, token1Data, token2Data]);
   // 根据url中的参数设置初始化的token
   useEffect(() => {
     if (tokens.length === 0) {
