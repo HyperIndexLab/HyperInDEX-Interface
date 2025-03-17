@@ -19,7 +19,8 @@ import { useToast } from '@/components/ToastContext';
 import { FACTORY_ABI, FACTORY_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexFactory';
 import { WETH_ABI } from '@/constant/ABI/weth';
 import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";;
-import { estimateAndCheckGas } from '@/utils';
+import { estimateAndCheckGas, formatNumber, formatNumberWithCommas } from '@/utils';
+import { getTokens, Token } from '@/request/explore';
 
 interface SwapContainerProps {
   token1?: string;
@@ -57,13 +58,9 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   const [, setLpFee] = useState<string>('0');
   const [slippage, setSlippage] = useState<string>('5.5');
   const [deadline, setDeadline] = useState<string>('30'); 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isApproved, setIsApproved] = useState<boolean>(false);
   const [txStatus, setTxStatus] = useState<'none' | 'pending' | 'success' | 'failed'>('none');
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [inputError, setInputError] = useState<string | null>(null);
   const [currentTx, setCurrentTx] = useState<'none' | 'approve' | 'swap'>('none');
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const { toast } = useToast();
@@ -139,7 +136,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     if (!token1Data || !token1Amount) return;
     
     try {
-      setIsLoading(true);
       setError(null);
       
       const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
@@ -158,7 +154,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           type: 'error',
           message: 'Insufficient gas, please deposit HSK first'
         });
-        setIsLoading(false);
         return;
       }
       
@@ -173,7 +168,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         type: 'error',
         message: 'Approval failed, please try again'
       });
-      setIsLoading(false);
     }
   };
 
@@ -235,60 +229,17 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         setMinimumReceived('0');
         setPriceImpact('0');
         setLpFee('0');
-        setInputError(null);
       } 
     }
   };
 
-  // // 修改 useReadContract hook 调用
-  // const { data: amountsOut } = useReadContract({
-  //   address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-  //   abi: ROUTER_ABI,
-  //   functionName: 'getAmountsOut',
-  //   args: token1Data && token2Data && token1Amount && Number(token1Amount) > 0 ? [
-  //     parseUnits(token1Amount, Number(token1Data.decimals || '18')),
-  //     [
-  //       getQueryAddress(token1Data),
-  //       getQueryAddress(token2Data)
-  //     ]
-  //   ] : undefined,
-  //   query: {
-  //     enabled: !!(
-  //       token1Data && 
-  //       token2Data && 
-  //       token1Amount && 
-  //       Number(token1Amount) > 0
-  //     )
-  //   }
-  // });
-
-  // // 获取基准价格（用很小的数量计算）
-  // const { data: baseAmountOut } = useReadContract({
-  //   address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-  //   abi: ROUTER_ABI,
-  //   functionName: 'getAmountsOut',
-  //   args: token1Data && token2Data ? [
-  //     parseUnits('0.0001', Number(token1Data.decimals || '18')),  // 用很小的数量计算基准价格
-  //     [
-  //       getQueryAddress(token1Data),
-  //       getQueryAddress(token2Data)
-  //     ]
-  //   ] : undefined,
-  //   query: {
-  //     enabled: !!(token1Data && token2Data),
-  //   },
-  // });
-
   // 错误处理
   useEffect(() => {
     if (error) {
-      setInputError('Insufficient liquidity for this trade');
       setToken2Amount('0');
       setMinimumReceived('0');
       setPriceImpact('0');
       setLpFee('0');
-    } else {
-      setInputError(null);
     }
   }, [error, token1Data, token2Data, token1Amount]);
 
@@ -303,8 +254,69 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     },
   });
 
+  // 在 SwapContainer 组件内添加价格状态
+  const [token1Price, setToken1Price] = useState<string>('0');
+  const [token2Price, setToken2Price] = useState<string>('0');
+  const [tokenPrice, setTokenPrice] = useState<Token[]>([]);
+  // 获取代币价格数据
+  const fetchTokenPrices = async () => {
+    try {
+      const data = await getTokens();
+      
+      setTokenPrice(data);
+    } catch (error) {
+      console.error('Error fetching token prices:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchTokenPrices();
+  }, []);
+
   // 修改价格计算相关的 useEffect
   useEffect(() => {
+    if (tokenPrice.length > 0) {
+      // 修改查找逻辑，特殊处理 HSK 和 WHSK
+      let token1PriceData;
+      let token2PriceData;
+      
+      if (token1Data?.symbol === 'HSK' || token1Data?.symbol === 'WHSK') {
+        // HSK 和 WHSK 共享相同的价格
+        token1PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
+      } else {
+        token1PriceData = tokenPrice.find(t => t.address === token1Data?.address);
+      }
+      
+      if (token2Data?.symbol === 'HSK' || token2Data?.symbol === 'WHSK') {
+        // HSK 和 WHSK 共享相同的价格
+        token2PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
+      } else {
+        token2PriceData = tokenPrice.find(t => t.address === token2Data?.address);
+      }
+      
+      
+      if (token1PriceData) {
+        // 先去掉价格中的 $ 符号，然后格式化
+        const priceString = token1PriceData.price.replace('$', '');
+        const formattedPrice = parseFloat(priceString);
+        setToken1Price((formattedPrice * parseFloat(token1Amount) || 0).toFixed(2));
+      } else {
+        setToken1Price('-');
+      }
+
+      console.log('token1PriceData', token1PriceData);
+      console.log('token2PriceData', token2PriceData);
+      
+      if (token2PriceData) {
+        // 先去掉价格中的 $ 符号，然后格式化
+        const priceString = token2PriceData.price.replace('$', '');
+        const formattedPrice = parseFloat(priceString);
+        setToken2Price((formattedPrice * parseFloat(token2Amount) || 0).toFixed(2));
+      } else {
+        setToken2Price('-');
+      }
+    }
+
     if (token1Data && token2Data) {
       // 检查是否是 HSK 和 WHSK 的交易对 1:1 兑换
       const isHskWhskPair = (
@@ -317,9 +329,9 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         setMinimumReceived(token1Amount);
         setPriceImpact('0');
         setLpFee('0');
+      
         return;
       }
-
       if (reserves && token1Amount && pairAddress && token0Address) {
         try {
           const [reserve0, reserve1] = reserves as [bigint, bigint];
@@ -394,6 +406,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           setMinimumReceived('0');
           setPriceImpact('0');
           setLpFee('0');
+          setToken1Price('0');
+          setToken2Price('0');
         }
       }
     }
@@ -1048,12 +1062,23 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
               >
                 75%
               </button>
-              <button 
-                className="btn btn-xs btn-ghost hover:bg-base-200"
-                onClick={() => handlePercentageClick(100)}
-              >
-                100%
-              </button>
+              {token1Data?.symbol === 'HSK' ? (
+                <div className="tooltip" data-tip="Keep some network token balance to pay for transaction fees">
+                  <button 
+                    className="btn btn-xs btn-ghost hover:bg-base-200"
+                    onClick={() => handlePercentageClick(100)}
+                  >
+                    100%
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  className="btn btn-xs btn-ghost hover:bg-base-200"
+                  onClick={() => handlePercentageClick(100)}
+                >
+                  100%
+                </button>
+              )}
             </div>
           </div>
           <div className="flex justify-between items-center">
@@ -1090,7 +1115,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
               <ChevronDownIcon className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex justify-end items-center mt-2">
+          <div className="flex justify-between items-center mt-2">
+            <span className='text-base-content/60'>{token1Price !== '-' ? `$${formatNumberWithCommas(token1Price)}` : '-'}</span>
             <span className="text-sm text-base-content/60">
               Balance: {
                 token1Data?.symbol === 'HSK' 
@@ -1141,7 +1167,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
               <ChevronDownIcon className="w-5 h-5" />
             </button>
           </div>
-          <div className="flex justify-end items-center mt-2">
+          <div className="flex justify-between items-center mt-2">
+            <span className='text-base-content/60'>{token2Price !== '-' ? `$${formatNumberWithCommas(token2Price)}` : '-'}</span>
             <span className="text-sm text-base-content/60">
               Balance: {formatBalance(token2Data?.balance, token2Data?.decimals)} {displaySymbol(token2Data)}
             </span>

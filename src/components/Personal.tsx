@@ -99,12 +99,8 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 
 
 	useEffect(() => {
-	 // 根据userTokens 和 
-		if (tokenData.length === 0) {
-			fetchTokens()
-		}
-	 
-	}, [tokenData.length, userTokens])
+		fetchTokens()
+	}, [])
 
 	const fetchTokens = async () => {
     try {
