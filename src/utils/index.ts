@@ -51,3 +51,28 @@ export const estimateAndCheckGas = async (hskBalance: any): Promise<boolean> => 
     return true;
   }
 };
+
+// 只添加3位分隔符，增强鲁棒性
+export const formatNumberWithCommas = (value: string | number | undefined | null): string => {
+  if (value === undefined || value === null) return '0';
+  
+  // 尝试将输入转换为数字，处理科学计数法
+  let numStr: string;
+  try {
+    // 先移除已有的逗号
+    const cleanValue = value.toString().replace(/,/g, '');
+    // 转换为数字再转回字符串，处理科学计数法
+    numStr = Number(cleanValue).toString();
+    // 如果转换结果是NaN，返回0
+    if (numStr === 'NaN') return '0';
+  } catch (error) {
+    console.error('formatNumberWithCommas error:', error);
+    return '0';
+  }
+  
+  // 处理小数点
+  const parts = numStr.split('.');
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  
+  return parts.join('.');
+};

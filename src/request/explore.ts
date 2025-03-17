@@ -52,38 +52,147 @@ export interface TokenPriceData {
 	volume: string
 	timestamp: string
 }
+
+// 请求管理器 - 用于缓存和去重
+class RequestManager<T> {
+  private cache: { data: T | null; timestamp: number; expireTime: number };
+  private pendingRequest: Promise<T> | null = null;
+
+  constructor(expireTime: number = 5 * 60 * 1000) {
+    this.cache = {
+      data: null,
+      timestamp: 0,
+      expireTime
+    };
+  }
+
+  async request(requestFn: () => Promise<T>): Promise<T> {
+    // 检查缓存是否有效
+    const now = Date.now();
+    if (this.cache.data && now - this.cache.timestamp < this.cache.expireTime) {
+      return this.cache.data;
+    }
+
+    // 如果已经有一个正在进行的请求，直接返回该请求的Promise
+    if (this.pendingRequest) {
+      return this.pendingRequest;
+    }
+
+    // 创建请求并保存
+    this.pendingRequest = requestFn().then(data => {
+      // 更新缓存
+      this.cache.data = data;
+      this.cache.timestamp = now;
+      // 请求完成后清除pendingRequest
+      this.pendingRequest = null;
+      return data;
+    }).catch(error => {
+      // 请求失败也要清除pendingRequest
+      this.pendingRequest = null;
+      throw error;
+    });
+
+    return this.pendingRequest;
+  }
+}
+
+// 带参数的请求管理器
+class ParameterizedRequestManager<T, P extends any[]> {
+  private cacheMap: Map<string, { data: T | null; timestamp: number }> = new Map();
+  private pendingRequests: Map<string, Promise<T>> = new Map();
+  private expireTime: number;
+
+  constructor(expireTime: number = 5 * 60 * 1000) {
+    this.expireTime = expireTime;
+  }
+
+  private getCacheKey(...params: P): string {
+    return params.join('_');
+  }
+
+  async request(requestFn: (...params: P) => Promise<T>, ...params: P): Promise<T> {
+    const cacheKey = this.getCacheKey(...params);
+    const now = Date.now();
+    
+    // 检查缓存是否有效
+    const cachedItem = this.cacheMap.get(cacheKey);
+    if (cachedItem?.data && now - cachedItem.timestamp < this.expireTime) {
+      return cachedItem.data;
+    }
+
+    // 如果已经有一个正在进行的请求，直接返回该请求的Promise
+    if (this.pendingRequests.has(cacheKey)) {
+      return this.pendingRequests.get(cacheKey)!;
+    }
+
+    // 创建请求并保存
+    const promise = requestFn(...params).then(data => {
+      // 更新缓存
+      this.cacheMap.set(cacheKey, { data, timestamp: Date.now() });
+      // 请求完成后清除pendingRequest
+      this.pendingRequests.delete(cacheKey);
+      return data;
+    }).catch(error => {
+      // 请求失败也要清除pendingRequest
+      this.pendingRequests.delete(cacheKey);
+      throw error;
+    });
+
+    this.pendingRequests.set(cacheKey, promise);
+    return promise;
+  }
+}
+
+// 创建请求管理器实例
+const tokensManager = new RequestManager<Token[]>();
+const poolsManager = new RequestManager<Pool[]>();
+const poolPriceDataManager = new ParameterizedRequestManager<PoolPriceData[], [string, number]>();
+const tokenPriceDataManager = new ParameterizedRequestManager<TokenPriceData[], [string, number]>();
+
 export const getTokens = async (): Promise<Token[]> => {
-	const requestUrl = process.env.NODE_ENV === 'development' 
-   	? '/api/testnet-explore/tokens'
-		// ? '/api/explore/tokens'
-    : '/api/explore/tokens';
-	const res = await api.get(requestUrl)
-	
-	// 过滤掉symbol为"Pump"的代币
-	return res.data as Token[]
+  return tokensManager.request(async () => {
+    const requestUrl = process.env.NODE_ENV === 'development' 
+      ? '/api/testnet-explore/tokens'
+      : '/api/explore/tokens';
+    const res = await api.get(requestUrl);
+    return res.data as Token[];
+  });
 }
 
 export const getPools = async (): Promise<Pool[]> => {
-	const requestUrl = process.env.NODE_ENV === 'development' 
-    ? '/api/testnet-explore/pools'
-		// ? '/api/explore/pools'
-    : '/api/explore/pools';
-	const res = await api.get(requestUrl)
-	return res.data as Pool[]
+  return poolsManager.request(async () => {
+    const requestUrl = process.env.NODE_ENV === 'development' 
+      ? '/api/testnet-explore/pools'
+      : '/api/explore/pools';
+    const res = await api.get(requestUrl);
+    return res.data as Pool[];
+  });
 }
 
 export const getPoolPriceData = async (poolAddress: string, days: number): Promise<PoolPriceData[]> => {
-	const requestUrl = process.env.NODE_ENV === 'development' 
-    ? `api/explore/pool/${poolAddress}/${days}`
-    : `/api/explore/pool/${poolAddress}/${days}`;
-	const res = await api.get(requestUrl)
-	return res.data as PoolPriceData[]
+  return poolPriceDataManager.request(
+    async (address, days) => {
+      const requestUrl = process.env.NODE_ENV === 'development' 
+        ? `api/explore/pool/${address}/${days}`
+        : `/api/explore/pool/${address}/${days}`;
+      const res = await api.get(requestUrl);
+      return res.data as PoolPriceData[];
+    },
+    poolAddress,
+    days
+  );
 }
 
 export const getTokenPriceData = async (tokenAddress: string, days: number): Promise<TokenPriceData[]> => {
-	const requestUrl = process.env.NODE_ENV === 'development' 
-    ? `api/explore/token/${tokenAddress}/${days}`
-    : `/api/explore/token/${tokenAddress}/${days}`;
-	const res = await api.get(requestUrl)
-	return res.data as TokenPriceData[]
+  return tokenPriceDataManager.request(
+    async (address, days) => {
+      const requestUrl = process.env.NODE_ENV === 'development' 
+        ? `api/explore/token/${address}/${days}`
+        : `/api/explore/token/${address}/${days}`;
+      const res = await api.get(requestUrl);
+      return res.data as TokenPriceData[];
+    },
+    tokenAddress,
+    days
+  );
 }
