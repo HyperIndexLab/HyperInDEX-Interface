@@ -13,7 +13,6 @@ import { useSelector, useDispatch } from 'react-redux';
 import { selectTokens, fetchTokenList } from '@/store/tokenListSlice';
 import { TokenData } from '@/types/liquidity';
 import SwapContainer from '@/components/SwapContainer';
-import { useReadContract } from 'wagmi';
 import { PAIR_ABI } from '@/constant/ABI/HyperIndexPair';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
