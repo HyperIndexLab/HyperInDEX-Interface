@@ -76,3 +76,33 @@ export const formatNumberWithCommas = (value: string | number | undefined | null
   
   return parts.join('.');
 };
+
+// 将数字转换为带有K、M、B等单位的格式
+export const formatNumberToUnit = (value: number | string, decimals: number = 2): string => {
+  if (value === undefined || value === null || value === '' || isNaN(Number(value))) {
+    return '0';
+  }
+  
+  const num = Number(value);
+  
+  if (num === 0) return '0';
+  if (Math.abs(num) < 0.00001) return '< 0.00001';
+  
+  const absNum = Math.abs(num);
+  const sign = num < 0 ? '-' : '';
+  
+  if (absNum >= 1000000000) {
+    // 十亿及以上用B (Billion)
+    return sign + (absNum / 1000000000).toFixed(decimals).replace(/\.?0+$/, '') + 'B';
+  } else if (absNum >= 1000000) {
+    // 百万及以上用M (Million)
+    return sign + (absNum / 1000000).toFixed(decimals).replace(/\.?0+$/, '') + 'M';
+  } else if (absNum >= 1000) {
+    // 千及以上用K (Kilo)
+    return sign + (absNum / 1000).toFixed(decimals).replace(/\.?0+$/, '') + 'K';
+  } else {
+    // 小于1000的数字直接显示
+    return sign + absNum.toFixed(decimals).replace(/\.?0+$/, '');
+  }
+};
+
