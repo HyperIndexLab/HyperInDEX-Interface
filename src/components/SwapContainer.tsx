@@ -19,7 +19,7 @@ import { useToast } from '@/components/ToastContext';
 import { FACTORY_ABI, FACTORY_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexFactory';
 import { WETH_ABI } from '@/constant/ABI/weth';
 import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";;
-import { estimateAndCheckGas, formatNumber, formatNumberWithCommas } from '@/utils';
+import { estimateAndCheckGas, formatNumberWithCommas } from '@/utils';
 import { getTokens, Token } from '@/request/explore';
 
 interface SwapContainerProps {
