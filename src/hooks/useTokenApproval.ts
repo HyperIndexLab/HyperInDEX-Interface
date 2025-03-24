@@ -10,7 +10,8 @@ export function useTokenApproval(
   token2Data: TokenData | null,
   amount1: string,
   amount2: string,
-  userAddress?: string
+  userAddress?: string,
+  poolAddress?: `0x${string}`
 ) {
   const [needApprove, setNeedApprove] = useState({
     token1: false,
@@ -29,7 +30,7 @@ export function useTokenApproval(
     functionName: "allowance",
     args:
       userAddress && token1Data
-        ? [userAddress as `0x${string}`, ROUTER_CONTRACT_ADDRESS]
+        ? [userAddress as `0x${string}`, poolAddress || ROUTER_CONTRACT_ADDRESS]
         : undefined,
   });
 
@@ -43,7 +44,7 @@ export function useTokenApproval(
     functionName: "allowance",
     args:
       userAddress && token2Data
-        ? [userAddress as `0x${string}`, ROUTER_CONTRACT_ADDRESS]
+        ? [userAddress as `0x${string}`, poolAddress || ROUTER_CONTRACT_ADDRESS]
         : undefined,
   });
 
@@ -85,7 +86,7 @@ export function useTokenApproval(
         address: token.address as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
-        args: [ROUTER_CONTRACT_ADDRESS, maxApproval],
+        args: [poolAddress || ROUTER_CONTRACT_ADDRESS, maxApproval],
       });
       toast({
         type: 'success',

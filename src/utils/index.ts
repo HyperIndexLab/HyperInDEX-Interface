@@ -1,5 +1,6 @@
 import { getAddress } from '@ethersproject/address'
 import { ChainId } from 'hypherin-sdk'
+import { zeroAddress } from 'viem'
 
 export function isAddress(value: string | undefined): string | false {
   try {
@@ -106,3 +107,8 @@ export const formatNumberToUnit = (value: number | string, decimals: number = 2)
   }
 };
 
+
+export const isValidAddress = (address: string | undefined): boolean => {
+  if (!address) return false;
+  return Boolean(isAddress(address) && address !== zeroAddress);
+};
