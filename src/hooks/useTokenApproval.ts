@@ -4,6 +4,8 @@ import { TokenData } from "@/types/liquidity";
 import { erc20Abi } from "viem";
 import { ROUTER_CONTRACT_ADDRESS } from "@/constant/ABI/HyperIndexRouter";
 import { useToast } from "@/components/ToastContext";
+import { waitForTransactionReceipt } from "wagmi/actions";
+import { wagmiConfig } from "@/components/RainbowKitProvider";
 
 export function useTokenApproval(
   token1Data: TokenData | null,
@@ -13,11 +15,12 @@ export function useTokenApproval(
   userAddress?: string,
   poolAddress?: `0x${string}`
 ) {
+
   const [needApprove, setNeedApprove] = useState({
     token1: false,
     token2: false,
   });
-  const { writeContract, isPending, isSuccess } = useWriteContract();
+  const { writeContractAsync, isPending, isSuccess } = useWriteContract();
   const { toast } = useToast();
 
   // 检查 token1 授权
@@ -82,17 +85,30 @@ export function useTokenApproval(
 
     try {
       const maxApproval = BigInt(2) ** BigInt(256) - BigInt(1);
-      await writeContract({
+      const tx = await writeContractAsync({
         address: token.address as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
         args: [poolAddress || ROUTER_CONTRACT_ADDRESS, maxApproval],
       });
-      toast({
-        type: 'success',
-        message: 'Successfully Approved!',
-        isAutoClose: true
+
+      const receipt = await waitForTransactionReceipt(wagmiConfig, {
+        hash: tx,
       });
+
+      if (receipt.status === 'success') {
+        toast({
+          type: 'success',
+          message: 'Successfully Approved!',
+          isAutoClose: true
+        });
+      } else {
+        toast({
+          type: 'error',
+          message: 'Approval failed!',
+          isAutoClose: true
+        });
+      }
     } catch (error) {
       console.error("Approval failed:", error);
       toast({

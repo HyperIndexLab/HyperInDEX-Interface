@@ -88,6 +88,38 @@ async function calculateV3Swap(
 ) {
   try {
     const amountIn = parseUnits(amount1, token1.decimals);
+    // {
+    //   "internalType": "address",
+    //   "name": "tokenIn",
+    //   "type": "address"
+    // },
+    // {
+    //   "internalType": "address",
+    //   "name": "tokenOut",
+    //   "type": "address"
+    // },
+    // {
+    //   "internalType": "uint256",
+    //   "name": "amountIn",
+    //   "type": "uint256"
+    // },
+    // {
+    //   "internalType": "uint24",
+    //   "name": "fee",
+    //   "type": "uint24"
+    // },
+    // {
+    //   "internalType": "uint160",
+    //   "name": "sqrtPriceLimitX96",
+    //   "type": "uint160"
+    // }
+    const params = {
+      tokenIn: token1.address,
+      tokenOut: token2.address,
+      amountIn: amountIn,
+      fee: poolFee,
+      sqrtPriceLimitX96: 0
+    }
     
     // 使用 Uniswap V3 Quoter 合约获取输出金额
     const amountOut = await readContract(wagmiConfig, {
@@ -95,11 +127,7 @@ async function calculateV3Swap(
       abi: QUOTE_ABI,
       functionName: 'quoteExactInputSingle',
       args: [
-        token1.address,
-        token2.address,
-        BigInt(poolFee),
-        amountIn,
-        BigInt(0) // sqrtPriceLimitX96 设为 0 表示不设限制
+        params // sqrtPriceLimitX96 设为 0 表示不设限制
       ]
     });
 

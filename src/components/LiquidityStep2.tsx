@@ -53,11 +53,17 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
 }) => {
   const [priceRangeMessage, setPriceRangeMessage] = useState<string | null>(null);
 
+  // 确定 token0 和 token1
+  const isToken1Token0 = token1Data && token2Data && token1Data.address < token2Data.address;
+  const token0Data = isToken1Token0 ? token1Data : token2Data;
+  const token1DataActual = isToken1Token0 ? token2Data : token1Data;
+  const currentPriceActual = isToken1Token0 ? currentPrice : (1 / parseFloat(currentPrice!)).toString();
+
   // 验证价格范围
   const validatePriceRange = () => {
-    if (!currentPrice) return null;
+    if (!currentPriceActual) return null;
     
-    const current = parseFloat(currentPrice);
+    const current = parseFloat(currentPriceActual);
     const min = parseFloat(priceRange.minPrice);
     const max = parseFloat(priceRange.maxPrice);
 
@@ -83,23 +89,22 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
   return (
     <div className="bg-base-200/30 backdrop-blur-sm rounded-3xl p-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center mb-8">
         <button
           className="p-2 hover:bg-base-300/50 rounded-full"
           onClick={() => setStep(1)}
         >
           <ChevronLeftIcon className="w-4 h-4" />
         </button>
-        <h2 className="text-md font-normal">添加V3流动性</h2>
-        <div className="w-10 h-10 rounded-full bg-base-300/50"></div>
+        <h2 className="text-md font-normal flex-1 text-center">Add Liquidity</h2>
       </div>
 
       {/* 当前价格显示 */}
-      {currentPrice && (
+      {currentPriceActual && currentPriceActual !== 'NaN' && (
         <div className="mb-6 p-4 bg-base-300/30 rounded-xl">
           <div className="text-sm text-base-content/70 mb-1">当前价格</div>
           <div className="text-lg font-medium">
-            1 {token1Data?.symbol} = {currentPrice} {token2Data?.symbol}
+            1 {token1Data?.symbol} = {currentPriceActual} {token2Data?.symbol}
           </div>
         </div>
       )}
@@ -140,7 +145,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
                   }}
                 />
                 <div className="text-xs text-base-content/50 mt-1">
-                  {token1Data?.symbol} 每 {token2Data?.symbol}
+                  {token0Data?.symbol} 每 {token1DataActual?.symbol}
                 </div>
               </div>
               <div className="bg-base-200 rounded-xl p-4">
@@ -156,7 +161,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
                   }}
                 />
                 <div className="text-xs text-base-content/50 mt-1">
-                  {token1Data?.symbol} 每 {token2Data?.symbol}
+                  {token0Data?.symbol} 每 {token1DataActual?.symbol}
                 </div>
               </div>
             </div>
@@ -220,7 +225,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
         <div className="bg-base-200 rounded-3xl p-6">
           <div className="flex justify-between items-center">
             <input
-              type="number"
+              type="text"
               min="0"
               className="input input-ghost w-[60%] text-2xl focus:outline-none px-4"
               placeholder="0"
@@ -250,7 +255,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
         <div className="bg-base-200 rounded-3xl p-6">
           <div className="flex justify-between items-center">
             <input
-              type="number"
+              type="text"
               min="0"
               className="input input-ghost w-[60%] text-2xl focus:outline-none px-4"
               placeholder="0"
@@ -276,7 +281,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
       <button
         className="w-full mt-6 rounded-full py-4 text-lg font-normal transition-all
           bg-primary/90 hover:bg-primary text-primary-content"
-        onClick={addLiquidity}
+        onClick={() => addLiquidity()}
       >
         添加流动性
       </button>

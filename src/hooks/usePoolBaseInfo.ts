@@ -111,6 +111,8 @@ export const usePoolInfo = (token1Data: TokenData | null, token2Data: TokenData 
 
     try {
       const poolAddress = await getPoolAddress(token1Data.address, token2Data.address, feeTier);
+
+      console.log(poolAddress, feeTier, 'poolAddress====');
       
       if (!isValidAddress(poolAddress)) {
         setPoolInfo(null);
