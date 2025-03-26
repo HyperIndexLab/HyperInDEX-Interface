@@ -25,6 +25,8 @@ interface LiquidityStep2Props {
   setToken2Amount: (amount: string) => void;
   addLiquidity: () => Promise<void>;
   setStep: (step: number) => void;
+  addLiquidityLoading: boolean;
+  hideInput: { token1: boolean; token2: boolean };
 }
 
 interface TokenData {
@@ -50,6 +52,8 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
   setToken2Amount,
   addLiquidity,
   setStep,
+  addLiquidityLoading,
+  hideInput
 }) => {
   const [priceRangeMessage, setPriceRangeMessage] = useState<string | null>(null);
 
@@ -68,15 +72,15 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
     const max = parseFloat(priceRange.maxPrice);
 
     if (min >= max) {
-      return "最小价格必须小于最大价格";
+      return "min price must be less than max price";
     }
 
     if (min <= 0 || max <= 0) {
-      return "价格必须大于0";
+      return "price must be greater than 0";
     }
 
     if (max / min > 100) {
-      return "提示：价格范围过大可能会降低资本效率";
+      return "warning: the price range is too large, which may reduce the capital efficiency";  
     }
 
     return null;
@@ -102,7 +106,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
       {/* 当前价格显示 */}
       {currentPriceActual && currentPriceActual !== 'NaN' && (
         <div className="mb-6 p-4 bg-base-300/30 rounded-xl">
-          <div className="text-sm text-base-content/70 mb-1">当前价格</div>
+          <div className="text-sm text-base-content/70 mb-1">Current Price</div>
           <div className="text-lg font-medium">
             1 {token1Data?.symbol} = {currentPriceActual} {token2Data?.symbol}
           </div>
@@ -112,19 +116,19 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
       {/* 价格范围选择 */}
       <div className="mb-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-md font-medium">价格范围</h3>
+          <h3 className="text-md font-medium">Price Range</h3>
           <div className="flex gap-2">
             <button 
               className={`px-3 py-1 rounded-full text-sm ${positionType === 'full-range' ? 'bg-primary text-primary-content' : 'bg-base-300'}`}
               onClick={() => setPositionType('full-range')}
             >
-              全范围
+              Full Range
             </button>
             <button 
               className={`px-3 py-1 rounded-full text-sm ${positionType === 'custom' ? 'bg-primary text-primary-content' : 'bg-base-300'}`}
               onClick={() => setPositionType('custom')}
             >
-              自定义
+              Custom Range
             </button>
           </div>
         </div>
@@ -133,36 +137,30 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
           <>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="bg-base-200 rounded-xl p-4">
-                <div className="text-sm text-base-content/70 mb-2">最小价格</div>
+                <div className="text-sm text-base-content/70 mb-2">Min Price</div>
                 <input
-                  type="number"
+                  type="text"
                   className="input input-ghost w-full focus:outline-none px-0"
-                  placeholder="0"
                   value={priceRange.minPrice}
                   onChange={(e) => {
-                    setPriceRange({...priceRange, minPrice: e.target.value});
+                    const minPrice = e.target.value;
+                    setPriceRange({...priceRange, minPrice: minPrice});
                     setPriceRangeMessage(validatePriceRange());
                   }}
                 />
-                <div className="text-xs text-base-content/50 mt-1">
-                  {token0Data?.symbol} 每 {token1DataActual?.symbol}
-                </div>
               </div>
               <div className="bg-base-200 rounded-xl p-4">
-                <div className="text-sm text-base-content/70 mb-2">最大价格</div>
+                <div className="text-sm text-base-content/70 mb-2">Max Price</div>
                 <input
-                  type="number" 
+                  type="text" 
                   className="input input-ghost w-full focus:outline-none px-0"
-                  placeholder="0"
                   value={priceRange.maxPrice}
                   onChange={(e) => {
-                    setPriceRange({...priceRange, maxPrice: e.target.value});
+                    const maxPrice = e.target.value;
+                    setPriceRange({...priceRange, maxPrice: maxPrice});
                     setPriceRangeMessage(validatePriceRange());
                   }}
                 />
-                <div className="text-xs text-base-content/50 mt-1">
-                  {token0Data?.symbol} 每 {token1DataActual?.symbol}
-                </div>
               </div>
             </div>
             
@@ -178,7 +176,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
                 </div>
               )}
               <div className="text-xs text-base-content/50 mt-1">
-                您可以根据需要自由设置价格范围
+                You can freely set the price range according to your needs
               </div>
             </div>
           </>
@@ -186,8 +184,8 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
 
         {positionType === 'full-range' && (
           <div className="bg-base-200 rounded-xl p-4 mb-4">
-            <div className="text-sm text-base-content/70 mb-1">全范围流动性</div>
-            <div className="text-sm">您将在所有价格范围内提供流动性，并获得最大交易量，但资本效率较低。</div>
+            <div className="text-sm text-base-content/70 mb-1">Full Range Liquidity</div>
+            <div className="text-sm">You will provide liquidity in the full price range, and get the maximum trading volume, but the capital efficiency is low.</div>
           </div>
         )}
         
@@ -207,13 +205,13 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
             
             {/* 价格标签 */}
             <div className="absolute bottom-1 left-0 text-xs">
-              {positionType === 'full-range' ? '最小' : priceRange.minPrice}
+              {positionType === 'full-range' ? 'Min' : priceRange.minPrice}
             </div>
             <div className="absolute bottom-1 right-0 text-xs">
-              {positionType === 'full-range' ? '最大' : priceRange.maxPrice}
+              {positionType === 'full-range' ? 'Max' : priceRange.maxPrice}
             </div>
             <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 text-xs text-primary">
-              当前
+              Current Price
             </div>
           </div>
         )}
@@ -222,7 +220,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
       {/* Token Inputs */}
       <div className="space-y-4">
         {/* First Token Input */}
-        <div className="bg-base-200 rounded-3xl p-6">
+        <div className={`bg-base-200 rounded-3xl p-6 ${hideInput.token1 ? 'hidden' : ''}`}>
           <div className="flex justify-between items-center">
             <input
               type="text"
@@ -252,7 +250,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
         </div>
 
         {/* Second Token Input */}
-        <div className="bg-base-200 rounded-3xl p-6">
+        <div className={`bg-base-200 rounded-3xl p-6 ${hideInput.token2 ? 'hidden' : ''}`}>
           <div className="flex justify-between items-center">
             <input
               type="text"
@@ -280,10 +278,11 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
       {/* 添加流动性按钮 */}
       <button
         className="w-full mt-6 rounded-full py-4 text-lg font-normal transition-all
-          bg-primary/90 hover:bg-primary text-primary-content"
+          bg-primary/90 hover:bg-primary text-primary-content disabled:opacity-50"
         onClick={() => addLiquidity()}
+        disabled={addLiquidityLoading}
       >
-        添加流动性
+        {addLiquidityLoading ? 'loading...' : 'Add Liquidity'}
       </button>
     </div>
   );

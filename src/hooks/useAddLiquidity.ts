@@ -8,12 +8,12 @@ import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Poo
 import { NONFUNGIBLE_POSITION_MANAGER_ABI, NONFUNGIBLE_POSITION_MANAGER_ADDRESS } from '@/constant/ABI/NonfungiblePositionManager';
 import { useToast } from '@/components/ToastContext';
 import { encodeSqrtRatioX96, MintOptions } from '@uniswap/v3-sdk';
-import JSBI from 'jsbi';
+import JSBI from '@uniswap/sdk-core/node_modules/jsbi';
 import { BigintIsh, Token } from '@uniswap/sdk-core';
 import { Slot0Data } from '@/hooks/usePoolBaseInfo';
 import { isValidAddress } from '@/utils';
 import { WHSK } from '@/constant/value';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { Pool, Position } from '@uniswap/v3-sdk';
 import { Percent } from '@uniswap/sdk-core';
 import { TickMath } from '@uniswap/v3-sdk';
@@ -36,7 +36,7 @@ export const useAddLiquidity = (
 ) => {
   const { writeContractAsync } = useWriteContract();
   const { toast } = useToast();
-
+  const [loading, setLoading] = useState(false);
 
    // 创建Token对象
    const getTokens = useCallback(() => {
@@ -101,6 +101,7 @@ export const useAddLiquidity = (
     }
 
     try {
+      setLoading(true);
       // 确保token0和token1按照正确的顺序排列（地址较小的在前）
       const token0Address = token1Data.address.toLowerCase() < token2Data.address.toLowerCase() 
         ? token1Data.address 
@@ -116,11 +117,11 @@ export const useAddLiquidity = (
         // 创建新池子
         toast({
           type: "info",
-          message: "正在创建新的流动性池...",
+          message: "creating new liquidity pool...",
           isAutoClose: true
         });
 
-        console.log(token0Address, token1Address, feeTier, 'token0Address, token1Address, feeTier====');
+        console.log(token0Address, token1Address,token1Data, token2Data,  feeTier, 'token0Address, token1Address, feeTier====');
         // 调用工厂合约创建池子
         const createPoolTx = await writeContractAsync({
           address: FACTORY_CONTRACT_ADDRESS_V3 as `0x${string}`,
@@ -131,7 +132,7 @@ export const useAddLiquidity = (
         
         toast({
           type: "info",
-          message: "池子创建中，请等待确认...",
+          message: "creating liquidity pool, please wait for confirmation...",
           isAutoClose: true
         });
 
@@ -141,7 +142,7 @@ export const useAddLiquidity = (
         if (receipt.status !== 'success') {
           toast({
             type: "error",
-            message: "池子创建失败，请重试",
+            message: "liquidity pool creation failed, please try again",
             isAutoClose: true
           });
           return;
@@ -157,11 +158,12 @@ export const useAddLiquidity = (
           isToken0First ? token2Amount : token1Amount,
           parseInt(isToken0First ? token2Data.decimals : token1Data.decimals)
         );
-        const sqrtPriceX96 = BigInt(encodeSqrtRatioX96(amount0.toString(), amount1.toString()).toString());
+        const sqrtPriceX96 = BigInt(encodeSqrtRatioX96(amount1.toString(), amount0.toString()).toString());
 
 
         console.log(sqrtPriceX96, 'sqrtPriceX96====');
-
+        const tick3 = TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
+        console.log(tick3, 'tick3====');
         poolAddr = await readContract(wagmiConfig, {
           address: FACTORY_CONTRACT_ADDRESS_V3 as `0x${string}`,
           abi: FACTORY_ABI_V3,
@@ -236,11 +238,14 @@ export const useAddLiquidity = (
         functionName: 'slot0'
       }) as Slot0Data;
 
+      console.log(slot0, 'slot0====');
+
       sqrtPriceX96 = slot0[0]
 
       if (slot0[0] === BigInt(0)) {
         try {
           const isToken0First = token1Data.address.toLowerCase() < token2Data.address.toLowerCase();
+        
           const amount0 = parseUnits(
             isToken0First ? token1Amount : token2Amount,
             parseInt(isToken0First ? token1Data.decimals : token2Data.decimals)
@@ -250,7 +255,10 @@ export const useAddLiquidity = (
             parseInt(isToken0First ? token2Data.decimals : token1Data.decimals)
           );
 
-          sqrtPriceX96 = BigInt(encodeSqrtRatioX96(amount0.toString(), amount1.toString()).toString());
+          sqrtPriceX96 = BigInt(encodeSqrtRatioX96(amount1.toString(), amount0.toString()).toString());
+          console.log(sqrtPriceX96, 'sqrtPriceX96====111');
+          const tick2 = TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
+          console.log(tick2, 'tick2====111');
 
           const initializeTx = await writeContractAsync({
             address: poolAddr as `0x${string}`,
@@ -261,11 +269,9 @@ export const useAddLiquidity = (
 
           toast({
             type: "info",
-            message: "正在初始化池子...",
+            message: "initializing pool...",
             isAutoClose: true
           });
-
-          console.log(initializeTx, 'initializeTx====111');
 
           const initializeReceipt = await waitForTransactionReceipt(wagmiConfig, { hash: initializeTx });
           
@@ -280,14 +286,14 @@ export const useAddLiquidity = (
 
           toast({
             type: "success",
-            message: "池子初始化成功！",
+            message: "initialize pool success",
             isAutoClose: true
           });
         } catch (error) {
-          console.error("初始化池子失败:", error);
+          console.error("initialize pool failed:", error);
           toast({
             type: "error",
-            message: "池子初始化失败，请重试",
+            message: "initialize pool failed, please try again",
             isAutoClose: true
           });
           return;
@@ -312,14 +318,14 @@ export const useAddLiquidity = (
         token1Data.address.toLowerCase() < token2Data.address.toLowerCase() ? token1Amount : token2Amount,
         parseInt(token1Data.address.toLowerCase() < token2Data.address.toLowerCase() ? token1Data.decimals : token2Data.decimals)
       );
+
       const amount1 = parseUnits(
         token1Data.address.toLowerCase() < token2Data.address.toLowerCase() ? token2Amount : token1Amount,
         parseInt(token1Data.address.toLowerCase() < token2Data.address.toLowerCase() ? token2Data.decimals : token1Data.decimals)
       );
   
-      // const sqrtPriceX96 = encodeSqrtRatioX96(amount1.toString(), amount0.toString());
-      const tick = slot0[1]
-      // TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
+      // sqrtPriceX96 = BigInt(encodeSqrtRatioX96(amount1.toString(), amount0.toString()).toString());
+      const tick = TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
       console.log('sqrtPriceX96:', sqrtPriceX96.toString(), 'tick:', tick);
   
       const { token0, token1 } = getTokens();
@@ -331,6 +337,7 @@ export const useAddLiquidity = (
         functionName: 'liquidity'
       }) as BigintIsh;
 
+      console.log(liquidity, tickRange, amount0, amount1, tick, sqrtPriceX96.toString(), 'liquidity,tickRange====');
     
       const configuredPool = new Pool(
         token0,
@@ -341,24 +348,44 @@ export const useAddLiquidity = (
         tick
       );
 
-      console.log(configuredPool.tickCurrent, configuredPool.tickSpacing, tickRange, 'cccc====');
-
-      const position = Position.fromAmounts({
-        pool: configuredPool,
-        tickLower: tickRange.minTick,
-        tickUpper: tickRange.maxTick,
-        amount0: amount0.toString(),
-        amount1: amount1.toString(),
-        useFullPrecision: true,
-      });
+      console.log(amount0, amount1, 'amount0, amount1====');
+      let position;
+      if (amount0 === BigInt(0)) {
+        // 只提供 token1
+        position = Position.fromAmount1({
+          pool: configuredPool,
+          tickLower: tickRange.minTick,
+          tickUpper: tickRange.maxTick,
+          amount1: amount1.toString(),
+        });
+      } else if (amount1 === BigInt(0)) {
+        // 只提供 token0
+        position = Position.fromAmount0({
+          pool: configuredPool,
+          tickLower: tickRange.minTick,
+          tickUpper: tickRange.maxTick,
+          amount0: amount0.toString(),
+          useFullPrecision: true,
+        });
+      } else {
+        // 提供两种代币
+        position = Position.fromAmounts({
+          pool: configuredPool,
+          tickLower: tickRange.minTick,
+          tickUpper: tickRange.maxTick,
+          amount0: amount0.toString(),
+          amount1: amount1.toString(),
+          useFullPrecision: true,
+        });
+      }
     
-      console.log(position, amount0.toString(), amount1.toString(), 'position.mintAmounts====');
-  
       const mintOptions: MintOptions = {
         recipient: userAddress,
-        deadline: Math.floor(Date.now() / 1000) + 60 * 20, // 60秒后过期
-        slippageTolerance: new Percent(50, 10_000),
+        deadline: Math.floor(Date.now() / 1000) + 60 * 20,
+        slippageTolerance: new Percent(100, 10_000),
       };
+
+      console.log(position, 'position====');
 
       // 获取调用参数
       const { calldata, value } = NonfungiblePositionManager.addCallParameters(
@@ -373,37 +400,60 @@ export const useAddLiquidity = (
         to: NONFUNGIBLE_POSITION_MANAGER_ADDRESS as `0x${string}`,
         value: BigInt(value),
         from: userAddress as `0x${string}`,
-        maxFeePerGas: parseGwei('20'),
-        maxPriorityFeePerGas: parseGwei('1.5'),
       }
 
-      // // 发送交易
-      const mintTx = await sendTransaction(wagmiConfig, transaction);
+      try {
+        const mintTx = await sendTransaction(wagmiConfig, transaction);
+        
+        toast({
+          type: "info",
+          message: "add liquidity transaction submitted, waiting for confirmation...",
+          isAutoClose: true
+        });
 
-      // 等待交易确认
-      const mintReceipt = await waitForTransactionReceipt(wagmiConfig, { hash: mintTx });
-      if (mintReceipt.status === 'success') {
-        toast({
-          type: "success",
-          message: "流动性添加成功！",
-          isAutoClose: true
-        });
-      } else {
-        toast({
-          type: "error",
-          message: "添加流动性失败",
-          isAutoClose: true
-        });
+        const mintReceipt = await waitForTransactionReceipt(wagmiConfig, { hash: mintTx });
+        
+        if (mintReceipt.status === 'success') {
+          toast({
+            type: "success",
+            message: "add liquidity success",
+            isAutoClose: true
+          });
+        } else {
+          toast({
+            type: "error",
+            message: "add liquidity failed",
+            isAutoClose: true
+          });
+        }
+      } catch (error: any) {
+        console.error("add liquidity failed:", error);
+        // 处理特定的错误类型
+        if (error.message?.includes('STF')) {
+          toast({
+            type: "error",
+            message: "slippage too large, please adjust the amount or wait for market stability",
+            isAutoClose: true
+          });
+        } else {
+          toast({
+            type: "error",
+            message: "add liquidity failed, please try again",
+            isAutoClose: true
+          });
+        }
       }
     } catch (error) {
-      console.error("添加流动性失败:", error);
+      console.error("add liquidity failed:", error);
       toast({
         type: "error",
-        message: "添加流动性失败，请重试",
+        message: "add liquidity failed, please try again",
         isAutoClose: true
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  return { addLiquidity };
+  return { addLiquidity, loading };
 };

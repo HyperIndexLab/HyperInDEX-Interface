@@ -21,7 +21,7 @@ import { isValidAddress } from "@/utils";
 
 import { usePoolInfo } from "@/hooks/usePoolBaseInfo";
 
-import { Pool, Position, nearestUsableTick, TickMath, priceToClosestTick } from '@uniswap/v3-sdk'
+import { Pool, Position, nearestUsableTick, TickMath, priceToClosestTick, tickToPrice } from '@uniswap/v3-sdk'
 import { Token, CurrencyAmount, Price, Percent, BigintIsh } from '@uniswap/sdk-core'
 import JSBI from 'jsbi'
 import { parseUnits } from 'viem'
@@ -95,9 +95,21 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const [positionType, setPositionType] = useState<'full-range' | 'custom'>('custom');
   const [pool, setPool] = useState<Pool | null>(null);
   const [poolAddress, setPoolAddress] = useState<`0x${string}` | null>(null);
+  const [hideInput, setHideInput] = useState({ token1: false, token2: false });
+
+  const [token0Detail, setToken0Detail] = useState<TokenData | null>(null);
+  const [token1Detail, setToken1Detail] = useState<TokenData | null>(null);
+
   
   const [priceRangeMessage, setPriceRangeMessage] = useState<string | null>(null);
   
+  // 添加新的状态
+  const [tokenRequirements, setTokenRequirements] = useState<{
+    onlyToken0: boolean;
+    onlyToken1: boolean;
+    message: string;
+  } | null>(null);
+
   useEffect(() => {
     if (!token1Data && token1 === "HSK") {
       setToken1Data(DEFAULT_HSK_TOKEN);
@@ -135,6 +147,18 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       }
     });
   }, [tokens, token1, token2]);
+
+  useEffect(() => {
+    if (token1Data?.address && token2Data?.address) {
+      if (token1Data.address.toLowerCase() < token2Data.address.toLowerCase()) {
+        setToken0Detail(token1Data);
+        setToken1Detail(token2Data);
+      } else {
+        setToken0Detail(token2Data);  
+        setToken1Detail(token1Data);
+      }
+    }
+  }, [token1Data, token2Data]);
 
   // 判断是否可以继续
   const canContinue = token1Data && token2Data;
@@ -199,6 +223,18 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         const { token0, token1 } = getTokens();
         if (!token0 || !token1) return;
 
+          // 添加调试日志
+          console.log('Token0:', {
+            address: token0.address,
+            symbol: token0.symbol,
+            decimals: token0.decimals
+          });
+          console.log('Token1:', {
+            address: token1.address,
+            symbol: token1.symbol,
+            decimals: token1.decimals
+          });
+
         // 从existingPool获取必要数据
         const sqrtPriceX96 = existingPool.sqrtPriceX96 || '0';
         const liquidity = existingPool.liquidity || '0';
@@ -240,6 +276,13 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           JSBI.BigInt(liquidity) as unknown as BigintIsh,
           tick
         );
+
+        // 添加更多调试信息
+        console.log('Pool Info:', {
+          currentTick: newPool.tickCurrent,
+          token0Price: newPool.token0Price.toSignificant(6),
+          token1Price: newPool.token1Price.toSignificant(6)
+        });
         
         setPool(newPool);
         
@@ -294,55 +337,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     }
     initPool();
   }, [existingPool, token1Data, token2Data, feeTier, positionType, getTokens]);
-  
-  // 当价格范围变化时更新tick范围
-  // useEffect(() => {
-  //   if (pool && positionType === 'custom' && priceRange.minPrice && priceRange.maxPrice) {
-  //     try {
-  //       const { token0, token1 } = getTokens();
-  //       if (!token0 || !token1) return;
-        
-  //       // 将价格转换为tick
-  //       const minPriceValue = parseFloat(priceRange.minPrice);
-  //       const maxPriceValue = parseFloat(priceRange.maxPrice);
-        
-  //       if (minPriceValue <= 0 || maxPriceValue <= 0 || minPriceValue >= maxPriceValue) {
-  //         return;
-  //       }
-        
-  //       // 创建Price对象 - 修复价格计算方式
-  //       const minPriceObj = new Price(
-  //         token0,
-  //         token1,
-  //         JSBI.exponentiate(JSBI.BigInt(10), JSBI.BigInt(token0.decimals)) as unknown as BigintIsh,
-  //         JSBI.BigInt(Math.floor(minPriceValue * Math.pow(10, token1.decimals))) as unknown as BigintIsh
-  //       );
-        
-  //       const maxPriceObj = new Price(
-  //         token0,
-  //         token1,
-  //         JSBI.exponentiate(JSBI.BigInt(10), JSBI.BigInt(token0.decimals)) as unknown as BigintIsh,
-  //         JSBI.BigInt(Math.floor(maxPriceValue * Math.pow(10, token1.decimals))) as unknown as BigintIsh
-  //       );
-        
-  //       // 转换为tick
-  //       const minTick = nearestUsableTick(
-  //         priceToClosestTick(minPriceObj),
-  //         pool.tickSpacing
-  //       );
-        
-  //       const maxTick = nearestUsableTick(
-  //         priceToClosestTick(maxPriceObj),
-  //         pool.tickSpacing
-  //       );
-        
-  //       setTickRange({ minTick, maxTick });
-  //     } catch (error) {
-  //       console.error("更新tick范围失败:", error);
-  //     }
-  //   }
-  // }, [priceRange, pool, positionType, getTokens]);
-  
+
   // 计算流动性和代币数量
   const calculateAmounts = useCallback(() => {
     if (!pool || !token1Amount || parseFloat(token1Amount) <= 0) {
@@ -354,58 +349,51 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       const { token0, token1 } = getTokens();
       if (!token0 || !token1) return;
 
-      console.log(tickRange, token0, token1, 'token0, token1====');
-      
-      // 确保 minTick 小于 maxTick
+  
       const [lowerTick, upperTick] = [
         Math.min(tickRange.minTick, tickRange.maxTick),
         Math.max(tickRange.minTick, tickRange.maxTick)
       ];
 
       const currentTick = pool.tickCurrent;
-      
-      // 修正：确保正确识别输入token是token0还是token1
+      console.log(currentTick, tickRange, 'currentTick, tickRange====');
       const inputIsToken0 = token1Data?.address.toLowerCase() === token0?.address.toLowerCase();
-
-      console.log(token1Data, token1Data?.address.toLowerCase(), token0?.address.toLowerCase(),  'inputIsToken0====');
       
-      // 添加价格检查日志
-      console.log('Current price:', {
-        token0Price: pool.token0Price.toSignificant(8),
-        token1Price: pool.token1Price.toSignificant(8),
-        currentTick,
-        lowerTick,
-        upperTick,
-        inputAmount: token1Amount,
-        inputIsToken0
-      });
-
-      // 根据当前价格与价格范围的关系决定如何计算
-      if (currentTick < lowerTick) {
-        // 当前价格低于范围，只需要 token0
-        if (!inputIsToken0) {
-          setToken2Amount('0');
-          setPriceRangeMessage('当前价格低于范围，只需要提供 token0');
-          return;
-        }
-      } else if (currentTick > upperTick) {
-        // 当前价格高于范围，只需要 token1
-        if (inputIsToken0) {
-          setToken2Amount('0');
-          setPriceRangeMessage('当前价格高于范围，只需要提供 token1');
-          return;
-        }
-      }
-      
-      // 计算流动性
-      let position;
+      // 转换输入金额为正确的精度
       const inputAmount = parseUnits(
         token1Amount,
         inputIsToken0 ? parseInt(token0.decimals.toString()) : parseInt(token1.decimals.toString())
       ).toString();
 
-      try {
-        // 修正：根据输入token类型创建正确的Position
+      // 创建 Position 实例
+      let position;
+      if (currentTick < lowerTick) {
+        // 价格低于范围，只接受 token0
+        if (!inputIsToken0) {
+          setToken2Amount('0');
+          return;
+        }
+        position = Position.fromAmount0({
+          pool,
+          tickLower: lowerTick,
+          tickUpper: upperTick,
+          amount0: inputAmount,
+          useFullPrecision: true
+        });
+      } else if (currentTick > upperTick) {
+        // 价格高于范围，只接受 token1
+        if (inputIsToken0) {
+          setToken2Amount('0');
+          return;
+        }
+        position = Position.fromAmount1({
+          pool,
+          tickLower: lowerTick,
+          tickUpper: upperTick,
+          amount1: inputAmount
+        });
+      } else {
+        // 价格在范围内，根据输入token类型创建position
         if (inputIsToken0) {
           position = Position.fromAmount0({
             pool,
@@ -422,43 +410,28 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             amount1: inputAmount
           });
         }
-        // 获取需要的代币数量
-        const amount0 = position.mintAmounts.amount0;
-        const amount1 = position.mintAmounts.amount1;
-
-        // 根据输入的是token0还是token1来确定输出金额
-        const outputAmount = inputIsToken0 ? amount1 : amount0;
-        const outputDecimals = inputIsToken0 
-          ? parseInt(token1.decimals.toString())
-          : parseInt(token0.decimals.toString());
-
-        // 格式化输出
-        const rawAmount = parseFloat(outputAmount.toString()) / Math.pow(10, outputDecimals);
-        const formattedAmount = rawAmount.toFixed(6);
-
-        // 添加调试日志
-        console.log('Position calculation:', {
-          amount0: amount0.toString(),
-          amount1: amount1.toString(),
-          inputIsToken0,
-          outputAmount: outputAmount.toString(),
-          outputDecimals,
-          rawAmount,
-          formattedAmount
-        });
-
-        setToken2Amount(formattedAmount);
-        
-      } catch (error) {
-        console.error('Position calculation error:', error);
-        setToken2Amount('');
-        setPriceRangeMessage('计算流动性时出错');
       }
+
+      // 获取所需的代币数量
+      const { amount0, amount1 } = position.mintAmounts;
       
-    } catch (error) {
-      console.error("计算代币数量失败:", error);
-      setToken2Amount('');
+      // 计算输出金额
+      const outputAmount = inputIsToken0 ? amount1 : amount0;
+      const outputDecimals = inputIsToken0 
+        ? parseInt(token1.decimals.toString())
+        : parseInt(token0.decimals.toString());
+
+      // 格式化输出金额
+      const rawAmount = parseFloat(outputAmount.toString()) / Math.pow(10, outputDecimals);
+      const formattedAmount = rawAmount.toFixed(6);
+
+      setToken2Amount(formattedAmount);
       setPriceRangeMessage(null);
+
+    } catch (error) {
+      console.error("计算流动性失败:", error);
+      setToken2Amount('');
+      setPriceRangeMessage('计算流动性时出错');
     }
   }, [pool, token1Amount, tickRange, getTokens, token1Data]);
   
@@ -476,7 +449,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     NONFUNGIBLE_POSITION_MANAGER_ADDRESS
   );
   
-  const { addLiquidity: addLiquidityFn } = useAddLiquidity(
+  const { addLiquidity: addLiquidityFn, loading: addLiquidityLoading } = useAddLiquidity(
     token1Data,
     token2Data,
     userAddress,
@@ -490,37 +463,92 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     handleApprove
   );
 
-  const calculateTokenRequirements = useCallback(() => {
-    if (!pool || !tickRange.minTick || !tickRange.maxTick) return null;
+  // 将 calculateTokenRequirements 转换为 useEffect
+  useEffect(() => {
+    if (!pool || !tickRange.minTick || !tickRange.maxTick) {
+      setTokenRequirements(null);
+      return;
+    }
     
     const currentTick = pool.tickCurrent;
     const { minTick, maxTick } = tickRange;
     
     // 当前价格低于范围
     if (currentTick < minTick) {
-      return {
+      setTokenRequirements({
         onlyToken0: true,
         onlyToken1: false,
-        message: "当前价格低于范围。只需要提供 token0，当价格上升进入范围时会自动转换为 token1"
-      };
+        message: `Current price is lower than the range. You only need to provide ${token0Detail?.symbol}, and it will be automatically converted to ${token0Detail?.symbol} when the price rises into the range`
+      });
+      return;
     }
     
     // 当前价格高于范围
     if (currentTick > maxTick) {
-      return {
+      setTokenRequirements({
         onlyToken0: false,
         onlyToken1: true,
-        message: "当前价格高于范围。只需要提供 token1，当价格下降进入范围时会自动转换为 token0"
-      };
+        message: `Current price is higher than the range. You only need to provide ${token1Detail?.symbol}, and it will be automatically converted to ${token1Detail?.symbol} when the price falls into the range`
+      });
+      return;
     }
-    
+
     // 当前价格在范围内
-    return {
+    setTokenRequirements({
       onlyToken0: false,
       onlyToken1: false,
-      message: "当前价格在范围内。需要同时提供两种代币"
-    };
+      message: "Current price is within the range. You need to provide both tokens"
+    });
+
   }, [pool, tickRange]);
+
+  const setPriceRangeFn = useCallback((range: { minPrice: string; maxPrice: string }) => {
+    if (!pool) return;
+    
+    try {
+      const { token0, token1 } = getTokens();
+      if (!token0 || !token1) return;
+
+      // 确保输入的价格是数字
+      const minPriceNum = parseFloat(range.minPrice);
+      const maxPriceNum = parseFloat(range.maxPrice);
+    
+      setPriceRange(range);
+
+      if (isNaN(minPriceNum) || isNaN(maxPriceNum)) {
+        setPriceRangeMessage('请输入有效的价格范围');
+        return;
+      }
+
+      if (minPriceNum <= 0 || maxPriceNum <= 0) {
+        setPriceRangeMessage('价格必须大于0');
+        return;
+      }
+      // 计算 tick 值
+      const minTick = nearestUsableTick(
+        Math.floor(Math.log(minPriceNum) / Math.log(1.0001)),
+        pool.tickSpacing
+      );
+      
+      const maxTick = nearestUsableTick(
+        Math.ceil(Math.log(maxPriceNum) / Math.log(1.0001)),
+        pool.tickSpacing
+      );
+
+      console.log('Price to tick calculation:', {
+        minPrice: minPriceNum,
+        maxPrice: maxPriceNum,
+        minTick,
+        maxTick,
+        poolCurrentTick: pool.tickCurrent
+      });
+
+      // 更新 tick 范围和价格范围
+      setTickRange({ minTick, maxTick });
+    } catch (error) {
+      console.error("计算 tick 范围失败:", error);
+    }
+  }, [pool, getTokens]);
 
   // 更新按钮显示
   const renderTokenButton = (type: "token1" | "token2") => {
@@ -556,8 +584,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       </button>
     );
   };
-
-  const tokenRequirements = calculateTokenRequirements();
 
   return (
     <div className="w-full max-w-[860px] px-4 sm:px-6 lg:px-0">
@@ -653,7 +679,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               currentPrice={currentPrice}
               pool={pool}
               priceRange={priceRange}
-              setPriceRange={setPriceRange}
+              setPriceRange={setPriceRangeFn}
               positionType={positionType}
               setPositionType={setPositionType}
               token1Amount={token1Amount}
@@ -662,6 +688,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               setToken2Amount={setToken2Amount}
               addLiquidity={addLiquidityFn}
               setStep={setStep}
+              addLiquidityLoading={addLiquidityLoading}
+              hideInput={{
+                token1: tokenRequirements?.onlyToken0 || false,
+                token2: tokenRequirements?.onlyToken1 || false
+              }}
             />
           )}
         </div>
