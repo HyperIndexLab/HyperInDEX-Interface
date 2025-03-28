@@ -1,4 +1,4 @@
-import { useWriteContract } from 'wagmi';
+import { usePublicClient, useWriteContract } from 'wagmi';
 import { waitForTransactionReceipt, readContract } from 'wagmi/actions';
 import { sendTransaction, simulateContract, writeContract } from '@wagmi/core';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
@@ -7,7 +7,7 @@ import { FACTORY_ABI_V3, FACTORY_CONTRACT_ADDRESS_V3 } from '@/constant/ABI/Hype
 import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Pool';
 import { NONFUNGIBLE_POSITION_MANAGER_ABI, NONFUNGIBLE_POSITION_MANAGER_ADDRESS } from '@/constant/ABI/NonfungiblePositionManager';
 import { useToast } from '@/components/ToastContext';
-import { encodeSqrtRatioX96, MintOptions } from '@uniswap/v3-sdk';
+import { AddLiquidityOptions, encodeSqrtRatioX96, MintOptions } from '@uniswap/v3-sdk';
 import JSBI from '@uniswap/sdk-core/node_modules/jsbi';
 import { BigintIsh, Token } from '@uniswap/sdk-core';
 import { Slot0Data } from '@/hooks/usePoolBaseInfo';
@@ -20,6 +20,7 @@ import { TickMath } from '@uniswap/v3-sdk';
 import { nearestUsableTick, FeeAmount } from '@uniswap/v3-sdk';
 import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
 import { hashkeyTestnet } from 'viem/chains';
+import { getV3Positions, useV3Positions } from '@/hooks/useV3Positions';
 
 export const useAddLiquidity = (
   token1Data: any,
@@ -37,6 +38,7 @@ export const useAddLiquidity = (
   const { writeContractAsync } = useWriteContract();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const publicClient = usePublicClient();
 
    // 创建Token对象
    const getTokens = useCallback(() => {
@@ -170,8 +172,7 @@ export const useAddLiquidity = (
           functionName: 'getPool',
           args: [token0Address, token1Address, feeTier]
         }) as `0x${string}`;
-
-        console.log(poolAddr, 'poolAddr====');
+       
 
         try {
           const initializeTx = await writeContractAsync({
@@ -231,6 +232,7 @@ export const useAddLiquidity = (
 
       let sqrtPriceX96: bigint;
       
+      console.log(poolAddr, 'poolAddr====222');
       // 检查池子是否已初始化
       const slot0 = await readContract(wagmiConfig, {
         address: poolAddr as `0x${string}`,
@@ -379,27 +381,57 @@ export const useAddLiquidity = (
         });
       }
     
-      const mintOptions: MintOptions = {
-        recipient: userAddress,
-        deadline: Math.floor(Date.now() / 1000) + 60 * 20,
-        slippageTolerance: new Percent(100, 10_000),
-      };
+      // 创建交易，用于mint或者increase liquidity
+      let transaction;
+      const { hasPosition, positionId } = await getV3Positions(userAddress, poolAddr, publicClient);
 
-      console.log(position, 'position====');
+      if (hasPosition && positionId) {
+        // 如果存在相同参数的持仓，使用 increase liquidity 而不是 mint
+        toast({
+          type: "info",
+          message: "发现已存在的持仓，将增加流动性而不是创建新持仓",
+          isAutoClose: true
+        });
 
-      // 获取调用参数
-      const { calldata, value } = NonfungiblePositionManager.addCallParameters(
-        position,
-        mintOptions
-      );
+        const addLiquidityOptions: AddLiquidityOptions = {
+          deadline: Math.floor(Date.now() / 1000) + 60 * 20,
+          slippageTolerance: new Percent(50, 10_000),
+          tokenId: positionId,
+        };
 
-      console.log(calldata, value,   'calldata, value====');
 
-      const transaction = {
-        data: calldata as `0x${string}`,
-        to: NONFUNGIBLE_POSITION_MANAGER_ADDRESS as `0x${string}`,
-        value: BigInt(value),
-        from: userAddress as `0x${string}`,
+        const { calldata, value } = NonfungiblePositionManager.addCallParameters(
+          position,
+          addLiquidityOptions
+        )
+
+
+        transaction = {
+          data: calldata as `0x${string}`,
+          to: NONFUNGIBLE_POSITION_MANAGER_ADDRESS as `0x${string}`,
+          value: BigInt(value),
+        }
+        
+      } else {
+        const mintOptions: MintOptions = {
+          recipient: userAddress,
+          deadline: Math.floor(Date.now() / 1000) + 60 * 20,
+          slippageTolerance: new Percent(100, 10_000),
+        };
+
+        // 获取调用参数
+        const { calldata, value } = NonfungiblePositionManager.addCallParameters(
+          position,
+          mintOptions
+        );
+
+        console.log(calldata, value,   'calldata, value====');
+
+        transaction = {
+          data: calldata as `0x${string}`,
+          to: NONFUNGIBLE_POSITION_MANAGER_ADDRESS as `0x${string}`,
+          value: BigInt(value),
+        }
       }
 
       try {

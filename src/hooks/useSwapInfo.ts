@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { parseUnits, formatUnits, Address } from 'viem';
 import { usePublicClient } from 'wagmi';
+import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Pool';
 import { QUOTE_CONTRACT_ADDRESS, QUOTE_ABI } from '../constant/ABI/HyperIndexV3Quote';
 import { PAIR_ABI } from '@/constant/ABI/HyperIndexPair';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
-import { readContract } from 'wagmi/actions';
+import { readContract, simulateContract } from 'wagmi/actions';
+import { FACTORY_ABI_V3, FACTORY_CONTRACT_ADDRESS_V3 } from '@/constant/ABI/HyperIndexFactoryV3';
 
 interface Token {
   address: Address;
@@ -19,7 +21,13 @@ interface UseSwapInfoProps {
   slippage: number;
   poolVersion: 'v2' | 'v3';
   pairAddress: Address; // 池子的地址
-  poolFee?: number; // V3 池子费率，默认为 3000 (0.3%)
+}
+
+interface PoolQuote {
+  fee: number;
+  amountOut: bigint;
+  priceImpact: number;
+  liquidity: bigint;
 }
 
 export async function getSwapInfo({
@@ -28,7 +36,6 @@ export async function getSwapInfo({
   amount1,
   slippage = 0.5,
   poolVersion = 'v3',
-  poolFee = 3000,
   pairAddress,
 }: UseSwapInfoProps) {
   // 初始化返回值
@@ -55,7 +62,9 @@ export async function getSwapInfo({
       minimumReceived: amount1,
       priceImpact: '0',
       lpFee: '0',
-      error: null
+      error: null,
+      bestPoolFee: '0',
+      poolInfo: null
     };
   }
 
@@ -64,7 +73,7 @@ export async function getSwapInfo({
     if (poolVersion === 'v2') {
       return await calculateV2Swap(token1, token2, amount1, slippage, pairAddress);
     } else {
-      return await calculateV3Swap(token1, token2, amount1, slippage, poolFee);
+      return await calculateV3Swap(token1, token2, amount1, slippage);
     }
   } catch (err) {
     console.error('Error calculating swap:', err);
@@ -73,7 +82,9 @@ export async function getSwapInfo({
       minimumReceived: '0',
       priceImpact: '0',
       lpFee: '0',
-      error: '计算交易失败，请稍后再试'
+      error: '计算交易失败，请稍后再试',
+      bestPoolFee: '0',
+      poolInfo: null
     };
   }
 }
@@ -84,73 +95,164 @@ async function calculateV3Swap(
   token2: Token,
   amount1: string,
   slippage: number,
-  poolFee: number,
 ) {
   try {
     const amountIn = parseUnits(amount1, token1.decimals);
-    // {
-    //   "internalType": "address",
-    //   "name": "tokenIn",
-    //   "type": "address"
-    // },
-    // {
-    //   "internalType": "address",
-    //   "name": "tokenOut",
-    //   "type": "address"
-    // },
-    // {
-    //   "internalType": "uint256",
-    //   "name": "amountIn",
-    //   "type": "uint256"
-    // },
-    // {
-    //   "internalType": "uint24",
-    //   "name": "fee",
-    //   "type": "uint24"
-    // },
-    // {
-    //   "internalType": "uint160",
-    //   "name": "sqrtPriceLimitX96",
-    //   "type": "uint160"
-    // }
-    const params = {
-      tokenIn: token1.address,
-      tokenOut: token2.address,
-      amountIn: amountIn,
-      fee: poolFee,
-      sqrtPriceLimitX96: 0
-    }
+    const possibleFees = [100, 500, 3000, 10000];
     
-    // 使用 Uniswap V3 Quoter 合约获取输出金额
-    const amountOut = await readContract(wagmiConfig, {
-      address: QUOTE_CONTRACT_ADDRESS,
-      abi: QUOTE_ABI,
-      functionName: 'quoteExactInputSingle',
-      args: [
-        params // sqrtPriceLimitX96 设为 0 表示不设限制
-      ]
-    });
+    let poolQuotes: PoolQuote[] = [];
+    
+    for (const fee of possibleFees) {
+      try {
+        const params = {
+          tokenIn: token1.address,
+          tokenOut: token2.address,
+          amountIn: amountIn,
+          fee: fee,
+          sqrtPriceLimitX96: 0
+        };
 
-    // 计算输出金额
-    const formattedOutput = formatUnits(amountOut as bigint, token2.decimals);
-    
-    // 计算最小接收数量 (根据滑点设置)
-    const minReceived = (amountOut as bigint) * BigInt(Math.floor((100 - slippage) * 100)) / BigInt(10000);
-    
-    // 计算 LP 费用
-    const feeAmount = (amountIn * BigInt(poolFee)) / BigInt(1000000);
-    
-    return {
-      token2Amount: formattedOutput,
-      minimumReceived: formatUnits(minReceived, token2.decimals),
-      priceImpact: '< 0.01', // 简化处理
-      lpFee: formatUnits(feeAmount, token1.decimals),
-      error: null
-    };
+        // 获取报价
+        const { result } = await simulateContract(wagmiConfig, {
+          address: QUOTE_CONTRACT_ADDRESS,
+          abi: QUOTE_ABI,
+          functionName: 'quoteExactInputSingle',
+          args: [params]
+        });
+
+        const amountOut = result[0];
+
+        // 计算价格影响（这里我们简化处理，仅基于输入输出计算）
+        const priceImpact = calculateSimplePriceImpact(amountIn, amountOut as bigint);
+
+        poolQuotes.push({
+          fee,
+          amountOut: amountOut as bigint,
+          priceImpact,
+          liquidity: BigInt(0) // 由于无法直接获取流动性，这里暂时不作为判断依据
+        });
+      } catch (e) {
+        continue;
+      }
+    }
+
+    // 根据多个因素选择最优池子
+    const bestPool = findBestPool(poolQuotes);
+    if (!bestPool) {
+      throw new Error('没有找到合适的流动性池');
+    }
+
+    // 获取池子详细信息
+    const poolInfo = await getPoolInfo(token1.address, token2.address, bestPool.fee);
+    console.log('Pool Info:', poolInfo);
+
+    return formatSwapResult(
+      bestPool.amountOut,
+      bestPool.fee,
+      amountIn,
+      token1.decimals,
+      token2.decimals,
+      slippage,
+      bestPool.priceImpact,
+      poolInfo  // 添加池子信息到返回结果中
+    );
   } catch (err) {
     console.error('Error calculating V3 swap:', err);
     throw err;
   }
+}
+
+// 简化的价格影响计算
+function calculateSimplePriceImpact(amountIn: bigint, amountOut: bigint): number {
+  // 这里使用一个简化的计算方法
+  // 实际项目中可能需要更复杂的计算逻辑
+  const impact = Number((amountIn - amountOut) * BigInt(10000) / amountIn) / 100;
+  return Math.max(0, impact);
+}
+
+// 找到最优池子
+function findBestPool(quotes: PoolQuote[]): PoolQuote | null {
+  if (quotes.length === 0) return null;
+
+  // 按以下优先级排序：
+  // 1. 价格影响小于 1% 的池子
+  // 2. 在满足条件的池子中，选择输出金额最大的
+
+  const validPools = quotes.filter(quote => quote.priceImpact < 1);
+
+  if (validPools.length === 0) {
+    // 如果没有满足条件的池子，选择价格影响最小的
+    return quotes.sort((a, b) => a.priceImpact - b.priceImpact)[0];
+  }
+
+  // 在满足条件的池子中选择输出最大的
+  return validPools.sort((a, b) => {
+    if (a.amountOut > b.amountOut) return -1;
+    if (a.amountOut < b.amountOut) return 1;
+    return a.fee - b.fee;
+  })[0];
+}
+
+// 新增获取池子信息的函数
+async function getPoolInfo(token0: Address, token1: Address, fee: number) {
+  try {
+    const { result } = await simulateContract(wagmiConfig, {
+      address: FACTORY_CONTRACT_ADDRESS_V3,
+      abi: FACTORY_ABI_V3,
+      functionName: 'getPool',
+      args: [token0, token1, fee]
+    });
+
+    const poolAddress = result as Address;
+    
+    // 获取池子的流动性和价格信息
+    const { result: poolState } = await simulateContract(wagmiConfig, {
+      address: poolAddress as `0x${string}`,
+      abi: POOL_ABI,
+      functionName: "slot0"
+    });
+
+    const { result: liquidityResult } = await simulateContract(wagmiConfig, {
+      address: poolAddress as `0x${string}`,
+      abi: POOL_ABI,
+      functionName: 'liquidity'
+    });
+
+    return {
+      poolAddress,
+      sqrtPriceX96: poolState[0],
+      liquidity: liquidityResult,
+      tick: poolState[1]
+    };
+  } catch (err) {
+    console.error('Error getting pool info:', err);
+    throw err;
+  }
+}
+
+// 更新格式化函数的参数
+function formatSwapResult(
+  amountOut: bigint,
+  fee: number,
+  amountIn: bigint,
+  decimalsIn: number,
+  decimalsOut: number,
+  slippage: number,
+  priceImpact: number,
+  poolInfo?: any  // 添加池子信息参数
+) {
+  const minReceived = amountOut * BigInt(Math.floor((100 - slippage) * 100)) / BigInt(10000);
+  const feeAmount = (amountIn * BigInt(fee)) / BigInt(1000000);
+
+  return {
+    token2Amount: formatUnits(amountOut, decimalsOut),
+    minimumReceived: formatUnits(minReceived, decimalsOut),
+    priceImpact: priceImpact.toFixed(2),
+    lpFee: feeAmount,
+    bestPoolFee: fee,
+    error: null,
+    poolInfo  // 添加池子信息到返回结果中
+  };
 }
 
 // V2 计算函数

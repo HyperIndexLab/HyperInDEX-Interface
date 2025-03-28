@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { usePoolsData } from '../hooks/usePoolsData';
 import RemoveLiquidityModal from './RemoveLiquidityModal';
 import Link from 'next/link';
+import { useUserPoolsV3Data } from '@/hooks/usePoolsV3Data';
 
 interface PoolInfo {
   pairAddress: string;
@@ -17,11 +18,15 @@ interface PoolInfo {
   token0Price?: string;
   token1Price?: string;
   userAddress: string;
+  fee: number;
 }
 
 const PoolsContainer: React.FC = () => {
   const [selectedPool, setSelectedPool] = useState<PoolInfo | null>(null);
   const { pools, isLoading, userAddress } = usePoolsData();
+  const { poolsData, isLoading: isLoadingV3, error } = useUserPoolsV3Data(userAddress);
+
+  console.log(poolsData, 'poolsData=====2222')
 
   const handleRemove = (pool: PoolInfo) => {
     const token0Price = Number(pool.token1Amount) / Number(pool.token0Amount);
@@ -124,7 +129,10 @@ const PoolsContainer: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <div className="font-bold text-md">{pool.token0Symbol}/{pool.token1Symbol}</div>
+                    <div className="font-bold text-md">
+                      {pool.token0Symbol}/{pool.token1Symbol}
+                      <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary">V2</span>
+                    </div>
                     <div className="text-base opacity-50">Pool</div>
                   </div>
                 </div>
@@ -150,6 +158,57 @@ const PoolsContainer: React.FC = () => {
                     Add
                   </Link>
                 </div>
+              </td>
+            </tr>
+          ))}
+          {poolsData.map((pool, index) => (
+            <tr key={pool.tokenId} className="hover:bg-base-300/50">
+              <td className="bg-transparent text-md">{index + 1}</td>
+              <td className="bg-transparent">
+                <div className="flex items-center gap-3">
+                  <div className="relative w-12 h-6">
+                    <img 
+                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      alt={pool.token0Symbol}
+                      className="w-6 h-6 rounded-full absolute left-0"
+                    />
+                    <img 
+                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      alt={pool.token1Symbol}
+                      className="w-6 h-6 rounded-full absolute left-4"
+                    />
+                  </div>
+                  <div>
+                    <div className="font-bold text-md">
+                      {pool.token0Symbol}/{pool.token1Symbol}
+                      <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary">V3</span>
+                      <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-secondary/20 text-secondary">{pool.fee / 10000}%</span>
+                    </div>
+                    <div className="text-base opacity-50">Pool</div>
+                  </div>
+                </div>
+              </td>
+              <td className="bg-transparent text-md">{Number(pool.userLPBalance).toFixed(4)}</td>
+              <td className="bg-transparent text-md">-</td>
+                <td className="bg-transparent">
+                <div className="text-md">{pool.token0Amount} {pool.token0Symbol}</div>
+                <div className="text-md">{pool.token1Amount} {pool.token1Symbol}</div>
+              </td>
+              <td className="bg-transparent text-right">
+                <div className="flex gap-2 justify-end">
+                  <button 
+                    onClick={() => handleRemove(pool)} 
+                    className="btn btn-sm btn-outline btn-error rounded-full px-6"
+                  >
+                    Remove
+                  </button>
+                  <Link 
+                    href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
+                    className="btn btn-sm btn-primary rounded-full px-6"
+                  >
+                    Add
+                  </Link>
+                </div>  
               </td>
             </tr>
           ))}

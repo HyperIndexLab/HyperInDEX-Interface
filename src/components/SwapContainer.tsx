@@ -277,8 +277,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   }, []);
 
 
-
-
   // 修改价格计算相关的 useEffect
   useEffect(() => {
     if (token1Data && token2Data) {
