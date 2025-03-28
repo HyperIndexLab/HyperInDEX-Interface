@@ -40,8 +40,6 @@ export async function getV3Positions(address: string, poolAddress: string, publi
         args: [tokenId],
       });
 
-      console.log(tokenId, position, poolAddress, 'position====');
-
       // 获取 position 中的 token0 和 token1，构建池子地址
       const positionPool = await publicClient?.readContract({
         address: FACTORY_CONTRACT_ADDRESS_V3,
