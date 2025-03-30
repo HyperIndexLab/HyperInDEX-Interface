@@ -7,6 +7,7 @@ import { nearestUsableTick, Pool, Position, TickMath, computePoolAddress } from 
 import { FACTORY_ABI_V3, FACTORY_CONTRACT_ADDRESS_V3 } from '@/constant/ABI/HyperIndexFactoryV3'
 import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Pool'
 import JSBI from 'jsbi'
+import { hashkeyTestnet } from 'viem/chains'
 
 interface PoolData {
   token0Symbol: string
@@ -19,6 +20,14 @@ interface PoolData {
   fee: number
   token0Address: Address
   token1Address: Address
+  poolAddr: Address
+  tickLower: number
+  tickUpper: number
+  liquidity: bigint
+  userAddress: Address
+  token0: Token
+  token1: Token
+  pool: Pool
 }
 
 interface PositionInfo {
@@ -57,8 +66,8 @@ function getTokenAmountsFromPosition(
   token0Symbol: string,
   token1Symbol: string
 ) {
-  const token0 = new Token(1, positionInfo.token0, positionInfo.token0Decimals, token0Symbol, token0Symbol)
-  const token1 = new Token(1, positionInfo.token1, positionInfo.token1Decimals, token1Symbol, token1Symbol)
+  const token0 = new Token(hashkeyTestnet.id, positionInfo.token0, positionInfo.token0Decimals, token0Symbol, token0Symbol)
+  const token1 = new Token(hashkeyTestnet.id, positionInfo.token1, positionInfo.token1Decimals, token1Symbol, token1Symbol)
 
   let sqrtPriceX96 = poolSqrtPriceX96
   if (sqrtPriceX96 <= 0n) {
@@ -82,6 +91,9 @@ function getTokenAmountsFromPosition(
   })
 
   return {
+    token0: token0,
+    token1: token1,
+    pool: pool,
     amount0: position.amount0.toSignificant(6), // Token0 数量
     amount1: position.amount1.toSignificant(6)  // Token1 数量
   }
@@ -104,8 +116,9 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
   poolsData: PoolData[]
   isLoading: boolean
   error: Error | null
+  refetch: () => Promise<void>
 } {
-  const { data: balanceOf, isLoading: balanceLoading } = useReadContract({
+  const { data: balanceOf, isLoading: balanceLoading, refetch: refetchBalance } = useReadContract({
     address: NONFUNGIBLE_POSITION_MANAGER_ADDRESS as `0x${string}`,
     abi: NONFUNGIBLE_POSITION_MANAGER_ABI as Abi,
     functionName: 'balanceOf',
@@ -122,7 +135,7 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     }));
   }, [balanceOf, userAddress]);
 
-  const { data: tokenIds, isLoading: tokenIdsLoading } = useReadContracts({
+  const { data: tokenIds, isLoading: tokenIdsLoading, refetch: refetchTokenIds } = useReadContracts({
     contracts: tokenOfOwnerByIndexCalls
   });
 
@@ -136,7 +149,7 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     }));
   }, [tokenIds]);
 
-  const { data: positionsData, isLoading: positionsLoading } = useReadContracts({
+  const { data: positionsData, isLoading: positionsLoading, refetch: refetchPositions } = useReadContracts({
     contracts: positionCalls
   });
 
@@ -146,12 +159,12 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     positionsData.forEach(position => {
       if (position) {
         calls.push({
-          address: (position.result)[2],
+          address: (position.result as PositionResult)[2].toString() as Address,
           abi: erc20Abi,
           functionName: 'symbol'
         });
         calls.push({
-          address: (position.result)[3],
+          address: (position.result as PositionResult)[3].toString() as Address,
           abi: erc20Abi,
           functionName: 'symbol'
         });
@@ -162,11 +175,9 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
 
   console.log(positionsData, 'positionsData=====')
 
-  const { data: tokenSymbols, isLoading: symbolsLoading } = useReadContracts({
+  const { data: tokenSymbols, isLoading: symbolsLoading, refetch: refetchSymbols } = useReadContracts({
     contracts: tokenSymbolCalls
   });
-
-  console.log(tokenSymbols, 'tokenSymbols=====')
 
   const tokenDecimalsCalls = useMemo(() => {
     if (!positionsData) return [];
@@ -174,12 +185,12 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     positionsData.forEach(position => {
       if (position) {
         calls.push({
-          address: (position.result)[2],
+          address: (position.result as PositionResult)[2].toString() as Address,
           abi: erc20Abi,
           functionName: 'decimals'
         });
         calls.push({
-          address: (position.result)[3],
+          address: (position.result as PositionResult)[3].toString() as Address,
           abi: erc20Abi,
           functionName: 'decimals'
         });
@@ -188,7 +199,7 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     return calls;
   }, [positionsData]);
 
-  const { data: tokenDecimals, isLoading: decimalsLoading } = useReadContracts({
+  const { data: tokenDecimals, isLoading: decimalsLoading, refetch: refetchDecimals } = useReadContracts({
     contracts: tokenDecimalsCalls
   });
 
@@ -211,7 +222,7 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     }).filter((call): call is NonNullable<typeof call> => call !== null);
   }, [positionsData, tokenSymbols]);
 
-  const { data: poolAddresses } = useReadContracts({
+  const { data: poolAddresses, refetch: refetchPoolAddresses } = useReadContracts({
     contracts: poolAddressCalls
   });
 
@@ -230,7 +241,7 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     }).filter((call): call is NonNullable<typeof call> => call !== null);
   }, [poolAddresses]);
 
-  const { data: slot0DataArray } = useReadContracts({
+  const { data: slot0DataArray, refetch: refetchSlot0 } = useReadContracts({
     contracts: slot0Calls
   });
 
@@ -251,13 +262,15 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     }).filter((call): call is NonNullable<typeof call> => call !== null);
   }, [poolAddresses]);
 
-  const { data: liquidityDataArray } = useReadContracts({
+  const { data: liquidityDataArray, refetch: refetchLiquidity } = useReadContracts({
     contracts: liquidityCalls
   });
 
   console.log(liquidityDataArray, 'liquidityDataArray=====')
   const poolsData = useMemo(() => {
-    if (!positionsData || !tokenSymbols || !tokenIds || !slot0DataArray || !liquidityDataArray || !tokenDecimals) return [];
+    if (!positionsData || !tokenSymbols || !tokenIds || !slot0DataArray || !liquidityDataArray || !tokenDecimals || !poolAddresses) return [];
+
+    console.log(positionsData, 'positionsData=====')
   
     return positionsData.map((position, index) => {
       if (!position?.result) return null;
@@ -293,12 +306,20 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
         token1Symbol: symbol1 as string,
         token0Amount: tokenAmounts.amount0,
         token1Amount: tokenAmounts.amount1,
+        token0: tokenAmounts.token0,
+        token1: tokenAmounts.token1,
         poolShare: calculatePoolShare(positionResult[7], (liquidityDataArray[index]?.result as bigint) ?? 0n),
         tokenId: tokenIds[index].result,
         token0Address: positionResult[2].toString() as Address,
         token1Address: positionResult[3].toString() as Address,
         fee: Number(positionResult[4]),
         userLPBalance: formatUnits(positionResult[7], Number(decimals0)),
+        poolAddr: poolAddresses[index]?.result as Address,
+        tickLower: Number(positionResult[5]),
+        tickUpper: Number(positionResult[6]),
+        liquidity: positionResult[7],
+        userAddress: userAddress,
+        pool: tokenAmounts.pool,
       };
     }).filter(Boolean) as PoolData[];
   }, [positionsData, tokenSymbols, tokenIds, slot0DataArray, liquidityDataArray, tokenDecimals]);
@@ -306,9 +327,23 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
 
   const isLoading = balanceLoading || tokenIdsLoading || positionsLoading || symbolsLoading || decimalsLoading;
 
+  const refetch = async () => {
+    await Promise.all([
+      refetchBalance(),
+      refetchTokenIds(),
+      refetchPositions(),
+      refetchSymbols(),
+      refetchDecimals(),
+      refetchPoolAddresses(),
+      refetchSlot0(),
+      refetchLiquidity()
+    ]);
+  };
+
   return {
     poolsData,
     isLoading,
-    error: null
+    error: null,
+    refetch
   };
 }

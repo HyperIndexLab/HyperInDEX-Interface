@@ -8,7 +8,7 @@ import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Poo
 import { NONFUNGIBLE_POSITION_MANAGER_ABI, NONFUNGIBLE_POSITION_MANAGER_ADDRESS } from '@/constant/ABI/NonfungiblePositionManager';
 import { useToast } from '@/components/ToastContext';
 import { AddLiquidityOptions, encodeSqrtRatioX96, MintOptions } from '@uniswap/v3-sdk';
-import JSBI from '@uniswap/sdk-core/node_modules/jsbi';
+import JSBI from 'jsbi';
 import { BigintIsh, Token } from '@uniswap/sdk-core';
 import { Slot0Data } from '@/hooks/usePoolBaseInfo';
 import { isValidAddress } from '@/utils';

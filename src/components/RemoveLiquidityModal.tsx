@@ -6,68 +6,132 @@ import { useToast } from '@/components/ToastContext';
 import { useReadContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
+import { Pool, Position } from '@uniswap/v3-sdk';
+import { Token, Percent } from '@uniswap/sdk-core';
+import JSBI from 'jsbi';
+import { formatTokenBalance } from '@/utils/formatTokenBalance';
+import { NONFUNGIBLE_POSITION_MANAGER_ADDRESS, NONFUNGIBLE_POSITION_MANAGER_ABI } from '@/constant/ABI/NonfungiblePositionManager';
+import { ROUTER_CONTRACT_V3_ADDRESS } from '@/constant/ABI/HyperindexV3Router';
+
+export interface PoolInfo {  
+  token0Symbol: string;
+  token1Symbol: string;
+  userLPBalance: string;
+  token0Amount: string;
+  token1Amount: string;
+  token0Price?: string;
+  token1Price?: string;
+  pairAddress: string;
+  userAddress: string;
+  token0Address: string;
+  token1Address: string;
+  poolShare: string;
+  isV3?: boolean;
+  fee?: number;
+  tickLower?: number;
+  tickUpper?: number;
+  liquidity?: bigint;
+  tokenId?: bigint;
+  token0?: Token;
+  token1?: Token;
+  pool?: Pool;
+}
+
 
 interface RemoveLiquidityModalProps {
   isOpen: boolean;
   onClose: () => void;
-  pool: {
-    token0Symbol: string;
-    token1Symbol: string;
-    userLPBalance: string;
-    token0Amount: string;
-    token1Amount: string;
-    token0Price?: string;
-    token1Price?: string;
-    pairAddress: string;
-    userAddress: string;
-    token0Address: string;
-    token1Address: string;
-  };
+  pool: PoolInfo;
+  onSuccess?: () => void;
 }
 
 const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
   isOpen,
   onClose,
   pool,
+  onSuccess,
 }) => {
   const [percentage, setPercentage] = useState(0);
   const networkFee = "0.0001";
   const { toast } = useToast();
-  
-  const { data: poolData, loading } = usePoolData(pool.pairAddress, pool.userAddress);
+  let poolData: any, loading: any;
+  if (pool.isV3) { 
+    loading = false;
+    poolData = pool;
+  } else {
+    const data = usePoolData(pool.pairAddress, pool.userAddress);
+    poolData = data.data;
+    loading = data.loading;
+  }
+ 
   const { remove, approve, isRemoving, isApproving, isWaiting, isSuccess } = useRemoveLiquidity();
   const [needsApproval, setNeedsApproval] = useState(true);
 
   const amounts = useMemo(() => {
     if (!poolData) return null;
+    if (pool.isV3 && pool.pool && pool.tickLower && pool.tickUpper && pool.liquidity) {  
+      const position = new Position({
+        pool: pool.pool,
+        tickLower: pool.tickLower,
+        tickUpper: pool.tickUpper,
+        liquidity: JSBI.BigInt(pool.liquidity.toString()),
+      });
 
-    const userBalanceBigInt = poolData.userBalance;
-    const totalSupplyBigInt = poolData.totalSupply;
-    const reservesTyped = poolData.reserves;
-    const token0Decimals = pool.token0Symbol === "USDT" ? 6 : 18;
-    const token1Decimals = pool.token1Symbol === "USDT" ? 6 : 18;
+      if (percentage === 0) {
+        return {
+          token0Amount: 0n,
+          token1Amount: 0n,
+          token0Price: pool.pool.token1Price.toSignificant(4),
+          token1Price: pool.pool.token0Price.toSignificant(4),
+        };
+      }
 
-    const token0Amount = (reservesTyped[0] * userBalanceBigInt) / totalSupplyBigInt;
-    const token1Amount = (reservesTyped[1] * userBalanceBigInt) / totalSupplyBigInt;
-    
-    // 根据不同代币的精度来格式化数值
-    const formatTokenAmount = (amount: bigint, decimals: number) => {
-      return Number(amount) / 10 ** decimals;
-    };
+      // 当百分比为 0 时，不应该移除任何流动性
+      const liquidityPercentage = new Percent(JSBI.BigInt(100 - percentage), JSBI.BigInt(100));
+     
+      // 获取移除后能收到的代币数量
+      const { amount0: token0Amount, amount1: token1Amount } = position.burnAmountsWithSlippage(liquidityPercentage);
+   
+      // 计算代币价格
+      const token0Price = pool.pool.token1Price;
+      const token1Price = pool.pool.token0Price;
 
-    const token0Formatted = formatTokenAmount(reservesTyped[0], token0Decimals);
-    const token1Formatted = formatTokenAmount(reservesTyped[1], token1Decimals);
-    
-    const token0Price = token1Formatted / token0Formatted;
-    const token1Price = token0Formatted / token1Formatted;
-
-    return {
-      token0Amount,
-      token1Amount,
-      token0Price: token0Price.toFixed(4),
-      token1Price: token1Price.toFixed(4),
-    };
-  }, [pool.token0Symbol, pool.token1Symbol, poolData]);
+      return {
+        token0Amount: BigInt(token0Amount.toString()),
+        token1Amount: BigInt(token1Amount.toString()),
+        token0Price: token0Price.toSignificant(4),
+        token1Price: token1Price.toSignificant(4),
+        constructPosition: position
+      };
+    } else {
+      const userBalanceBigInt = poolData.userBalance;
+      const totalSupplyBigInt = poolData.totalSupply;
+      const reservesTyped = poolData.reserves;
+      const token0Decimals = pool.token0Symbol === "USDT" ? 6 : 18;
+      const token1Decimals = pool.token1Symbol === "USDT" ? 6 : 18;
+  
+      const token0Amount = (reservesTyped[0] * userBalanceBigInt) / totalSupplyBigInt;
+      const token1Amount = (reservesTyped[1] * userBalanceBigInt) / totalSupplyBigInt;
+      
+      // 根据不同代币的精度来格式化数值
+      const formatTokenAmount = (amount: bigint, decimals: number) => {
+        return Number(amount) / 10 ** decimals;
+      };
+  
+      const token0Formatted = formatTokenAmount(reservesTyped[0], token0Decimals);
+      const token1Formatted = formatTokenAmount(reservesTyped[1], token1Decimals);
+      
+      const token0Price = token1Formatted / token0Formatted;
+      const token1Price = token0Formatted / token1Formatted;
+  
+      return {
+        token0Amount,
+        token1Amount,
+        token0Price: token0Price.toFixed(4),
+        token1Price: token1Price.toFixed(4),
+      };
+    }
+  }, [pool.token0Symbol, pool.token1Symbol, poolData, pool.isV3, percentage, pool.pool, pool.tickLower, pool.tickUpper, pool.liquidity]);
 
   const calculateTokenAmount = (amount: bigint, percentage: number, decimals: number) => {
     const rawAmount = (amount * BigInt(percentage)) / 100n;
@@ -83,21 +147,39 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       ROUTER_CONTRACT_ADDRESS as `0x${string}`
     ] : undefined,
     query: {
-      enabled: !!pool.userAddress,
+      enabled: !!pool.userAddress && !pool.isV3,
+    },
+  });
+
+  const { data: isApprovedForAll } = useReadContract({
+    address: NONFUNGIBLE_POSITION_MANAGER_ADDRESS as `0x${string}`,
+    abi: NONFUNGIBLE_POSITION_MANAGER_ABI,
+    functionName: 'isApprovedForAll',
+    args: pool.userAddress ? [
+      pool.userAddress as `0x${string}`,
+      NONFUNGIBLE_POSITION_MANAGER_ADDRESS as `0x${string}`
+    ] : undefined,
+    query: {
+      enabled: !!pool.userAddress && pool.isV3,
     },
   });
 
   useEffect(() => {
-    if (!amounts || !poolData || percentage === 0 || !allowance) return;
-    
-    const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
-    setNeedsApproval(BigInt(allowance) < lpAmount);
-  }, [amounts, poolData, percentage, allowance]);
+    if (pool.isV3) {
+      setNeedsApproval(false);
+    } else {
+      if (!amounts || !poolData || percentage === 0 || !allowance) return;
+      const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
+      setNeedsApproval(BigInt(allowance) < lpAmount);
+    }
+  }, [amounts, poolData, percentage, allowance, isApprovedForAll, pool.isV3]);
+  
+  
 
   const handleApprove = async () => {
     if (!amounts || !poolData) return;
     
-    const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
+   
     toast({
       type: 'info',
       message: 'Approving...',
@@ -105,20 +187,50 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     });
 
     try {
-      const result = await approve(pool.pairAddress, lpAmount);
-      if (result.success) {
-        toast({
-          type: 'success',
-          message: 'Successfully approved',
-          isAutoClose: true
+      if (pool.isV3) {
+        // V3 的授权是设置 NFT Position Manager 的 Approval For All
+        const result = await approve({
+          isV3: true,
+          tokenId: pool.tokenId,
+          operator: NONFUNGIBLE_POSITION_MANAGER_ADDRESS,  // operator 是被授权的地址
+          positionManager: NONFUNGIBLE_POSITION_MANAGER_ADDRESS
         });
-        setNeedsApproval(false);
+        
+        if (result.success) {
+          toast({
+            type: 'success',
+            message: 'Successfully approved position manager',
+            isAutoClose: true
+          });
+          setNeedsApproval(false);
+        } else {
+          toast({
+            type: 'error',
+            message: result.error || "Failed to approve position manager",
+            isAutoClose: true
+          });
+        }
       } else {
-        toast({
-          type: 'error',
-          message: result.error || "Failed to approve",
-          isAutoClose: true
+        const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
+        const result = await approve({
+          isV3: false,
+          pairAddress: pool.pairAddress as `0x${string}`,
+          amount: lpAmount
         });
+        if (result.success) {
+          toast({
+            type: 'success',
+            message: 'Successfully approved',
+            isAutoClose: true
+          });
+          setNeedsApproval(false);
+        } else {
+          toast({
+            type: 'error',
+            message: result.error || "Failed to approve",
+            isAutoClose: true
+          });
+        }
       }
     } catch (error) {
       toast({
@@ -140,19 +252,27 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
   const handleRemove = async () => {
     if (!amounts || !poolData) return;
     
-    const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
-    const amount0 = amounts.token0Amount * BigInt(percentage) / 100n;
-    const amount1 = amounts.token1Amount * BigInt(percentage) / 100n;
-
-    toast({
-      type: 'info',
-      message: 'Removing liquidity...',
-      isAutoClose: true
-    });
-
-
-    try {
-      const result = await remove({
+    let removeParams;
+    if (pool.isV3) {
+      removeParams = {
+        isV3: true,
+        tokenId: pool.tokenId,
+        lpAmount: (pool.liquidity! * BigInt(percentage)) / 100n,
+        amount0: BigInt(amounts.token0Amount.toString()),
+        amount1: BigInt(amounts.token1Amount.toString()),
+        userAddress: pool.userAddress,
+        position: amounts.constructPosition,
+        percentage: percentage,
+        token0Address: pool.token0Address,
+        token1Address: pool.token1Address,
+      };
+    } else {
+      const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
+      const amount0 = (BigInt(amounts.token0Amount) * BigInt(percentage)) / 100n;
+      const amount1 = (BigInt(amounts.token1Amount) * BigInt(percentage)) / 100n;
+      
+      removeParams = {
+        isV3: false,
         token0Address: pool.token0Address,
         token1Address: pool.token1Address,
         userAddress: pool.userAddress,
@@ -160,18 +280,26 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         amount0,
         amount1,
         pairAddress: pool.pairAddress,
-      });
+      };
+    }
 
+    toast({
+      type: 'info',
+      message: 'Removing liquidity...',
+      isAutoClose: true
+    });
+
+    try {
+      const result = await remove(removeParams);
 
       if (result.success) {
-        if (isSuccess) {
-          toast({
-            type: 'success',
-            message: 'Successfully removed liquidity',
-            isAutoClose: true
-          });
-          onClose();
-        }
+        toast({
+          type: 'success',
+          message: 'Successfully removed liquidity',
+          isAutoClose: true
+        });
+        onSuccess?.();
+        onClose();
       } else {
         toast({
           type: 'error',
@@ -276,7 +404,11 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
                 {/* 第一个代币 */}
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-3xl">{calculateTokenAmount(amounts.token0Amount, percentage, pool.token0Symbol === "USDT" ? 6 : 18)}</div>
+                    <div className="text-3xl">
+                      {pool.isV3 
+                        ? formatTokenBalance(amounts.token0Amount.toString(), pool.token0?.decimals?.toString() ?? "18") 
+                        : calculateTokenAmount(BigInt(amounts.token0Amount), percentage, pool.token0Symbol === "USDT" ? 6 : 18)}
+                    </div>
                     <div className="text-sm text-base-content">
                       1 {pool.token0Symbol} = {amounts.token0Price} {pool.token1Symbol}
                     </div>
@@ -287,7 +419,10 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
                 {/* 第二个代币 */}
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-3xl">{calculateTokenAmount(amounts.token1Amount, percentage, pool.token1Symbol === "USDT" ? 6 : 18)}</div>
+                    <div className="text-3xl">
+                      {pool.isV3 
+                        ? formatTokenBalance(amounts.token1Amount.toString(), pool.token1?.decimals?.toString() ?? "18") 
+                        : calculateTokenAmount(BigInt(amounts.token1Amount), percentage, pool.token1Symbol === "USDT" ? 6 : 18)}</div>
                     <div className="text-sm text-base-content">
                       1 {pool.token1Symbol} = {amounts.token1Price} {pool.token0Symbol}
                     </div>

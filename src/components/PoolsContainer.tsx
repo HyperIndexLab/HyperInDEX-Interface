@@ -1,34 +1,20 @@
 import React, { useState } from 'react';
 import { usePoolsData } from '../hooks/usePoolsData';
-import RemoveLiquidityModal from './RemoveLiquidityModal';
+import RemoveLiquidityModal, { PoolInfo } from './RemoveLiquidityModal';
 import Link from 'next/link';
 import { useUserPoolsV3Data } from '@/hooks/usePoolsV3Data';
 
-interface PoolInfo {
-  pairAddress: string;
-  token0Address: string;
-  token1Address: string;
-  token0Symbol: string;
-  token1Symbol: string;
-  userLPBalance: string;
-  poolShare: string;
-  token0Amount: string;
-  token1Amount: string;
-  liquidityRevenue: string;
-  token0Price?: string;
-  token1Price?: string;
-  userAddress: string;
-  fee: number;
-}
 
 const PoolsContainer: React.FC = () => {
   const [selectedPool, setSelectedPool] = useState<PoolInfo | null>(null);
-  const { pools, isLoading, userAddress } = usePoolsData();
-  const { poolsData, isLoading: isLoadingV3, error } = useUserPoolsV3Data(userAddress);
+  const { pools, isLoading, userAddress, refetch } = usePoolsData();
+  const { poolsData, isLoading: isLoadingV3, error, refetch: refetchV3 } = useUserPoolsV3Data(userAddress);
 
-  console.log(poolsData, 'poolsData=====2222')
-
-  const handleRemove = (pool: PoolInfo) => {
+  const handleRemove = (pool: PoolInfo, isV3?: boolean) => {
+    if (isV3) {
+      setSelectedPool(pool);
+      return
+    }
     const token0Price = Number(pool.token1Amount) / Number(pool.token0Amount);
     const token1Price = Number(pool.token0Amount) / Number(pool.token1Amount);
     
@@ -41,8 +27,14 @@ const PoolsContainer: React.FC = () => {
     });
   };
 
-  const renderMobilePool = (pool: PoolInfo, index: number) => (
-    <div key={pool.pairAddress} className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-6 space-y-4">
+  const handleSuccess = () => {
+    refetch();
+    refetchV3();
+    setSelectedPool(null);
+  };
+
+  const renderMobilePool = (pool: PoolInfo, index: number, isV3?: boolean) => (
+    <div key={isV3 ? pool.tokenId : pool.pairAddress} className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative w-12 h-6">
@@ -58,12 +50,24 @@ const PoolsContainer: React.FC = () => {
             />
           </div>
           <div>
-            <div className="font-bold text-lg">{pool.token0Symbol}/{pool.token1Symbol}</div>
+            <div className="font-bold text-lg">
+              {pool.token0Symbol}/{pool.token1Symbol}
+              <span className="ml-2 px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
+                {isV3 ? 'V3' : 'V2'}
+              </span>
+              {isV3 && (
+                <span className="ml-1 px-2 py-0.5 text-xs rounded-full bg-secondary/20 text-secondary">
+                  {(pool.fee as number) / 10000}%
+                </span>
+              )}
+            </div>
             <div className="text-base opacity-50">Pool #{index + 1}</div>
           </div>
         </div>
         <div className="text-right">
-          <div className="font-medium text-lg">{pool.poolShare}</div>
+          <div className="font-medium text-lg">
+            {isV3 ? '-' : pool.poolShare}
+          </div>
           <div className="text-base opacity-50">Pool Share</div>
         </div>
       </div>
@@ -71,7 +75,9 @@ const PoolsContainer: React.FC = () => {
       <div className="grid grid-cols-2 gap-4">
         <div>
           <div className="text-base opacity-50">Your LP Tokens</div>
-          <div className="font-medium text-lg">{pool.userLPBalance}</div>
+          <div className="font-medium text-lg">
+            {isV3 ? Number(pool.userLPBalance).toFixed(4) : pool.userLPBalance}
+          </div>
         </div>
         <div>
           <div className="text-base opacity-50">Your Pooled Tokens</div>
@@ -82,7 +88,7 @@ const PoolsContainer: React.FC = () => {
 
       <div className="flex gap-2">
         <button 
-          onClick={() => handleRemove(pool)} 
+          onClick={() => handleRemove(pool, isV3)} 
           className="btn btn-outline btn-error flex-1 rounded-full text-lg"
         >
           Remove
@@ -146,7 +152,7 @@ const PoolsContainer: React.FC = () => {
               <td className="bg-transparent text-right">
                 <div className="flex gap-2 justify-end">
                   <button 
-                    onClick={() => handleRemove(pool)} 
+                    onClick={() => handleRemove(pool, false)} 
                     className="btn btn-sm btn-outline btn-error rounded-full px-6"
                   >
                     Remove
@@ -197,7 +203,27 @@ const PoolsContainer: React.FC = () => {
               <td className="bg-transparent text-right">
                 <div className="flex gap-2 justify-end">
                   <button 
-                    onClick={() => handleRemove(pool)} 
+                    onClick={() => handleRemove({
+                      pairAddress: pool.poolAddr,
+                      token0Address: pool.token0Address,
+                      token1Address: pool.token1Address,
+                      token0Symbol: pool.token0Symbol,
+                      token1Symbol: pool.token1Symbol,
+                      userLPBalance: pool.userLPBalance,
+                      token0Amount: pool.token0Amount,
+                      token1Amount: pool.token1Amount,
+                      fee: pool.fee,
+                      isV3: true,
+                      userAddress: pool.userAddress,
+                      tickLower: pool.tickLower,
+                      tickUpper: pool.tickUpper,
+                      liquidity: pool.liquidity,
+                      poolShare: pool.poolShare,
+                      tokenId: pool.tokenId,
+                      token0: pool.token0,
+                      token1: pool.token1,
+                      pool: pool.pool,
+                    }, true)} 
                     className="btn btn-sm btn-outline btn-error rounded-full px-6"
                   >
                     Remove
@@ -241,7 +267,7 @@ const PoolsContainer: React.FC = () => {
         <div className="flex items-center justify-center py-8">
           <div className="loading loading-spinner loading-lg"></div>
         </div>
-      ) : pools.length === 0 ? (
+      ) : pools.length === 0 && poolsData.length === 0 ? (
         <div className="text-center py-8 text-lg">
           No liquidity positions found
         </div>
@@ -250,6 +276,27 @@ const PoolsContainer: React.FC = () => {
           {renderDesktopPool()}
           <div className="md:hidden space-y-4">
             {pools.map((pool, index) => renderMobilePool(pool, index))}
+            {poolsData.map((pool, index) => renderMobilePool({
+              pairAddress: pool.poolAddr,
+              token0Address: pool.token0Address,
+              token1Address: pool.token1Address,
+              token0Symbol: pool.token0Symbol,
+              token1Symbol: pool.token1Symbol,
+              userLPBalance: pool.userLPBalance,
+              token0Amount: pool.token0Amount,
+              token1Amount: pool.token1Amount,
+              fee: pool.fee,
+              isV3: true,
+              userAddress: pool.userAddress,
+              tickLower: pool.tickLower,
+              tickUpper: pool.tickUpper,
+              liquidity: pool.liquidity,
+              poolShare: pool.poolShare,
+              tokenId: pool.tokenId,
+              token0: pool.token0,
+              token1: pool.token1,
+              pool: pool.pool,
+            }, pools.length + index, true))}
           </div>
         </>
       )}
@@ -259,6 +306,7 @@ const PoolsContainer: React.FC = () => {
           isOpen={!!selectedPool}
           onClose={() => setSelectedPool(null)}
           pool={selectedPool}
+          onSuccess={handleSuccess}
         />
       )}
     </div>

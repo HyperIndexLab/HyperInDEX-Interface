@@ -1,132 +1,160 @@
-import { useState, useEffect } from 'react';
-import { useWriteContract, useReadContract, type BaseError } from 'wagmi';
-import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
-import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
+import { useState } from 'react';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { 
+  NONFUNGIBLE_POSITION_MANAGER_ADDRESS, 
+  NONFUNGIBLE_POSITION_MANAGER_ABI 
+} from '@/constant/ABI/NonfungiblePositionManager';
+import { ROUTER_CONTRACT_ADDRESS, ROUTER_ABI } from '@/constant/ABI/HyperIndexRouter';
 import { erc20Abi } from 'viem';
-import { WHSK } from '../constant/value';
-import { waitForTransactionReceipt } from 'wagmi/actions';
+import JSBI from 'jsbi';
+import { Position, RemoveLiquidityOptions } from '@uniswap/v3-sdk';
+
+import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
+import { CurrencyAmount, MaxUint256, Percent } from '@uniswap/sdk-core';
+import { readContract, sendTransaction, waitForTransactionReceipt, writeContract } from 'wagmi/actions';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
+import { ROUTER_CONTRACT_V3_ADDRESS } from '@/constant/ABI/HyperindexV3Router';
+import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
 
 interface RemoveLiquidityParams {
-  token0Address: string;
-  token1Address: string;
-  userAddress: string;
   lpAmount: bigint;
   amount0: bigint;
   amount1: bigint;
-  pairAddress: string;
+  token0Address?: string;
+  token1Address?: string;
+  userAddress: string;
+  pairAddress?: string;
+  isV3?: boolean;
+  tokenId?: bigint;
+  position?: Position;
+  percentage?: number;
 }
 
-export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, lpAmount?: bigint) => {
+interface ApproveParams {
+  isV3: boolean;
+  tokenId?: bigint;
+  operator?: `0x${string}`;
+  positionManager?: `0x${string}`;
+  pairAddress?: `0x${string}`;
+  amount?: bigint;
+}
+
+export function useRemoveLiquidity() {
   const [isRemoving, setIsRemoving] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
-  // const [hash, setHash] = useState<`0x${string}` | undefined>();
-  const [needsApproval, setNeedsApproval] = useState(true);
-  
-  const { writeContractAsync } = useWriteContract();
-
-  const [isWaiting, setIsWaiting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const { address: account } = useAccount();
 
-  // const { isLoading: isWaiting, isSuccess, isError } = useWaitForTransactionReceipt({ hash });
+  const { writeContractAsync: writeV2Router } = useWriteContract();
+  const { writeContractAsync: writeV3PositionManager } = useWriteContract();
+  const { writeContractAsync: writeERC20 } = useWriteContract();
+  
+  const { isLoading: isWaiting } = useWaitForTransactionReceipt();
 
-  // 检查授权removeliquidityETH
-  const { data: allowance } = useReadContract({
-    address: pairAddress as `0x${string}`,
-    abi: erc20Abi,
-    functionName: 'allowance',
-    args: userAddress ? [
-      userAddress as `0x${string}`,
-      ROUTER_CONTRACT_ADDRESS
-    ] : undefined,
-    query: {
-      enabled: !!(pairAddress && userAddress),
-    },
-  });
-
-  // 监听 allowance 变化
-  useEffect(() => {
-    if (!allowance || !lpAmount) return;
-    setNeedsApproval(BigInt(allowance) < lpAmount);
-  }, [allowance, lpAmount]);
-
-  // 授权
-  const approve = async (pairAddress: string, amount: bigint) => {
+  const approve = async (params: ApproveParams) => {
     setIsApproving(true);
     try {
-      await writeContractAsync({
-        address: pairAddress as `0x${string}`,
-        abi: PAIR_ABI,
-        functionName: 'approve',
-        args: [ROUTER_CONTRACT_ADDRESS as `0x${string}`, amount],
-      });
-      return { success: true };
+      let hash;
+      
+      if (params.isV3) {
+        if (!params.tokenId || !params.operator || !params.positionManager) {
+          throw new Error('Missing required parameters for V3 approval');
+        }
+      } else {
+        if (!params.pairAddress || !params.amount) {
+          throw new Error('Missing required parameters for V2 approval');
+        }
+        
+        // V2: 调用 ERC20 的 approve 方法
+        hash = await writeERC20({
+          address: params.pairAddress,
+          abi: PAIR_ABI,
+          functionName: 'approve',
+          args: [ROUTER_CONTRACT_ADDRESS, params.amount]
+        });
+      }
+
+      return { success: true, hash };
     } catch (error) {
-      console.error('Approve error:', error);
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      };
+      console.error('Approval failed:', error);
+      return { success: false, error: (error as Error).message };
     } finally {
       setIsApproving(false);
     }
   };
 
-  const remove = async ({
-    token0Address,
-    token1Address,
-    userAddress,
-    lpAmount,
-    amount0,
-    amount1,
-  }: RemoveLiquidityParams) => {
+  const remove = async (params: RemoveLiquidityParams) => {
     setIsRemoving(true);
     try {
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 1200);
-      const amountAMin = (amount0 * 99n) / 100n;
-      const amountBMin = (amount1 * 99n) / 100n;
+      let hash;
 
-      // 判断是否包含 WHSK
-      const isToken0WHSK = token0Address.toLowerCase() === WHSK.toLowerCase();
-      const isToken1WHSK = token1Address.toLowerCase() === WHSK.toLowerCase();
-      setIsWaiting(true)
+      if (params.isV3) {
+        if (!params.tokenId || !params.position || !params.percentage) {
+          throw new Error('TokenId and position are required for V3 removal');
+        }
 
-      const hash = await writeContractAsync({
-        address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
-        abi: ROUTER_ABI,
-        functionName: isToken0WHSK || isToken1WHSK ? 'removeLiquidityETH' : 'removeLiquidity',
-        args: isToken0WHSK || isToken1WHSK ? [
-          isToken0WHSK ? token1Address : token0Address as `0x${string}`,  
-          lpAmount.toString(),                                          
-          isToken0WHSK ? amountBMin : amountAMin.toString(),             
-          isToken0WHSK ? amountAMin : amountBMin.toString(),             
-          userAddress as `0x${string}`,                                 
-          deadline.toString(),                                           
-        ] : [
-          token0Address as `0x${string}`,
-          token1Address as `0x${string}`,
-          lpAmount.toString(),
-          amountAMin.toString(),
-          amountBMin.toString(),
-          deadline.toString(),
-        ],
-      });
+        const slippageMultiplier = BigInt(10000 - ((0.5) * 100)) * BigInt(100);
+        const amount0Min = (params.amount0 * slippageMultiplier) / BigInt(1000000);
+        const amount1Min = (params.amount1 * slippageMultiplier) / BigInt(1000000);
+  
+        // 首先调用 decreaseLiquidity
+        const decreaseTx = await writeContract(wagmiConfig, {
+          address: NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+          abi: NONFUNGIBLE_POSITION_MANAGER_ABI,
+          functionName: 'decreaseLiquidity',
+          args: [{
+            tokenId: params.tokenId,
+            liquidity: params.lpAmount,
+            amount0Min: 0,  // 可以根据需要设置最小接收数量
+            amount1Min: 0,
+            deadline: BigInt(Math.floor(Date.now() / 1000) + 1800)
+          }]
+        });
+        
+        await waitForTransactionReceipt(wagmiConfig, { hash: decreaseTx });
 
-   
-      await waitForTransactionReceipt(wagmiConfig, { hash: hash as `0x${string}` });
-      setIsSuccess(true)
+        // 然后调用 collect 收取代币
+        const collectTx = await writeContract(wagmiConfig, {
+          address: NONFUNGIBLE_POSITION_MANAGER_ADDRESS,
+          abi: NONFUNGIBLE_POSITION_MANAGER_ABI,
+          functionName: 'collect',
+          args: [{
+            tokenId: params.tokenId,
+            recipient: params.userAddress,
+            amount0Max: 2n ** 128n - 1n,  // uint128 最大值
+            amount1Max: 2n ** 128n - 1n
+          }]
+        });
 
-      return { success: true };
+        await waitForTransactionReceipt(wagmiConfig, { hash: collectTx });
+
+        setIsSuccess(true);
+        return { success: true, hash };
+      } else {
+        // V2: 调用 Router 的 removeLiquidity 方法
+        hash = await writeV2Router({
+          address: ROUTER_CONTRACT_ADDRESS,
+          abi: ROUTER_ABI,
+          functionName: 'removeLiquidity',
+          args: [
+            params.token0Address,
+            params.token1Address,
+            params.lpAmount,
+            params.amount0,
+            params.amount1,
+            params.userAddress,
+            BigInt(Math.floor(Date.now() / 1000) + 1800) // 30分钟后过期
+          ]
+        });
+      }
+
+      setIsSuccess(true);
+      return { success: true, hash };
     } catch (error) {
-      const wagmiError = error as BaseError;
-      console.error('Remove liquidity error:', wagmiError);
-      return { 
-        success: false, 
-        error: wagmiError.shortMessage || 'Unknown error' 
-      };
+      console.error('Remove liquidity failed:', error);
+      return { success: false, error: (error as Error).message };
     } finally {
       setIsRemoving(false);
-      setIsWaiting(false)
     }
   };
 
@@ -136,7 +164,6 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
     isRemoving,
     isApproving,
     isWaiting,
-    isSuccess,
-    needsApproval,
+    isSuccess
   };
-}; 
+} 
