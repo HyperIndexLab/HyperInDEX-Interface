@@ -84,7 +84,7 @@ export const usePoolInfo = (token1Data: TokenData | null, token2Data: TokenData 
   const [requestLoading, setRequestLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const getPoolAddress = async (token0: string, token1: string, fee: number) => {
+  const getPoolAddress = async (token0: string, token1: string, fee?: number) => {
     // 确保 token0 和 token1 按字典序排序
     const [sortedToken0, sortedToken1] = token0.toLowerCase() < token1.toLowerCase() 
       ? [token0, token1] 

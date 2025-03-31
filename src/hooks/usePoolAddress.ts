@@ -10,7 +10,7 @@ import { V3_FEE_TIERS } from "@/constant/value";
 export const usePoolAddress = () => {
   const publicClient = usePublicClient();
   
-  const getPoolAddress = useCallback(async (token0: string, token1: string, fee: number = 3000) => {
+  const getPoolAddress = useCallback(async (token0: string, token1: string, fee?: number) => {
     try {
       let v3PoolAddress: string | null = null;
       let useV3Pool = false;

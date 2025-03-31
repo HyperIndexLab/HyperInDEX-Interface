@@ -30,6 +30,16 @@ interface PoolQuote {
   liquidity: bigint;
 }
 
+// 修改缓存对象结构
+const poolCache = {
+  key: '',
+  data: null as {
+    fee: number;
+    poolInfo: any;
+  } | null,
+  timestamp: 0
+};
+
 export async function getSwapInfo({
   token1,
   token2,
@@ -89,7 +99,40 @@ export async function getSwapInfo({
   }
 }
 
-// V3 计算函数
+function calculatePriceImpact(
+  tokenIn: Token,
+  tokenOut: Token,
+  poolInfo: {
+    token0: Token,
+    token1: Token,
+    sqrtPriceX96: bigint,
+    liquidity: bigint,
+  }, // 包含 token0/token1 和交易前价格
+  sqrtPriceX96After: bigint
+): number {
+  // 边界保护
+  if (!poolInfo || poolInfo.liquidity === 0n) {
+      return Infinity; // 无流动性的池子视为极大价格影响
+  }
+
+  // 确定价格计算方向
+  const isToken0In = tokenIn.address === poolInfo.token0.address;
+  const decimalsIn = isToken0In ? poolInfo.token0.decimals : poolInfo.token1.decimals;
+  const decimalsOut = isToken0In ? poolInfo.token1.decimals : poolInfo.token0.decimals;
+
+  // 转换交易前后价格为实际价格
+  const [priceBefore, priceAfter] = [poolInfo.sqrtPriceX96, sqrtPriceX96After].map(v => {
+      const basePrice = (Number(v) / 2 ** 96) ** 2;
+      return isToken0In 
+          ? basePrice * (10 ** decimalsOut / 10 ** decimalsIn)  // token1 per token0
+          : (1 / basePrice) * (10 ** decimalsIn / 10 ** decimalsOut); // token0 per token1
+  });
+
+  // 计算价格变化（绝对值）
+  return Math.abs((priceAfter - priceBefore) / priceBefore * 100);
+}
+
+// 修改 V3 计算函数
 async function calculateV3Swap(
   token1: Token,
   token2: Token,
@@ -98,53 +141,110 @@ async function calculateV3Swap(
 ) {
   try {
     const amountIn = parseUnits(amount1, token1.decimals);
-    const possibleFees = [100, 500, 3000, 10000];
+    const cacheKey = `${token1.address}-${token2.address}`;
     
-    let poolQuotes: PoolQuote[] = [];
+    let bestPool;
     
-    for (const fee of possibleFees) {
-      try {
-        const params = {
-          tokenIn: token1.address,
-          tokenOut: token2.address,
-          amountIn: amountIn,
-          fee: fee,
-          sqrtPriceLimitX96: 0
-        };
+    // 检查缓存是否有效（20秒内）
+    if (
+      poolCache.key === cacheKey && 
+      poolCache.data && 
+      Date.now() - poolCache.timestamp < 20000
+    ) {
+      console.log('使用缓存的池子数据');
+      // 使用缓存的池子数据，但仍需计算具体的输出值
+      const params = {
+        tokenIn: token1.address,
+        tokenOut: token2.address,
+        amountIn: amountIn,
+        fee: poolCache.data.fee,
+        sqrtPriceLimitX96: 0
+      };
 
-        // 获取报价
-        const { result } = await simulateContract(wagmiConfig, {
-          address: QUOTE_CONTRACT_ADDRESS,
-          abi: QUOTE_ABI,
-          functionName: 'quoteExactInputSingle',
-          args: [params]
-        });
+      const { result } = await simulateContract(wagmiConfig, {
+        address: QUOTE_CONTRACT_ADDRESS,
+        abi: QUOTE_ABI,
+        functionName: 'quoteExactInputSingle',
+        args: [params]
+      });
 
-        const amountOut = result[0];
+      const amountOut = result[0];
+      const sqrtPriceX96After = result[1];
 
-        // 计算价格影响（这里我们简化处理，仅基于输入输出计算）
-        const priceImpact = calculateSimplePriceImpact(amountIn, amountOut as bigint);
+      const priceImpact = calculatePriceImpact(
+        token1,
+        token2,
+        poolCache.data.poolInfo,
+        sqrtPriceX96After as bigint
+      );
 
-        poolQuotes.push({
-          fee,
-          amountOut: amountOut as bigint,
-          priceImpact,
-          liquidity: BigInt(0) // 由于无法直接获取流动性，这里暂时不作为判断依据
-        });
-      } catch (e) {
-        continue;
+      bestPool = {
+        fee: poolCache.data.fee,
+        amountOut: amountOut as bigint,
+        priceImpact,
+        liquidity: poolCache.data.poolInfo?.liquidity || 0n,
+        poolInfo: poolCache.data.poolInfo
+      };
+    } else {
+      // 如果缓存无效，执行完整的池子查找逻辑
+      const possibleFees = [100, 500, 3000, 10000];
+      let poolQuotes: (PoolQuote & { poolInfo: any })[] = [];
+      
+      for (const fee of possibleFees) {
+        try {
+          const poolInfo = await getPoolInfo(token1, token2, fee);
+          if (!poolInfo) continue;  // 如果没有池子信息，跳过当前费率
+
+          const params = {
+            tokenIn: token1.address,
+            tokenOut: token2.address,
+            amountIn: amountIn,
+            fee: fee,
+            sqrtPriceLimitX96: 0
+          };
+
+          const { result } = await simulateContract(wagmiConfig, {
+            address: QUOTE_CONTRACT_ADDRESS,
+            abi: QUOTE_ABI,
+            functionName: 'quoteExactInputSingle',
+            args: [params]
+          });
+
+          const amountOut = result[0];
+          const sqrtPriceX96After = result[1];
+
+          const priceImpact = calculatePriceImpact(
+            token1,
+            token2,
+            poolInfo,
+            sqrtPriceX96After as bigint
+          );
+
+          poolQuotes.push({
+            fee,
+            amountOut: amountOut as bigint,
+            priceImpact,
+            liquidity: poolInfo?.liquidity || 0n,
+            poolInfo: poolInfo || null
+          });
+        } catch (e) {
+          continue;
+        }
       }
-    }
 
-    // 根据多个因素选择最优池子
-    const bestPool = findBestPool(poolQuotes);
-    if (!bestPool) {
-      throw new Error('没有找到合适的流动性池');
-    }
+      bestPool = findBestPool(poolQuotes);
+      if (!bestPool) {
+        throw new Error('没有找到合适的流动性池');
+      }
 
-    // 获取池子详细信息
-    const poolInfo = await getPoolInfo(token1.address, token2.address, bestPool.fee);
-    console.log('Pool Info:', poolInfo);
+      // 更新缓存，只存储费率和池子信息
+      poolCache.key = cacheKey;
+      poolCache.data = {
+        fee: bestPool.fee,
+        poolInfo: bestPool.poolInfo
+      };
+      poolCache.timestamp = Date.now();
+    }
 
     return formatSwapResult(
       bestPool.amountOut,
@@ -154,7 +254,7 @@ async function calculateV3Swap(
       token2.decimals,
       slippage,
       bestPool.priceImpact,
-      poolInfo  // 添加池子信息到返回结果中
+      bestPool.poolInfo
     );
   } catch (err) {
     console.error('Error calculating V3 swap:', err);
@@ -162,58 +262,73 @@ async function calculateV3Swap(
   }
 }
 
-// 简化的价格影响计算
-function calculateSimplePriceImpact(amountIn: bigint, amountOut: bigint): number {
-  // 这里使用一个简化的计算方法
-  // 实际项目中可能需要更复杂的计算逻辑
-  const impact = Number((amountIn - amountOut) * BigInt(10000) / amountIn) / 100;
-  return Math.max(0, impact);
-}
-
 // 找到最优池子
-function findBestPool(quotes: PoolQuote[]): PoolQuote | null {
+function findBestPool(quotes: (PoolQuote & { poolInfo: any })[]): (PoolQuote & { poolInfo: any }) | null {
   if (quotes.length === 0) return null;
 
   // 按以下优先级排序：
   // 1. 价格影响小于 1% 的池子
-  // 2. 在满足条件的池子中，选择输出金额最大的
+  // 2. 优先选择较低费率的池子（费率 <= 0.3%）
+  // 3. 在满足条件的池子中，选择输出金额最大的
 
-  const validPools = quotes.filter(quote => quote.priceImpact < 1);
+  // 首先筛选价格影响小于 1% 的池子
+  let validPools = quotes.filter(quote => quote.priceImpact < 1);
 
-  if (validPools.length === 0) {
-    // 如果没有满足条件的池子，选择价格影响最小的
-    return quotes.sort((a, b) => a.priceImpact - b.priceImpact)[0];
+  if (validPools.length > 0) {
+    // 尝试在价格影响可接受的池子中筛选低费率的池子（费率 <= 0.3%）
+    const lowFeePools = validPools.filter(quote => quote.fee <= 3000);
+    
+    // 如果有低费率的池子，优先使用
+    if (lowFeePools.length > 0) {
+      validPools = lowFeePools;
+    }
+
+    // 在筛选后的池子中选择输出最大的
+    return validPools.sort((a, b) => {
+      if (a.amountOut > b.amountOut) return -1;
+      if (a.amountOut < b.amountOut) return 1;
+      return 0;
+    })[0];
   }
 
-  // 在满足条件的池子中选择输出最大的
-  return validPools.sort((a, b) => {
-    if (a.amountOut > b.amountOut) return -1;
-    if (a.amountOut < b.amountOut) return 1;
-    return a.fee - b.fee;
-  })[0];
+  // 如果没有满足价格影响条件的池子，选择价格影响最小且费率较低的
+  const sortedByImpact = quotes.sort((a, b) => a.priceImpact - b.priceImpact);
+  const lowFeePools = sortedByImpact.filter(quote => quote.fee <= 3000);
+  
+  return lowFeePools.length > 0 ? lowFeePools[0] : sortedByImpact[0];
 }
 
 // 新增获取池子信息的函数
-async function getPoolInfo(token0: Address, token1: Address, fee: number) {
+async function getPoolInfo(token0: Token, token1: Token, fee: number) {
   try {
+    // 对代币地址进行排序，确保顺序正确
+    const [sortedToken0, sortedToken1] = [token0, token1].sort((a, b) => 
+      a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1
+    );
+
     const { result } = await simulateContract(wagmiConfig, {
       address: FACTORY_CONTRACT_ADDRESS_V3,
       abi: FACTORY_ABI_V3,
       functionName: 'getPool',
-      args: [token0, token1, fee]
+      args: [sortedToken0.address, sortedToken1.address, fee]
     });
 
     const poolAddress = result as Address;
     
+    // 检查池子地址是否为空
+    if (!poolAddress || poolAddress === '0x0000000000000000000000000000000000000000') {
+      return null;
+    }
+
     // 获取池子的流动性和价格信息
     const { result: poolState } = await simulateContract(wagmiConfig, {
-      address: poolAddress as `0x${string}`,
+      address: poolAddress,
       abi: POOL_ABI,
       functionName: "slot0"
     });
 
     const { result: liquidityResult } = await simulateContract(wagmiConfig, {
-      address: poolAddress as `0x${string}`,
+      address: poolAddress,
       abi: POOL_ABI,
       functionName: 'liquidity'
     });
@@ -222,7 +337,9 @@ async function getPoolInfo(token0: Address, token1: Address, fee: number) {
       poolAddress,
       sqrtPriceX96: poolState[0],
       liquidity: liquidityResult,
-      tick: poolState[1]
+      tick: poolState[1],
+      token0: sortedToken0,
+      token1: sortedToken1
     };
   } catch (err) {
     console.error('Error getting pool info:', err);

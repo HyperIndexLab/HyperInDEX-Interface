@@ -72,6 +72,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const { isLoading: isWaitingTx, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({
     hash: hash as `0x${string}`,
   });
+
+  const { writeContractAsync: writeContractAsync } = useWriteContract();
   const [poolFee, setPoolFee] = useState<string>('0');
   const [poolInfo, setPoolInfo] = useState<any>(null);
   const [swapSuccessed, setSwapSuccessed] = useState<boolean>(false);
@@ -88,8 +90,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     abi: erc20Abi,
     functionName: 'allowance',
     args: userAddress && token1Data ? [
-      userAddress,                  // owner (用户地址)
-      ROUTER_CONTRACT_V3_ADDRESS       // spender (使用常量中定义的Router地址)
+      userAddress,
+      ROUTER_CONTRACT_V3_ADDRESS       
     ] : undefined,
     query: {
       enabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
@@ -284,7 +286,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         setMinimumReceived(value);
         setPriceImpact('0');
         setIsCalculating(false);
-      } else {
+      } else if (token1Data?.symbol && token2Data?.symbol) {
         // 对于其他交易对，设置计算中状态
         setIsCalculating(true);
       }
@@ -409,17 +411,22 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
 
     try {
+      // 创建用于计算的代币对象，HSK 替换为 WHSK
+      const calculationToken1 = {
+        address: token1Data.symbol === 'HSK' ? WHSK : token1Data.address as `0x${string}`,
+        symbol: token1Data.symbol === 'HSK' ? 'WHSK' : token1Data.symbol,
+        decimals: Number(token1Data.decimals),
+      };
+
+      const calculationToken2 = {
+        address: token2Data.symbol === 'HSK' ? WHSK : token2Data.address as `0x${string}`,
+        symbol: token2Data.symbol === 'HSK' ? 'WHSK' : token2Data.symbol,
+        decimals: Number(token2Data.decimals),
+      };
+
       const swapInfo = await getSwapInfo({
-        token1: {
-          address: token1Data?.address as `0x${string}`,
-          symbol: token1Data?.symbol || '',
-          decimals: Number(token1Data?.decimals),
-        },
-        token2: {
-          address: token2Data?.address as `0x${string}`,
-          symbol: token2Data?.symbol || '',
-          decimals: Number(token2Data?.decimals),
-        },
+        token1: calculationToken1,
+        token2: calculationToken2,
         amount1: token1Amount,
         slippage: Number(slippage),
         poolVersion: isV3 ? 'v3' : 'v2',
@@ -477,7 +484,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
 
   useEffect(() => {
-    console.log(writeError, 'wwww====')
     if (isWritePending) {
         setTxStatus('pending');
         return;
@@ -528,8 +534,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     if (isWriteError) {
       // 显示更详细的错误信息
       let errorMessage = 'unknown error';
-
-      console.log(writeError, 'wwww====')
       
       if (typeof writeError === 'object' && writeError !== null) {
         if ('message' in writeError) {
@@ -702,21 +706,24 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     };
   };
 
-  // 修改 handleSwap 函数使用封装的 gas 检查
-  const handleSwap = async () => {
-    try {
-      if (!token1Data || !token2Data || !userAddress) return;
+  // 添加一个新的辅助函数来处理 HSK/WHSK 转换
+  const handleHskWhskSwap = async (
+    fromToken: TokenData,
+    toToken: TokenData,
+    amount: string
+  ) => {
+    if (!userAddress) return;
 
-      // 专门检查是否是 HSK -> WHSK 的情况
-      if (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') {
+    try {
+      // HSK -> WHSK: 调用 deposit
+      if (fromToken.symbol === 'HSK' && toToken.symbol === 'WHSK') {
         const params = {
           address: WHSK as `0x${string}`,
           abi: WETH_ABI,
           functionName: 'deposit',
-          value: parseUnits(token1Amount, 18),
+          value: parseUnits(amount, 18),
         };
 
-        // 使用封装的 gas 检查函数
         const canProceed = await estimateAndCheckGas(params);
         if (!canProceed) {
           toast({
@@ -730,19 +737,18 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         setTxStatus('pending');
         
         await writeContract(params);
-        return;
+        return true;
       }
 
-      // 专门检查是否是 WHSK -> HSK 的情况
-      if (token1Data.symbol === 'WHSK' && token2Data.symbol === 'HSK') {
+      // WHSK -> HSK: 调用 withdraw
+      if (fromToken.symbol === 'WHSK' && toToken.symbol === 'HSK') {
         const params = {
           address: WHSK as `0x${string}`,
           abi: WETH_ABI,
           functionName: 'withdraw',
-          args: [parseUnits(token1Amount, 18)],
+          args: [parseUnits(amount, 18)],
         };
 
-        // 使用封装的 gas 检查函数
         const canProceed = await estimateAndCheckGas(params);
         if (!canProceed) {
           toast({
@@ -756,22 +762,130 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         setTxStatus('pending');
         
         await writeContract(params);
-        return;
+        return true;
       }
+
+      return false;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'unknown error';
+      toast({
+        type: 'error',
+        message: `Swap failed: ${errorMessage}`
+      });
+      setTxStatus('failed');
+      return false;
+    }
+  };
+
+  // 添加一个新的函数来处理 HSK 到 WHSK 的 deposit
+  const depositHskToWhsk = async (amount: string): Promise<boolean> => {
+    try {
+      const params = {
+        address: WHSK as `0x${string}`,
+        abi: WETH_ABI,
+        functionName: 'deposit',
+        value: parseUnits(amount, 18),
+      };
+
+      const canProceed = await estimateAndCheckGas(params);
+      if (!canProceed) {
+        toast({
+          type: 'error',
+          message: 'Insufficient gas for deposit'
+        });
+        return false;
+      }
+
+      const asyncHash = await writeContractAsync(params);
+      
+      // 等待 deposit 交易完成
+      if (asyncHash) {
+        const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: asyncHash });
+        return receipt.status === 'success';
+      }
+      return false;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'unknown error';
+      toast({
+        type: 'error',
+        message: `Deposit failed: ${errorMessage}`
+      });
+      return false;
+    }
+  };
+
+  // 添加一个新的函数来处理 WHSK 到 HSK 的提取
+  const withdrawWhskToHsk = async (amount: string): Promise<boolean> => {
+    try {
+      const params = {
+        address: WHSK as `0x${string}`,
+        abi: WETH_ABI,
+        functionName: 'withdraw',
+        args: [parseUnits(amount, 18)],
+      };
+
+      const canProceed = await estimateAndCheckGas(params);
+      if (!canProceed) {
+        toast({
+          type: 'error',
+          message: 'Insufficient gas for withdraw'
+        });
+        return false;
+      }
+
+      await writeContract(params);
+      
+      if (hash) {
+        const receipt = await waitForTransactionReceipt(wagmiConfig, { hash });
+        return receipt.status === 'success';
+      }
+      return false;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'unknown error';
+      toast({
+        type: 'error',
+        message: `Withdraw failed: ${errorMessage}`
+      });
+      return false;
+    }
+  };
+
+  // 修改 handleSwap 函数
+  const handleSwap = async () => {
+    try {
+      if (!token1Data || !token2Data || !userAddress) return;
+
+      // 检查是否是 HSK/WHSK 转换
+      const isHskWhskSwap = await handleHskWhskSwap(token1Data, token2Data, token1Amount);
+      if (isHskWhskSwap) return;
+
+      // 如果输入代币是 HSK，先进行 deposit
+      if (token1Data.symbol === 'HSK') {
+        setTxStatus('pending');
+        toast({
+          type: 'info',
+          message: 'Depositing HSK to WHSK...',
+          isAutoClose: true
+        });
+
+        const depositSuccess = await depositHskToWhsk(token1Amount);
+        if (!depositSuccess) {
+          setTxStatus('failed');
+          return;
+        }
+        console.log('depositSuccess', depositSuccess);
+
+        // 等待一段时间确保 deposit 已经完成
+
+        // 刷新余额
+        await refetchHskBalance();
+        await refetchToken1Balance();
+      }
+      
 
       // 其他代币对的常规 swap 逻辑
       const expectedAmount = parseUnits(token2Amount, Number(token2Data.decimals || '18'));
       const slippagePercent = Number(slippage);
-
-      let path: string[];
-      if (token1Data.symbol === 'HSK') {
-        path = [WHSK, token2Data.address];
-      } else if (token2Data.symbol === 'HSK') {
-        path = [token1Data.address, WHSK];
-      } else {
-        path = [token1Data.address, token2Data.address];
-      }
-
 
       // 使用封装的 gas 检查函数
       const canProceed = await estimateAndCheckGas(hskBalance);
@@ -786,41 +900,43 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       setTxStatus('pending');
       setCurrentTx('swap');
 
-      const token1 = new UniToken(
+      // 创建 token 实例，使用 WHSK 替代 HSK
+      const token1Instance = new UniToken(
         hashkeyTestnet.id,
-        token1Data.address as `0x${string}`,
+        token1Data.symbol === 'HSK' ? WHSK : token1Data.address as `0x${string}`,
         parseInt(token1Data.decimals || '18'),
-        token1Data.symbol,
-        token1Data.name
+        token1Data.symbol === 'HSK' ? 'WHSK' : token1Data.symbol,
+        token1Data.symbol === 'HSK' ? 'Wrapped HSK' : token1Data.name
       );
 
-      const token2 = new UniToken(
+      const token2Instance = new UniToken(
         hashkeyTestnet.id,
-        token2Data.address as `0x${string}`,
+        token2Data.symbol === 'HSK' ? WHSK : token2Data.address as `0x${string}`,
         parseInt(token2Data.decimals || '18'),
-        token2Data.symbol,
-        token2Data.name
+        token2Data.symbol === 'HSK' ? 'WHSK' : token2Data.symbol,
+        token2Data.symbol === 'HSK' ? 'Wrapped HSK' : token2Data.name
       );
-        // 添加一个辅助函数来确定 token 顺序
-      const sortTokens = (tokenA: UniToken, tokenB: UniToken) => {
-      return tokenA.address.toLowerCase() < tokenB.address.toLowerCase() 
-        ? [tokenA, tokenB] 
-        : [tokenB, tokenA];
-      };
 
       // 根据排序后的 token 创建 Pool
+      const sortTokens = (tokenA: UniToken, tokenB: UniToken) => {
+        return tokenA.address.toLowerCase() < tokenB.address.toLowerCase() 
+          ? [tokenA, tokenB] 
+          : [tokenB, tokenA];
+      };
+
       const pool = new Pool(
-        sortTokens(token1, token2)[0],
-        sortTokens(token1, token2)[1],
+        sortTokens(token1Instance, token2Instance)[0],
+        sortTokens(token1Instance, token2Instance)[1],
         Number(poolFee) as FeeAmount,
         JSBI.BigInt(poolInfo?.sqrtPriceX96.toString()),
         JSBI.BigInt(poolInfo?.liquidity.toString()),
         poolInfo?.tick
       );
 
-      const swapRoute = new Route([pool], token1,  token2);
+      console.log(pool, 'pool');
 
-      // 创建交易路由
+      const swapRoute = new Route([pool], token1Instance, token2Instance);
+
       const trade = await Trade.createUncheckedTrade({
         route: swapRoute,
         inputAmount: CurrencyAmount.fromRawAmount(
@@ -836,42 +952,58 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
       const options = {
         slippageTolerance: new Percent(
-          Math.floor(parseFloat(slippage) * 100), // 将滑点转换为整数
-          10000 // 基数为 10000，表示百分比的分母
+          Math.floor(parseFloat(slippage) * 100),
+          10000
         ),
         recipient: userAddress,
         deadline: Math.floor(Date.now() / 1000 + Number(deadline) * 60)
       }
 
-      // 获取交易参数
       const params = SwapRouter.swapCallParameters([trade], options);
-
-      console.log(params, 'params');
 
       const transaction = {
         data: params.calldata as `0x${string}`,
         to: ROUTER_CONTRACT_V3_ADDRESS as `0x${string}`,
-        value: BigInt(params.value),
+        value: BigInt(0), // HSK 已经被 deposit 为 WHSK，所以这里不需要发送 value
         from: userAddress,
       }
 
-      const mintTx = await sendTransaction(wagmiConfig, transaction);
+      toast({
+        type: 'info',
+        message: 'Swapping tokens...',
+        isAutoClose: true
+      });
 
+      const mintTx = await sendTransaction(wagmiConfig, transaction);
       const mintReceipt = await waitForTransactionReceipt(wagmiConfig, { hash: mintTx });
 
-      console.log(mintReceipt, 'mintReceipt====');
       if (mintReceipt) {
+        // 如果输出代币是 HSK，在 swap 完成后自动提取 WHSK
+        if (token2Data.symbol === 'HSK' && mintReceipt.status === 'success') {
+          toast({
+            type: 'info',
+            message: 'Withdrawing WHSK to HSK...',
+            isAutoClose: true
+          });
+
+          const withdrawSuccess = await withdrawWhskToHsk(token2Amount);
+          if (!withdrawSuccess) {
+            toast({
+              type: 'warning',
+              message: 'Swap succeeded but withdraw failed. Please withdraw manually.',
+              isAutoClose: false
+            });
+          }
+        }
+
         setSwapSuccessed(true);
       }
     } catch (error) {
-      // 显示更详细的错误信息
       const errorMessage = error instanceof Error ? error.message : 'unknown error';
-      
       toast({
         type: 'error',
         message: `Swap failed: ${errorMessage}`
       });
-
       setTxStatus('failed');
     }
   };
@@ -1098,7 +1230,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             {isCalculating ? (
               <div className="bg-transparent text-4xl w-[60%] flex items-center">
                 <span className="loading loading-spinner loading-sm mr-2"></span>
-                <span className="text-base-content/40">计算中...</span>
+                <span className="text-base-content/40">Calculating...</span>
               </div>
             ) : (
               <input 
