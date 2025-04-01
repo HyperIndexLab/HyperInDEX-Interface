@@ -245,8 +245,6 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     contracts: slot0Calls
   });
 
-  console.log(slot0DataArray, 'slot0DataArray=====')
-
   const liquidityCalls = useMemo(() => {
     if (!poolAddresses) return [];
     return poolAddresses.map(poolData => {
@@ -266,12 +264,8 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     contracts: liquidityCalls
   });
 
-  console.log(liquidityDataArray, 'liquidityDataArray=====')
   const poolsData = useMemo(() => {
     if (!positionsData || !tokenSymbols || !tokenIds || !slot0DataArray || !liquidityDataArray || !tokenDecimals || !poolAddresses) return [];
-
-    console.log(positionsData, 'positionsData=====')
-  
     return positionsData.map((position, index) => {
       if (!position?.result) return null;
   
@@ -282,7 +276,6 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
       const positionResult = position.result as unknown as PositionResult;
       const sqrtPriceX96 = (slot0DataArray?.[index]?.result as [bigint, number, ...any[]])?.[0] ?? 0n;
   
-      console.log(sqrtPriceX96, 'sqrtPriceX96=====')
       if (!symbol0 || !symbol1) return null;
   
       // 计算 Token 数量

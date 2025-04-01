@@ -157,7 +157,7 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
         tabPools.map((pool) => (
           <div
             className="bg-[#131629]/60 border border-[#2a2f42] rounded-xl p-5 mb-4 hover:bg-[#1a1f36]/80 transition-all duration-300 cursor-pointer relative overflow-hidden"
-            key={`${pool.version}-${pool.pairAddress}`}
+            key={`${pool.version}-${Math.random()}`}
           >
             {/* Background subtle gradients for DeFi look */}
             <div className="absolute -right-20 -top-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>

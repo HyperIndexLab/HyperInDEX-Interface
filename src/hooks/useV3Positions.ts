@@ -8,6 +8,8 @@ export async function getV3Positions(address: string, poolAddress: string, publi
     return {
       hasPosition: false,
       positionId: null,
+      tickLower: null,
+      tickUpper: null,
     };
   }
 
@@ -20,7 +22,6 @@ export async function getV3Positions(address: string, poolAddress: string, publi
       args: [address],
     }) as bigint;
 
-    console.log(balance, 'balance====');
 
     const userBalance = Number(balance);
 
@@ -52,6 +53,8 @@ export async function getV3Positions(address: string, poolAddress: string, publi
         return {
           hasPosition: true,
           positionId: tokenId.toString(),
+          tickLower: position[5],
+          tickUpper: position[6],
         };
       }
     }
@@ -59,12 +62,16 @@ export async function getV3Positions(address: string, poolAddress: string, publi
     return {
       hasPosition: false,
       positionId: null,
+      tickLower: null,
+      tickUpper: null,
     };
   } catch (error) {
     console.error("Error checking positions:", error);
     return {
       hasPosition: false,
       positionId: null,
+      tickLower: null,
+      tickUpper: null,
     };
   }
 }

@@ -56,6 +56,8 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
   hideInput
 }) => {
   const [priceRangeMessage, setPriceRangeMessage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState<'min' | 'max' | null>(null);
+  const [rangePosition, setRangePosition] = useState({ min: 30, max: 70 });
 
   // 确定 token0 和 token1
   const isToken1Token0 = token1Data && token2Data && token1Data.address < token2Data.address;
@@ -89,6 +91,58 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
   useEffect(() => {
     setPriceRangeMessage(validatePriceRange());
   }, [priceRange]);
+
+  // 处理拖动开始
+  const handleDragStart = (type: 'min' | 'max') => {
+    setIsDragging(type);
+  };
+
+  // 处理拖动
+  const handleDrag = (e: React.MouseEvent) => {
+    if (!isDragging || !currentPrice) return;
+    
+    const container = e.currentTarget as HTMLDivElement;
+    const rect = container.getBoundingClientRect();
+    const handleWidth = 4;
+    
+    const minX = handleWidth;
+    const maxX = rect.width - handleWidth;
+    const clampedX = Math.max(minX, Math.min(maxX, e.clientX - rect.left));
+    
+    const position = (clampedX / rect.width) * 100;
+    
+    let clampedPosition;
+    if (isDragging === 'min') {
+      // 最小价格不能超过50%（中间位置）
+      clampedPosition = Math.min(48, Math.max(0, position));
+    } else {
+      // 最大价格不能低于50%（中间位置）
+      clampedPosition = Math.max(51, Math.min(100, position));
+    }
+
+    const currentPriceNum = parseFloat(currentPrice);
+    const priceMultiplier = Math.exp((clampedPosition - 50) / 25);
+    const newPrice = currentPriceNum * priceMultiplier;
+
+    if (isDragging === 'min') {
+      setRangePosition(prev => ({ ...prev, min: clampedPosition }));
+      setPriceRange({
+        ...priceRange,
+        minPrice: newPrice.toFixed(8)
+      });
+    } else if (isDragging === 'max') {
+      setRangePosition(prev => ({ ...prev, max: clampedPosition }));
+      setPriceRange({
+        ...priceRange,
+        maxPrice: newPrice.toFixed(8)
+      });
+    }
+  };
+
+  // 处理拖动结束
+  const handleDragEnd = () => {
+    setIsDragging(null);
+  };
 
   return (
     <div className="bg-base-200/30 backdrop-blur-sm rounded-3xl p-6">
@@ -143,10 +197,11 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
                   className="input input-ghost w-full focus:outline-none px-0"
                   value={priceRange.minPrice}
                   onChange={(e) => {
-                    const minPrice = e.target.value;
+                    const minPrice = e.target.value;;
                     setPriceRange({...priceRange, minPrice: minPrice});
                     setPriceRangeMessage(validatePriceRange());
                   }}
+                  placeholder="0"
                 />
               </div>
               <div className="bg-base-200 rounded-xl p-4">
@@ -160,6 +215,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
                     setPriceRange({...priceRange, maxPrice: maxPrice});
                     setPriceRangeMessage(validatePriceRange());
                   }}
+                  placeholder="∞"
                 />
               </div>
             </div>
@@ -190,28 +246,46 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
         )}
         
         {/* 价格范围可视化 */}
-        {pool && (
-          <div className="bg-base-200 rounded-xl p-4 h-20 mt-4 relative">
+        {pool && positionType === 'custom' && (
+          <div 
+            className="bg-base-200 rounded-xl p-4 h-20 mt-6 relative cursor-pointer"
+            onMouseMove={handleDrag}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
+          >
             {/* 当前价格指示器 */}
             <div className="absolute top-0 bottom-0 w-0.5 bg-primary" 
                 style={{ left: '50%' }}></div>
             
-            {/* 选择的价格范围 */}
-            <div className="absolute top-0 bottom-0 bg-primary/20"
+            {/* 选择的价格范围 - 左半部分 */}
+            <div className="absolute top-0 bottom-0"
                 style={{ 
-                  left: positionType === 'full-range' ? '0%' : '30%', 
-                  right: positionType === 'full-range' ? '0%' : '30%' 
+                  left: `${rangePosition.min}%`, 
+                  width: `${50 - rangePosition.min}%`,
+                  background: 'linear-gradient(to right, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.2))'
                 }}></div>
             
-            {/* 价格标签 */}
-            <div className="absolute bottom-1 left-0 text-xs">
-              {positionType === 'full-range' ? 'Min' : priceRange.minPrice}
-            </div>
-            <div className="absolute bottom-1 right-0 text-xs">
-              {positionType === 'full-range' ? 'Max' : priceRange.maxPrice}
-            </div>
-            <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 text-xs text-primary">
-              Current Price
+            {/* 选择的价格范围 - 右半部分 */}
+            <div className="absolute top-0 bottom-0"
+              style={{ 
+                left: '50%', 
+                width: `${rangePosition.max - 50}%`,
+                background: 'linear-gradient(to right, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1))'
+            }}></div>
+            
+            {/* 拖动手柄 */}
+            <div 
+              className="absolute top-0 bottom-0 w-1 cursor-ew-resize bg-green-500/20 hover:bg-green-500/50"
+              style={{ left: `${rangePosition.min}%` }}
+              onMouseDown={() => handleDragStart('min')}
+            />
+            <div 
+              className="absolute top-0 bottom-0 w-1 cursor-ew-resize bg-red-500/20 hover:bg-red-500/50"
+              style={{ left: `${rangePosition.max}%` }}
+              onMouseDown={() => handleDragStart('max')}
+            />
+            <div className="absolute top-[-16px] left-1/2 transform -translate-x-1/2 text-xs text-primary">
+              Current Price: {currentPrice}
             </div>
           </div>
         )}
@@ -225,10 +299,16 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
             <input
               type="text"
               min="0"
-              className="input input-ghost w-[60%] text-2xl focus:outline-none px-4"
+              className="input input-ghost w-[80%] text-2xl focus:outline-none px-4"
               placeholder="0"
               value={token1Amount}
-              onChange={(e) => setToken1Amount(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // 只允许输入数字和小数点，且小数点只能出现一次
+                if (/^\d*\.?\d*$/.test(value)) {
+                  setToken1Amount(value);
+                }
+              }}
             />
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
               <Image
@@ -255,10 +335,16 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
             <input
               type="text"
               min="0"
-              className="input input-ghost w-[60%] text-2xl focus:outline-none px-4"
+              className="input input-ghost w-[80%] text-2xl focus:outline-none px-4"
               placeholder="0"
               value={token2Amount}
-              onChange={(e) => setToken2Amount(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value;
+                // 只允许输入数字和小数点，且小数点只能出现一次
+                if (/^\d*\.?\d*$/.test(value)) {
+                  setToken2Amount(value);
+                }
+              }}
             />
             <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
               <Image

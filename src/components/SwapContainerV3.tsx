@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import TokenModal from './TokenModal';
 import { TokenData } from '@/types/liquidity';
-import { useAccount, useBalance, usePublicClient, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
+import { useAccount, useBalance, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { ArrowsUpDownIcon, ChevronDownIcon, Cog6ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { estimateAndCheckGas, formatNumberWithCommas } from '@/utils';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
@@ -14,17 +14,16 @@ import { AppDispatch } from '@/store';
 import { WHSK } from '@/constant/value';
 import { getSwapInfo } from '@/hooks/useSwapInfo';
 import { getTokens, Token } from '@/request/explore';
-import { erc20Abi, parseUnits, decodeAbiParameters, publicActions } from 'viem';
-import { ROUTER_CONTRACT_V3_ABI, ROUTER_CONTRACT_V3_ADDRESS } from '@/constant/ABI/HyperindexV3Router';;
+import { erc20Abi, parseUnits } from 'viem';
+import { ROUTER_CONTRACT_V3_ADDRESS } from '@/constant/ABI/HyperindexV3Router';;
 import { useToast } from '@/components/ToastContext';
 import { WETH_ABI } from '@/constant/ABI/weth';
 import { Token as UniToken, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core'
 import { FeeAmount, Pool, Route, SwapQuoter, SwapRouter, Trade } from '@uniswap/v3-sdk'
 import { wagmiConfig } from './RainbowKitProvider';
-import { sendTransaction, simulateContract, waitForTransactionReceipt } from 'wagmi/actions';
+import { sendTransaction, waitForTransactionReceipt } from 'wagmi/actions';
 import { hashkeyTestnet } from 'viem/chains';
 import JSBI from 'jsbi';
-import { QUOTE_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexV3Quote';
 
 interface SwapContainerProps {
   token1?: string;
@@ -222,6 +221,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   // 添加处理百分比点击的函数
   const handlePercentageClick = (percentage: number) => {
   if (!token1Data) return;
+
+  setIsCalculating(true);
   
   const balance = token1Data.symbol === 'HSK' 
     ? hskBalance?.value?.toString() || '0'
@@ -233,10 +234,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     const decimals = Number(token1Data.decimals || '18');
     const formattedAmount = formatTokenBalance(amount.toString(), decimals.toString());
     setToken1Amount(formattedAmount);
-  } catch (error) {
-    console.error('Error calculating percentage:', error);
-  }
-};
+    } catch (error) {
+      console.error('Error calculating percentage:', error);
+    }
+  };
 
   // 添加一个函数来检查是否是高滑点
   const isHighSlippage = (value: string) => Number(value) > 5.5;

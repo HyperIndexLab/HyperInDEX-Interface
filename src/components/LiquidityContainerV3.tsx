@@ -5,7 +5,7 @@ import TokenModal from "./TokenModal";
 import {
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount } from "wagmi";
 import { WHSK } from "@/constant/value";
 
 import { useTokenApproval } from "@/hooks/useTokenApproval";
@@ -15,14 +15,12 @@ import Image from "next/image";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchTokenList, selectTokens } from "@/store/tokenListSlice";
 import { AppDispatch } from "@/store";
-import { useToast } from "@/components/ToastContext";
 import { V3_FEE_TIERS } from "@/constant/value";
 import { isValidAddress } from "@/utils";
 
 import { usePoolInfo } from "@/hooks/usePoolBaseInfo";
-
-import { Pool, Position, nearestUsableTick, TickMath, priceToClosestTick, tickToPrice } from '@uniswap/v3-sdk'
-import { Token, CurrencyAmount, Price, Percent, BigintIsh } from '@uniswap/sdk-core'
+import { Pool, Position, nearestUsableTick, TickMath } from '@uniswap/v3-sdk'
+import { Token, BigintIsh } from '@uniswap/sdk-core'
 import JSBI from 'jsbi'
 import { parseUnits } from 'viem'
 import LiquidityStep2 from "./LiquidityStep2";
@@ -92,13 +90,14 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const [token1Amount, setToken1Amount] = useState('');
   const [token2Amount, setToken2Amount] = useState('');
   const [currentPrice, setCurrentPrice] = useState<string | null>(null);
-  const [positionType, setPositionType] = useState<'full-range' | 'custom'>('custom');
+  const [positionType, setPositionType] = useState<'full-range' | 'custom'>('full-range');
   const [pool, setPool] = useState<Pool | null>(null);
   const [poolAddress, setPoolAddress] = useState<`0x${string}` | null>(null);
-  const [hideInput, setHideInput] = useState({ token1: false, token2: false });
 
   const [token0Detail, setToken0Detail] = useState<TokenData | null>(null);
   const [token1Detail, setToken1Detail] = useState<TokenData | null>(null);
+  const [tickSpacing, setTickSpacing] = useState<number | null>(null);
+
 
   
   const [priceRangeMessage, setPriceRangeMessage] = useState<string | null>(null);
@@ -213,27 +212,39 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     
     return { token0, token1 };
   }, [token1Data, token2Data]);
+
+
+  useEffect(() => {
+    if (positionType === 'full-range' && tickSpacing) {
+      const minTick = nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
+      const maxTick = nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
+      setTickRange({ minTick, maxTick });
+      // 当设置为 full range 时，清空价格范围
+      setPriceRange({ 
+        minPrice: '', 
+        maxPrice: '' 
+      });
+    }
+  }, [tickSpacing, positionType]);
   
   // 初始化Pool对象
   useEffect(() => {
     const initPool = async () => {
+      // 从工厂合约获取tickSpacing
+      const tickSpacing = await readContract(wagmiConfig, {
+        address: FACTORY_CONTRACT_ADDRESS_V3 as `0x${string}`,
+        abi: FACTORY_ABI_V3,
+        functionName: 'feeAmountTickSpacing',
+        args: [feeTier]
+      }) as number;
+
+      setTickSpacing(tickSpacing);
+
       if (existingPool && token1Data && token2Data && 
           token1Data.decimals && token2Data.decimals) {
       try {
         const { token0, token1 } = getTokens();
         if (!token0 || !token1) return;
-
-          // 添加调试日志
-          console.log('Token0:', {
-            address: token0.address,
-            symbol: token0.symbol,
-            decimals: token0.decimals
-          });
-          console.log('Token1:', {
-            address: token1.address,
-            symbol: token1.symbol,
-            decimals: token1.decimals
-          });
 
         // 从existingPool获取必要数据
         const sqrtPriceX96 = existingPool.sqrtPriceX96 || '0';
@@ -245,17 +256,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           // 价格未初始化的情况
           setCurrentPrice('未初始化');
           
-          // 从工厂合约获取tickSpacing
-          const tickSpacing = await readContract(wagmiConfig, {
-            address: FACTORY_CONTRACT_ADDRESS_V3 as `0x${string}`,
-            abi: FACTORY_ABI_V3,
-            functionName: 'feeAmountTickSpacing',
-            args: [feeTier]
-          }) as number;
         
           // 设置默认的tick范围为全范围
           const minTick = nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
           const maxTick = nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
+          console.log(minTick, maxTick, 'minTick, maxTick====');
           setTickRange({ minTick, maxTick });
           
           // 对于未初始化的池子，不设置具体价格范围
@@ -292,11 +297,15 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
         console.log(newPool, positionType, newPool.tickCurrent, newPool.tickSpacing, 'newPool.tickCurrent, newPool.tickSpacing====');
 
-        // 修改这部分逻辑，添加非全范围的情况处理
         if (positionType === 'full-range') {
-          const minTick = nearestUsableTick(TickMath.MIN_TICK, newPool.tickSpacing);
-          const maxTick = nearestUsableTick(TickMath.MAX_TICK, newPool.tickSpacing);
+          const minTick = nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
+          const maxTick = nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
           setTickRange({ minTick, maxTick });
+          // 当设置为 full range 时，清空价格范围
+          setPriceRange({ 
+            minPrice: '', 
+            maxPrice: '' 
+          });
         } else {
           // 非全范围情况下，根据当前tick计算范围
           const currentTick = newPool.tickCurrent;
@@ -305,12 +314,10 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           // 计算上下限tick（默认为当前tick的±10个tickSpacing）
           const minTick = nearestUsableTick(currentTick - (tickSpacing * 100), tickSpacing);
           const maxTick = nearestUsableTick(currentTick + (tickSpacing * 100), tickSpacing);
-
-          console.log(minTick, maxTick, 'newPool.tickCurrent, newPool.tickSpacing====1111');
           
           setTickRange({ minTick, maxTick });
         }
-
+    
         // 设置默认的中等范围 (±10%)
         const currentPriceNum = parseFloat(price);
         const defaultMinPrice = (currentPriceNum * 0.9).toFixed(6);  // -10%
@@ -502,53 +509,65 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
   }, [pool, tickRange]);
 
-  const setPriceRangeFn = useCallback((range: { minPrice: string; maxPrice: string }) => {
-    if (!pool) return;
-    
+  const setPriceRangeFn = useCallback(async (range: { minPrice: string; maxPrice: string }) => {
     try {
       const { token0, token1 } = getTokens();
-      if (!token0 || !token1) return;
+      if (!token0 || !token1 || !tickSpacing) return;
 
-      // 确保输入的价格是数字
-      const minPriceNum = parseFloat(range.minPrice);
-      const maxPriceNum = parseFloat(range.maxPrice);
-    
-      setPriceRange(range);
-
-      if (isNaN(minPriceNum) || isNaN(maxPriceNum)) {
-        setPriceRangeMessage('请输入有效的价格范围');
-        return;
-      }
-
-      if (minPriceNum <= 0 || maxPriceNum <= 0) {
-        setPriceRangeMessage('价格必须大于0');
-        return;
-      }
-      // 计算 tick 值
-      const minTick = nearestUsableTick(
-        Math.floor(Math.log(minPriceNum) / Math.log(1.0001)),
-        pool.tickSpacing
-      );
-      
-      const maxTick = nearestUsableTick(
-        Math.ceil(Math.log(maxPriceNum) / Math.log(1.0001)),
-        pool.tickSpacing
-      );
-
-      console.log('Price to tick calculation:', {
-        minPrice: minPriceNum,
-        maxPrice: maxPriceNum,
-        minTick,
-        maxTick,
-        poolCurrentTick: pool.tickCurrent
+      // 更新价格范围状态
+      setPriceRange({
+        minPrice: range.minPrice || '',
+        maxPrice: range.maxPrice || ''
       });
 
-      // 更新 tick 范围和价格范围
+      // 如果两个价格都为空，设置为全范围
+      if (!range.minPrice && !range.maxPrice) {
+        setTickRange({
+          minTick: nearestUsableTick(TickMath.MIN_TICK, tickSpacing),
+          maxTick: nearestUsableTick(TickMath.MAX_TICK, tickSpacing)
+        });
+        return;
+      }
+
+      // 处理单个价格为空的情况
+      let minTick = range.minPrice 
+        ? nearestUsableTick(
+            Math.floor(Math.log(parseFloat(range.minPrice)) / Math.log(1.0001)),
+            tickSpacing
+          )
+        : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
+
+      let maxTick = range.maxPrice
+        ? nearestUsableTick(
+            Math.ceil(Math.log(parseFloat(range.maxPrice)) / Math.log(1.0001)),
+            tickSpacing
+          )
+        : nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
+
+      // 如果两个价格都有值，进行验证
+      if (range.minPrice && range.maxPrice) {
+        const minPriceNum = parseFloat(range.minPrice);
+        const maxPriceNum = parseFloat(range.maxPrice);
+
+        if (isNaN(minPriceNum) || isNaN(maxPriceNum)) {
+          setPriceRangeMessage('请输入有效的价格范围');
+          return;
+        }
+
+        if (minPriceNum <= 0 || maxPriceNum <= 0) {
+          setPriceRangeMessage('价格必须大于0');
+          return;
+        }
+      }
+
       setTickRange({ minTick, maxTick });
+      setPriceRangeMessage(null);
+
     } catch (error) {
       console.error("计算 tick 范围失败:", error);
+      setPriceRangeMessage('计算价格范围时出错');
     }
-  }, [pool, getTokens]);
+  }, [getTokens, tickSpacing]);
 
   // 更新按钮显示
   const renderTokenButton = (type: "token1" | "token2") => {

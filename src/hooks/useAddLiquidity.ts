@@ -140,7 +140,7 @@ export const useAddLiquidity = (
 
         // 等待交易确认
         const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: createPoolTx });
-        console.log(receipt, 'receipt====');
+      
         if (receipt.status !== 'success') {
           toast({
             type: "error",
@@ -383,13 +383,14 @@ export const useAddLiquidity = (
     
       // 创建交易，用于mint或者increase liquidity
       let transaction;
-      const { hasPosition, positionId } = await getV3Positions(userAddress, poolAddr, publicClient);
+      const { hasPosition, positionId, tickLower, tickUpper } = await getV3Positions(userAddress, poolAddr, publicClient);
+      
 
-      if (hasPosition && positionId) {
+      if (hasPosition && positionId && tickRange.minTick === tickLower && tickRange.maxTick === tickUpper) {
         // 如果存在相同参数的持仓，使用 increase liquidity 而不是 mint
         toast({
           type: "info",
-          message: "发现已存在的持仓，将增加流动性而不是创建新持仓",
+          message: "found existing position, increasing liquidity instead of creating a new position",
           isAutoClose: true
         });
 
