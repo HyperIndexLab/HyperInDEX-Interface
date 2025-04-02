@@ -1,8 +1,6 @@
 'use client';
-import AdPopover from '@/components/Adpopover';
 import SwapContainer from '../components/SwapContainer';
 import { useSearchParams } from 'next/navigation';
-import Competition from '../assets/img/competition.png';
 
 // 参数
 export default function Home() {
