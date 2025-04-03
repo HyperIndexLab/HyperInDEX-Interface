@@ -24,6 +24,7 @@ import { wagmiConfig } from './RainbowKitProvider';
 import { sendTransaction, waitForTransactionReceipt } from 'wagmi/actions';
 import { hashkeyTestnet } from 'viem/chains';
 import JSBI from 'jsbi';
+import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '@/constant/ABI/HyperIndexRouter';
 
 interface SwapContainerProps {
   token1?: string;
@@ -369,7 +370,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
 
     const fetchPoolAddress = async () => {
-      const poolAddress = await getPoolAddress(getQueryAddress(token1Data), getQueryAddress(token2Data), 3000);
+      const poolAddress = await getPoolAddress(getQueryAddress(token1Data), getQueryAddress(token2Data));
       setPairAddress(poolAddress.poolAddress || '');
       setIsV3(poolAddress.useV3);
     };
@@ -583,10 +584,12 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
   const handleApprove = async () => {
     if (!token1Data || !token1Amount) return;
-    
-    try {
-      setError(null);
-      
+
+
+    if (isV3) {
+      try {
+        setError(null);
+        
       const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
       
       const params = {
@@ -610,17 +613,52 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       
       setCurrentTx('approve');
       setTxStatus('pending');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Approval failed');
-      setTxStatus('none');
-      toast({
-        type: 'error',
-        message: 'Approval failed, please try again'
-      });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Approval failed');
+        setTxStatus('none');
+        toast({
+          type: 'error',
+          message: 'Approval failed, please try again'
+        });
+      }
+    } else {
+      try {
+        setError(null);
+        
+        const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+        
+        const params = {
+          address: token1Data.address as `0x${string}`,
+          abi: erc20Abi,
+          functionName: 'approve' as const,
+          args: [ROUTER_CONTRACT_ADDRESS as `0x${string}`, amountToApprove] as const,
+        };
+  
+        // 使用封装的 gas 检查函数
+        const canProceed = await estimateAndCheckGas(params);
+        if (!canProceed) {
+          toast({
+            type: 'error',
+            message: 'Insufficient gas, please deposit HSK first'
+          });
+          return;
+        }
+        
+        writeContract(params);
+        
+        setCurrentTx('approve');
+        setTxStatus('pending');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Approval failed');
+        setTxStatus('none');
+        toast({
+          type: 'error',
+          message: 'Approval failed, please try again'
+        });
+      }
     }
   };
 
-  
 
    // 3. 修改 getButtonState 函数
    const getButtonState = () => {
@@ -853,8 +891,9 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
   // 修改 handleSwap 函数
   const handleSwap = async () => {
-    try {
-      if (!token1Data || !token2Data || !userAddress) return;
+    if (isV3) {
+      try {
+        if (!token1Data || !token2Data || !userAddress) return;
 
       // 检查是否是 HSK/WHSK 转换
       const isHskWhskSwap = await handleHskWhskSwap(token1Data, token2Data, token1Amount);
@@ -883,7 +922,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         await refetchToken1Balance();
       }
       
-
       // 其他代币对的常规 swap 逻辑
       const expectedAmount = parseUnits(token2Amount, Number(token2Data.decimals || '18'));
       const slippagePercent = Number(slippage);
@@ -999,13 +1037,130 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
         setSwapSuccessed(true);
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'unknown error';
-      toast({
-        type: 'error',
-        message: `Swap failed: ${errorMessage}`
-      });
-      setTxStatus('failed');
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'unknown error';
+        toast({
+          type: 'error',
+          message: `Swap failed: ${errorMessage}`
+        });
+        setTxStatus('failed');
+      }
+    } else {
+      try {
+        if (!token1Data || !token2Data || !userAddress) return;
+  
+        // 专门检查是否是 HSK -> WHSK 的情况
+        if (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') {
+          const params = {
+            address: WHSK as `0x${string}`,
+            abi: WETH_ABI,
+            functionName: 'deposit',
+            value: parseUnits(token1Amount, 18),
+          };
+  
+          // 使用封装的 gas 检查函数
+          const canProceed = await estimateAndCheckGas(params);
+          if (!canProceed) {
+            toast({
+              type: 'error',
+              message: 'Insufficient gas, please deposit HSK first'
+            });
+            return;
+          }
+  
+          setCurrentTx('swap');
+          setTxStatus('pending');
+          
+          await writeContract(params);
+          return;
+        }
+  
+        // 专门检查是否是 WHSK -> HSK 的情况
+        if (token1Data.symbol === 'WHSK' && token2Data.symbol === 'HSK') {
+          const params = {
+            address: WHSK as `0x${string}`,
+            abi: WETH_ABI,
+            functionName: 'withdraw',
+            args: [parseUnits(token1Amount, 18)],
+          };
+  
+          // 使用封装的 gas 检查函数
+          const canProceed = await estimateAndCheckGas(params);
+          if (!canProceed) {
+            toast({
+              type: 'error',
+              message: 'Insufficient gas, please deposit HSK first'
+            });
+            return;
+          }
+  
+          setCurrentTx('swap');
+          setTxStatus('pending');
+          
+          await writeContract(params);
+          return;
+        }
+  
+        // 其他代币对的常规 swap 逻辑
+        const expectedAmount = parseUnits(token2Amount, Number(token2Data.decimals || '18'));
+        const slippagePercent = Number(slippage);
+        const amountOutMin = expectedAmount * BigInt(Math.floor((100 - slippagePercent) * 1000)) / BigInt(100000);
+        const deadlineTime = Math.floor(Date.now() / 1000 + Number(deadline) * 60);
+  
+        let path: string[];
+        if (token1Data.symbol === 'HSK') {
+          path = [WHSK, token2Data.address];
+        } else if (token2Data.symbol === 'HSK') {
+          path = [token1Data.address, WHSK];
+        } else {
+          path = [token1Data.address, token2Data.address];
+        }
+  
+        const params = {
+          address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
+          abi: ROUTER_ABI,
+          functionName: token1Data.symbol === 'HSK' ? 'swapExactETHForTokens' : token2Data.symbol === 'HSK' ? 'swapExactTokensForETH' : 'swapExactTokensForTokens',
+          args: token1Data.symbol === 'HSK' ? [
+            amountOutMin,              // amountOutMin
+            path,                      // path
+            userAddress,               // to
+            deadlineTime,              // deadline
+          ] : [
+            parseUnits(token1Amount, Number(token1Data.decimals || '18')),  // amountIn
+            amountOutMin,              // amountOutMin
+            path,                      // path
+            userAddress,               // to
+            deadlineTime,              // deadline
+          ],
+          value: token1Data.symbol === 'HSK' ? parseUnits(token1Amount, 18) : undefined,
+        };
+  
+        // 使用封装的 gas 检查函数
+        const canProceed = await estimateAndCheckGas(params);
+        if (!canProceed) {
+          toast({
+            type: 'error',
+            message: 'Insufficient gas, please deposit HSK first'
+          });
+          return;
+        }
+  
+        setCurrentTx('swap');
+        setTxStatus('pending');
+        
+        await writeContract(params);
+      } catch (error) {
+        console.error('Swap failed:', error);
+        // 显示更详细的错误信息
+        const errorMessage = error instanceof Error ? error.message : 'unknown error';
+        
+        toast({
+          type: 'error',
+          message: `Swap failed: ${errorMessage}`
+        });
+  
+        setTxStatus('failed');
+      }
     }
   };
 

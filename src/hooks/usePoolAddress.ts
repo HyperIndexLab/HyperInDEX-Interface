@@ -7,95 +7,118 @@ import { readContract } from "wagmi/actions";
 import { wagmiConfig } from "@/components/RainbowKitProvider";
 import { V3_FEE_TIERS } from "@/constant/value";
 
+interface PoolCheckResult {
+  poolAddress: string | null;
+  exists: boolean;
+  fee?: number;
+}
+
+interface PoolAddressResult {
+  v3Pool: string | null;
+  v2Pool: string | null;
+  poolAddress: string | null;
+  useV3: boolean;
+  v2Exists: boolean;
+  fee: number | null;
+}
+
 export const usePoolAddress = () => {
   const publicClient = usePublicClient();
   
-  const getPoolAddress = useCallback(async (token0: string, token1: string, fee?: number) => {
+  // 检查池子是否存在
+  const checkPoolExists = useCallback(async (address: string): Promise<boolean> => {
     try {
-      let v3PoolAddress: string | null = null;
-      let useV3Pool = false;
-      
-      // 如果提供了特定费率，只检查该费率
-      if (fee) {
-        v3PoolAddress = await computeV3PoolAddress({
-          factoryAddress: FACTORY_CONTRACT_ADDRESS_V3,
-          tokenA: token0,
-          tokenB: token1,
-          fee
-        });
-        
-        // 检查该费率的池子是否存在
-        try {
-          const code = await publicClient?.getBytecode({
-            address: v3PoolAddress as Address,
-          });
-          useV3Pool = code !== undefined && code.length > 2;
-        } catch (error) {
-          console.warn(`Error checking V3 pool existence for fee ${fee}:`, error);
-        }
-      } 
-      // 如果没有提供费率或指定费率的池子不存在，尝试所有费率
-      if (!fee || !useV3Pool) {
-        // 尝试所有支持的费率，找到第一个存在的池子
-        for (const feeTier of V3_FEE_TIERS) {
-          if (fee && feeTier !== fee) continue; // 如果指定了费率，跳过其他费率
-          
-          const poolAddress = await computeV3PoolAddress({
-            factoryAddress: FACTORY_CONTRACT_ADDRESS_V3,
-            tokenA: token0,
-            tokenB: token1,
-            fee: feeTier
-          });
-          
-          try {
-            const code = await publicClient?.getBytecode({
-              address: poolAddress as Address,
-            });
-            
-            if (code !== undefined && code.length > 2) {
-              v3PoolAddress = poolAddress;
-              useV3Pool = true;
-              fee = feeTier; // 更新找到的费率
-              break;
-            }
-          } catch (error) {
-            console.warn(`Error checking V3 pool existence for fee ${feeTier}:`, error);
-          }
-        }
-      }
-      
-      // 计算 V2 池子地址作为回退
-      const v2PoolAddress = await computeV2PoolAddress({
-        factoryAddress: FACTORY_CONTRACT_ADDRESS,
-        tokenA: token0,
-        tokenB: token1
+      const code = await publicClient?.getBytecode({
+        address: address as Address,
       });
-      
-      // 检查 V2 池子是否存在
-      let v2PoolExists = false;
-      try {
-        const code = await publicClient?.getBytecode({
-          address: v2PoolAddress as Address,
-        });
-        v2PoolExists = code !== undefined && code.length > 2;
-      } catch (error) {
-        console.warn('Error checking V2 pool existence:', error);
+      return code !== undefined && code.length > 2;
+    } catch (error) {
+      console.warn('Error checking pool existence:', error);
+      return false;
+    }
+  }, [publicClient]);
+
+  // 检查 V3 池子
+  const checkV3Pool = useCallback(async (
+    token0: string,
+    token1: string,
+    specificFee?: number
+  ): Promise<PoolCheckResult> => {
+    const feesToCheck = specificFee ? [specificFee] : V3_FEE_TIERS;
+
+    for (const fee of feesToCheck) {
+      const poolAddress = await computeV3PoolAddress({
+        factoryAddress: FACTORY_CONTRACT_ADDRESS_V3,
+        tokenA: token0,
+        tokenB: token1,
+        fee
+      });
+
+      const exists = await checkPoolExists(poolAddress);
+      if (exists) {
+        return { poolAddress, exists, fee };
       }
-      
+    }
+
+    return { poolAddress: null, exists: false };
+  }, [checkPoolExists]);
+
+  // 检查 V2 池子
+  const checkV2Pool = useCallback(async (
+    token0: string,
+    token1: string
+  ): Promise<PoolCheckResult> => {
+    const poolAddress = await computeV2PoolAddress({
+      factoryAddress: FACTORY_CONTRACT_ADDRESS,
+      tokenA: token0,
+      tokenB: token1
+    });
+
+    const exists = await checkPoolExists(poolAddress);
+    return { poolAddress, exists };
+  }, [checkPoolExists]);
+
+  const getPoolAddress = useCallback(async (
+    token0: string,
+    token1: string,
+    options?: {
+      fee?: number,
+      version?: 'v2' | 'v3'
+    }
+  ): Promise<PoolAddressResult> => {
+    try {
+      const { fee, version } = options || {};
+      let v3Result: PoolCheckResult = { poolAddress: null, exists: false, fee: undefined };
+      let v2Result: PoolCheckResult = { poolAddress: null, exists: false };
+
+      // 根据版本检查对应的池子
+      if (version !== 'v2') {
+        v3Result = await checkV3Pool(token0, token1, fee);
+      }
+
+      if (version !== 'v3' && (!v3Result.exists || version === 'v2')) {
+        v2Result = await checkV2Pool(token0, token1);
+      }
+
+      // 确定最终使用的池子
+      const useV3 = version === 'v3' ? v3Result.exists : 
+                    version === 'v2' ? false :
+                    v3Result.exists;
+
+      console.log(v3Result, v2Result,useV3, 'v3Result, v2Result====');
       return {
-        v3Pool: v3PoolAddress,
-        v2Pool: v2PoolAddress,
-        // 如果 V3 池子可用则使用 V3，否则使用 V2（如果存在）
-        poolAddress: useV3Pool ? v3PoolAddress : (v2PoolExists ? v2PoolAddress : null),
-        useV3: useV3Pool,
-        v2Exists: v2PoolExists,
-        fee: useV3Pool ? fee : null // 返回找到的费率
+        v3Pool: v3Result.poolAddress,
+        v2Pool: v2Result.poolAddress,
+        poolAddress: useV3 ? v3Result.poolAddress : (v2Result.exists ? v2Result.poolAddress : null),
+        useV3,
+        v2Exists: v2Result.exists,
+        fee: v3Result.fee ?? null
       };
     } catch (error) {
       console.error('Error getting pool address:', error);
       throw error;
     }
-  }, [publicClient]);
+  }, [checkV3Pool, checkV2Pool]);
 
   return { getPoolAddress };
 };
