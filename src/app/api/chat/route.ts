@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRateLimitInfo, incrementRateLimit } from './rate-limit';
 
 // 获取API密钥
-const apiKey = process.env.OPEN_ROUTER_API_KEY;
+const apiKey =  process.env.OPEN_ROUTER_API_KEY;
 
 // OpenRouter API的URL
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -37,28 +37,14 @@ function getClientIp(req: NextRequest): string {
 
 export async function POST(request: NextRequest) {
   try {
-    // 获取客户端IP
+    // 获取客户端IP和速率限制检查
     const clientIp = getClientIp(request);
-    
-    // 检查速率限制
     const rateLimitInfo = getRateLimitInfo(clientIp);
     
-    // 如果已达到限制，返回429状态码
     if (rateLimitInfo.remaining <= 0) {
       return NextResponse.json(
-        { 
-          error: "Rate limit exceeded", 
-          limit: rateLimitInfo.limit,
-          reset: rateLimitInfo.resetAt.toISOString()
-        },
-        { 
-          status: 429,
-          headers: {
-            'X-RateLimit-Limit': rateLimitInfo.limit.toString(),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': Math.floor(rateLimitInfo.resetAt.getTime() / 1000).toString()
-          }
-        }
+        { error: "Rate limit exceeded" },
+        { status: 429 }
       );
     }
 
@@ -66,42 +52,27 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { messages } = body;
 
-    // 验证必需的请求数据
-    if (!Array.isArray(messages)) {
+    if (!Array.isArray(messages) || !apiKey) {
       return NextResponse.json(
-        { error: "Messages array is required" },
+        { error: "Invalid request" },
         { status: 400 }
       );
     }
 
-    // 确保有API密钥
-    if (!apiKey) {
-      console.error("OPEN_ROUTER_API_KEY is not defined");
-      return NextResponse.json(
-        { error: "OpenRouter API key is not configured" },
-        { status: 500 }
-      );
-    }
-
-    // 增加使用计数
     incrementRateLimit(clientIp);
 
-    // 如果用户没有指定系统消息，添加默认的系统消息
-    const hasSystemMessage = messages.some(m => m.role === 'system');
-    
-    const finalMessages = hasSystemMessage 
+    // 准备消息
+    const finalMessages = messages.some(m => m.role === 'system')
       ? messages 
       : [{ role: 'system', content: BASE_SYSTEM_PROMPT }, ...messages];
 
     // 准备发送给OpenRouter的请求
     const payload = {
       messages: finalMessages,
-      model: "deepseek/deepseek-r1:free", // 默认模型，你可以根据需要更改
+      model: "deepseek/deepseek-r1:free",
       max_tokens: 1000,
       temperature: 0.7,
-      // OpenRouter特定的路由字段
-      transforms: ["middle-out"], // 使用OpenRouter的中间输出功能
-      route: "fallback" // 使用fallback路由策略
+      stream: true, // 启用流式响应
     };
 
     // 发送请求到OpenRouter
@@ -110,34 +81,74 @@ export async function POST(request: NextRequest) {
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://hyperindex.trade', // 你的网站URL
-        'X-Title': 'HyperIndex Assistant' // 你的应用名称
+        'HTTP-Referer': 'https://hyperindex.trade',
+        'X-Title': 'HyperIndex Assistant',
+        'Accept': 'text/event-stream',
       },
       body: JSON.stringify(payload)
     });
 
-    // 检查响应
     if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenRouter API Error:", errorData);
       return NextResponse.json(
-        { error: "Error from OpenRouter API", details: errorData },
+        { error: "API Error" },
         { status: response.status }
       );
     }
 
-    // 返回OpenRouter的响应，并添加速率限制信息
-    const data = await response.json();
-    return NextResponse.json(data, {
+    // 创建一个 TransformStream 来处理数据
+    const stream = new TransformStream({
+      async transform(chunk, controller) {
+        try {
+          // 解析数据块
+          const text = new TextDecoder().decode(chunk);
+          const lines = text.split('\n').filter(line => line.trim() !== '');
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const data = line.slice(6).trim();
+              
+              // 跳过结束标记
+              if (data === '[DONE]') {
+                continue;
+              }
+              
+              try {
+                // 确保数据是完整的 JSON
+                if (data) {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    // 直接发送文本内容
+                    controller.enqueue(content);
+                  }
+                }
+              } catch (e) {
+                console.error('Error parsing JSON:', e);
+                // 继续处理下一行，不中断流
+                continue;
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Transform error:', e);
+        }
+      }
+    });
+
+    // 将 API 响应通过 stream 传输
+    return new Response(response.body?.pipeThrough(stream), {
       headers: {
+        'Content-Type': 'text/plain', // 改为 text/plain，因为我们直接发送文本
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
         'X-RateLimit-Limit': rateLimitInfo.limit.toString(),
         'X-RateLimit-Remaining': (rateLimitInfo.remaining - 1).toString(),
         'X-RateLimit-Reset': Math.floor(rateLimitInfo.resetAt.getTime() / 1000).toString()
       }
     });
-    
+
   } catch (error) {
-    console.error("Error processing chat request:", error);
+    console.error("Error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
