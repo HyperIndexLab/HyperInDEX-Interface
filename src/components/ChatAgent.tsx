@@ -626,14 +626,16 @@ const ChatAgent: React.FC = () => {
       if (reader) {
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            setIsTyping(false);
+            break;
+          }
           
           const text = decoder.decode(value);
           
-          // 更新消息内容 - 只更新 agent 消息
           setMessages(prev => {
             const lastMessage = prev[prev.length - 1];
-            if (lastMessage.sender !== 'agent') return prev; // 如果不是 agent 消息，不更新
+            if (lastMessage.sender !== 'agent') return prev;
            
             return prev.map(msg => 
               msg.id === lastMessage.id 
