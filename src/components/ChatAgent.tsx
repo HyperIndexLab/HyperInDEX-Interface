@@ -28,17 +28,6 @@ interface Message {
   role?: 'user' | 'assistant' | 'system'; // 添加role属性用于API通信
 }
 
-// API响应类型
-interface ChatCompletionResponse {
-  choices: {
-    message: {
-      content: string;
-      role: 'assistant';
-    };
-    index: number;
-  }[];
-}
-
 // 定义统一的TokenData接口，兼容两种数据源的类型
 interface TokenData {
   symbol?: string | null;
@@ -173,6 +162,11 @@ const extractNumericValue = (volumeString: string | number | undefined, decimals
   }
   
   return 0;
+};
+
+// 添加一个生成随机ID的函数
+const generateRandomId = () => {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36);
 };
 
 const ChatAgent: React.FC = () => {
@@ -532,7 +526,17 @@ const ChatAgent: React.FC = () => {
     try {
       setIsTyping(true);
       setIsError(false);
-      
+
+      // 创建初始的空 AI 消息
+      const newAIMessage: Message = {
+        id: generateRandomId(),  // 使用随机ID
+        content: '',
+        sender: 'agent',
+        role: 'assistant',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, newAIMessage]);
+
       // 检查特殊问题并提供自定义回答
       const lastMessage = msgs[msgs.length - 1].content;
       let aiResponse: string | null = null;
@@ -548,22 +552,38 @@ const ChatAgent: React.FC = () => {
         aiResponse = await analyzeBestPool();
       }
       
-      // 如果是特殊问题，使用自定义回答
+      // 如果是特殊问题，使用自定义回答，模拟流式响应
       if (aiResponse) {
         const newAIMessage: Message = {
-          id: Date.now().toString(),
-          content: aiResponse,
+          id: generateRandomId(),  // 使用随机ID
+          content: '',
           sender: 'agent',
           role: 'assistant',
           timestamp: new Date(),
         };
         
         setMessages(prev => [...prev, newAIMessage]);
+        
+        // 模拟流式输出 - 只更新 agent 消息
+        const words = aiResponse.split(' ');
+        for (const word of words) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage.sender !== 'agent') return prev; // 如果不是 agent 消息，不更新
+            
+            return prev.map(msg => 
+              msg.id === lastMessage.id 
+                ? { ...msg, content: msg.content + word + ' ' }
+                : msg
+            );
+          });
+        }
         setIsTyping(false);
         return;
       }
-      
-      // 否则，使用标准API回答
+
+      // 使用流式 API 回答
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -574,18 +594,14 @@ const ChatAgent: React.FC = () => {
         }),
       });
 
-      // 获取速率限制信息
       const rateLimitRemaining = response.headers.get('X-RateLimit-Remaining');
-      const rateLimitReset = response.headers.get('X-RateLimit-Reset');
 
       if (!response.ok) {
         if (response.status === 429) {
           // 处理速率限制错误
           const errorData = await response.json();
           let resetDate = new Date();
-          if (rateLimitReset) {
-            resetDate = new Date(parseInt(rateLimitReset) * 1000);
-          } else if (errorData.reset) {
+          if (errorData.reset) {
             resetDate = new Date(errorData.reset);
           }
           
@@ -603,21 +619,32 @@ const ChatAgent: React.FC = () => {
         throw new Error(`API responded with status ${response.status}`);
       }
 
-      const data: ChatCompletionResponse = await response.json();
-      const apiAiResponse = data.choices[0].message.content;
+      // 处理流式响应
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
 
-      // 创建新的AI消息
-      const newAIMessage: Message = {
-        id: Date.now().toString(),
-        content: apiAiResponse,
-        sender: 'agent',
-        role: 'assistant',
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, newAIMessage]);
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const text = decoder.decode(value);
+          
+          // 更新消息内容 - 只更新 agent 消息
+          setMessages(prev => {
+            const lastMessage = prev[prev.length - 1];
+            if (lastMessage.sender !== 'agent') return prev; // 如果不是 agent 消息，不更新
+           
+            return prev.map(msg => 
+              msg.id === lastMessage.id 
+                ? { ...msg, content: msg.content + text }
+                : msg
+            );
+          });
+        }
+      }
       
-      // 如果剩余次数只有1次，提示用户
+      // 处理速率限制警告
       if (rateLimitRemaining === '1') {
         setTimeout(() => {
           const warningMessage: Message = {
@@ -630,22 +657,21 @@ const ChatAgent: React.FC = () => {
           setMessages(prev => [...prev, warningMessage]);
         }, 1000);
       }
+
     } catch (error) {
       console.error('Error getting AI response:', error);
+      setIsTyping(false);
       setIsError(true);
       
-      // 添加错误消息
-      const errorMessage: Message = {
-        id: Date.now().toString(),
-        content: error instanceof Error ? error.message : "Sorry, I'm having trouble connecting. Please try again later.",
-        sender: 'agent',
-        role: 'assistant',
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsTyping(false);
+      // 更新最后一条消息的内容，而不是创建新消息
+      setMessages(prev => prev.map(msg => 
+        msg.id === prev[prev.length - 1].id 
+          ? {
+              ...msg,
+              content: error instanceof Error ? error.message : "Sorry, I'm having trouble connecting. Please try again later."
+            }
+          : msg
+      ));
     }
   };
 
@@ -656,7 +682,7 @@ const ChatAgent: React.FC = () => {
 
     // 添加用户消息
     const newUserMessage: Message = {
-      id: Date.now().toString(),
+      id: generateRandomId(),  // 使用随机ID
       content: messageToSend,
       sender: 'user',
       role: 'user',
@@ -769,37 +795,52 @@ const ChatAgent: React.FC = () => {
                   }`}
                 >
                   {message.sender === 'user' ? (
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <div>
+                      <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                      <p className="text-xs mt-1 opacity-70 text-right">
+                        {formatTime(message.timestamp)}
+                      </p>
+                    </div>
                   ) : (
                     <div className="markdown-content text-sm">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          // 自定义渲染组件
-                          p: ({children, ...props}: any) => <p className="mb-2 last:mb-0" {...props}>{children}</p>,
-                          a: ({children, ...props}: any) => <a className="text-blue-300 hover:underline" {...props}>{children}</a>,
-                          ul: ({children, ...props}: any) => <ul className="list-disc pl-5 mb-2" {...props}>{children}</ul>,
-                          ol: ({children, ...props}: any) => <ol className="list-decimal pl-5 mb-2" {...props}>{children}</ol>,
-                          li: ({children, ...props}: any) => <li className="mb-1" {...props}>{children}</li>,
-                          h1: ({children, ...props}: any) => <h1 className="text-xl font-bold mb-2" {...props}>{children}</h1>,
-                          h2: ({children, ...props}: any) => <h2 className="text-lg font-bold mb-2" {...props}>{children}</h2>,
-                          h3: ({children, ...props}: any) => <h3 className="text-md font-bold mb-2" {...props}>{children}</h3>,
-                          code: ({children, inline, ...props}: any) => 
-                            inline 
-                              ? <code className="bg-gray-700/50 px-1 py-0.5 rounded text-xs" {...props}>{children}</code>
-                              : <code className="block bg-gray-700/50 p-2 rounded text-xs my-2 overflow-auto" {...props}>{children}</code>,
-                          pre: ({children, ...props}: any) => <pre className="my-2" {...props}>{children}</pre>
-                        }}
-                      >
-                        {message.content}
-                      </ReactMarkdown>
+                      {message.content ? (
+                        <>
+                          <ReactMarkdown 
+                            remarkPlugins={[remarkGfm]}
+                            components={{
+                              // 自定义渲染组件
+                              p: ({children, ...props}: any) => <p className="mb-2 last:mb-0" {...props}>{children}</p>,
+                              a: ({children, ...props}: any) => <a className="text-blue-300 hover:underline" {...props}>{children}</a>,
+                              ul: ({children, ...props}: any) => <ul className="list-disc pl-5 mb-2" {...props}>{children}</ul>,
+                              ol: ({children, ...props}: any) => <ol className="list-decimal pl-5 mb-2" {...props}>{children}</ol>,
+                              li: ({children, ...props}: any) => <li className="mb-1" {...props}>{children}</li>,
+                              h1: ({children, ...props}: any) => <h1 className="text-xl font-bold mb-2" {...props}>{children}</h1>,
+                              h2: ({children, ...props}: any) => <h2 className="text-lg font-bold mb-2" {...props}>{children}</h2>,
+                              h3: ({children, ...props}: any) => <h3 className="text-md font-bold mb-2" {...props}>{children}</h3>,
+                              code: ({children, inline, ...props}: any) => 
+                                inline 
+                                  ? <code className="bg-gray-700/50 px-1 py-0.5 rounded text-xs" {...props}>{children}</code>
+                                  : <code className="block bg-gray-700/50 p-2 rounded text-xs my-2 overflow-auto" {...props}>{children}</code>,
+                              pre: ({children, ...props}: any) => <pre className="my-2" {...props}>{children}</pre>
+                            }}
+                          >
+                            {message.content}
+                          </ReactMarkdown>
+                          <p className="text-xs mt-1 opacity-70 text-right">
+                            {formatTime(message.timestamp)}
+                          </p>
+                        </>
+                      ) : (
+                        <div className="flex space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
+                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                        </div>
+                      )}
                     </div>
                   )}
-                  <p className="text-xs mt-1 opacity-70 text-right">
-                    {formatTime(message.timestamp)}
-                  </p>
                 </div>
-                
+
                 {message.sender === 'user' && (
                   <div className="w-8 h-8 rounded-full bg-blue-600/20 flex-shrink-0 flex items-center justify-center">
                     <UserCircleIcon className="w-6 h-6 text-gray-300" />
@@ -835,29 +876,6 @@ const ChatAgent: React.FC = () => {
                 >
                   Retry
                 </button>
-              </div>
-            )}
-            
-            {/* 正在输入提示 */}
-            {isTyping && (
-              <div className="flex items-end gap-2 justify-start">
-                <div className="w-8 h-8 rounded-full bg-purple-700/20 flex-shrink-0 flex items-center justify-center overflow-hidden">
-                  <Image 
-                    src="https://hyperindex.4everland.store/index-coin.jpg" 
-                    alt="HyperIndex Logo" 
-                    width={24} 
-                    height={24}
-                    className="rounded-full"
-                    unoptimized
-                  />
-                </div>
-                <div className="bg-[#2A2D39] text-gray-100 px-4 py-3 rounded-2xl rounded-tl-none max-w-[80%] shadow-md">
-                  <div className="flex space-x-2">
-                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
-                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
-                  </div>
-                </div>
               </div>
             )}
             
