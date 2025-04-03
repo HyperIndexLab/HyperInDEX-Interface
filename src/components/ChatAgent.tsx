@@ -28,17 +28,6 @@ interface Message {
   role?: 'user' | 'assistant' | 'system'; // 添加role属性用于API通信
 }
 
-// API响应类型
-interface ChatCompletionResponse {
-  choices: {
-    message: {
-      content: string;
-      role: 'assistant';
-    };
-    index: number;
-  }[];
-}
-
 // 定义统一的TokenData接口，兼容两种数据源的类型
 interface TokenData {
   symbol?: string | null;
@@ -635,8 +624,6 @@ const ChatAgent: React.FC = () => {
       const decoder = new TextDecoder();
 
       if (reader) {
-        let buffer = '';
-        
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
