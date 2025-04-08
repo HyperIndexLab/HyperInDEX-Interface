@@ -94,7 +94,7 @@ const PoolsContainer: React.FC = () => {
           Remove
         </button>
         <Link 
-          href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
+          href={`/liquidity/${isV3 ? 'v3' : ''}?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
           className="btn btn-primary flex-1 rounded-full text-lg"
         >
           Add
@@ -229,7 +229,7 @@ const PoolsContainer: React.FC = () => {
                     Remove
                   </button>
                   <Link 
-                    href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
+                    href={`/liquidity/v3?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}&fee=${pool.fee}`}
                     className="btn btn-sm btn-primary rounded-full px-6"
                   >
                     Add
@@ -256,7 +256,7 @@ const PoolsContainer: React.FC = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Your Liquidity Positions</h1>
         <Link 
-          href="/liquidity"
+          href="/liquidity/v3"
           className="btn btn-primary rounded-full text-md px-6"
         >
           Add Liquidity

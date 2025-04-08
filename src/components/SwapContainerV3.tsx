@@ -61,7 +61,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const [token2Price, setToken2Price] = useState<string>('0');
   const settingsRef = useRef<HTMLDivElement>(null);
   const [pairAddress, setPairAddress] = useState<string>('');
-  const [isV3, setIsV3] = useState<boolean>(false);
+  const [isV3, setIsV3] = useState<boolean>(true);
   const [isCalculating, setIsCalculating] = useState<boolean>(false);
   const calculationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -370,7 +370,9 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
 
     const fetchPoolAddress = async () => {
-      const poolAddress = await getPoolAddress(getQueryAddress(token1Data), getQueryAddress(token2Data));
+      const poolAddress = await getPoolAddress(getQueryAddress(token1Data), getQueryAddress(token2Data), {
+        version: isV3 ? 'v3' : 'v2',
+      });
       setPairAddress(poolAddress.poolAddress || '');
       setIsV3(poolAddress.useV3);
     };
@@ -425,6 +427,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         symbol: token2Data.symbol === 'HSK' ? 'WHSK' : token2Data.symbol,
         decimals: Number(token2Data.decimals),
       };
+
+      console.log(isV3, 'isV3');
 
       const swapInfo = await getSwapInfo({
         token1: calculationToken1,
@@ -1164,6 +1168,32 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
   };
 
+  const [v3Enabled, setV3Enabled] = useState(true);
+  const [v2Enabled, setV2Enabled] = useState(true);
+
+  const handleV3Toggle = (checked: boolean) => {
+    if (!checked && !v2Enabled) {
+      // 如果两个都关闭，保持 V3 开启
+      return;
+    }
+    setV3Enabled(checked);
+  };
+
+  const handleV2Toggle = (checked: boolean) => {
+    if (!checked && !v3Enabled) {
+      // 如果两个都关闭，保持 V2 开启
+      return;
+    }
+    setV2Enabled(checked);
+  };
+
+  useEffect(() => {
+    if (v3Enabled) {
+      setIsV3(true);
+    } else {
+      setIsV3(false);
+    }
+  }, [v3Enabled]);
 
   return (
     <>
@@ -1247,7 +1277,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
                 </div>
 
                 {/* Transaction Deadline */}
-                <div>
+                <div className="mb-5">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-sm text-gray-300 font-medium">Tx. deadline</span>
                     <div className="tooltip" data-tip="Your transaction will revert if it is pending for more than this period of time.">
@@ -1272,6 +1302,32 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
                       placeholder="Enter deadline"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">minutes</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-sm text-gray-300 font-medium">Trade options</span>
+                  </div>
+                  <div className="relative">
+                    <label className="fieldset-label flex items-center justify-between gap-2 mb-3">
+                      <span>V3 Pools</span>
+                      <input 
+                        type="checkbox" 
+                        checked={v3Enabled}
+                        className="toggle" 
+                        onChange={(e) => handleV3Toggle(e.target.checked)}
+                      />
+                    </label>
+                    <label className="fieldset-label flex items-center justify-between gap-2">
+                      <span>V2 Pools</span>
+                      <input 
+                        type="checkbox" 
+                        checked={v2Enabled}
+                        className="toggle" 
+                        onChange={(e) => handleV2Toggle(e.target.checked)}
+                      />
+                    </label>
                   </div>
                 </div>
               </div>

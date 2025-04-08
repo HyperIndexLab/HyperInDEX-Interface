@@ -34,6 +34,7 @@ import { wagmiConfig } from "./RainbowKitProvider";
 interface LiquidityContainerProps {
   token1?: string;
   token2?: string;
+  fee?: number;
 }
 
 interface TokenData {
@@ -73,7 +74,9 @@ export const getDefaultTokenIcon = (tokenData: TokenData | null) => {
 const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   token1 = "HSK",
   token2 = "Select token",
+  fee = 3000,
 }) => {
+  console.log(fee, 'fee====');
   const tokens = useSelector(selectTokens);
   const dispatch = useDispatch<AppDispatch>();
   const [showModal, setShowModal] = useState(false);
@@ -82,7 +85,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const [token1Data, setToken1Data] = useState<TokenData | null>(null);
   const [token2Data, setToken2Data] = useState<TokenData | null>(null);
   const [step, setStep] = useState(1);
-  const [feeTier, setFeeTier] = useState(V3_FEE_TIERS[2]);
+  const [feeTier, setFeeTier] = useState(fee);
   const { poolInfo: existingPool, requestLoading } = usePoolInfo(token1Data, token2Data, feeTier);
 
   const [tickRange, setTickRange] = useState<{ minTick: number; maxTick: number }>({ minTick: 0, maxTick: 0 });
@@ -145,7 +148,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         setToken2Data(tokenData);
       }
     });
-  }, [tokens, token1, token2]);
+
+    if (fee) {
+      setFeeTier(fee);
+    }
+  }, [tokens, token1, token2, fee]);
 
   useEffect(() => {
     if (token1Data?.address && token2Data?.address) {
