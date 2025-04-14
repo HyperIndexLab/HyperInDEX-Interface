@@ -1,4 +1,5 @@
 import api from '@/utils/api'
+import { ApolloClient, InMemoryCache, gql } from '@apollo/client';
 
 export interface Token {
 	id: number
@@ -24,6 +25,7 @@ export interface Pool {
 	tradingVolume30D: number
 	pairsName: string
 	pairsAddress: string
+  feeTier?: string
 }
 
 export interface PoolPriceData {
@@ -168,6 +170,100 @@ export const getPools = async (): Promise<Pool[]> => {
     return res.data as Pool[];
   });
 }
+
+const v3Client = new ApolloClient({
+  uri: 'https://api.studio.thegraph.com/query/106985/dex-v3/version/latest',
+  cache: new InMemoryCache(),
+});
+
+// V3 池子查询
+const V3_POOLS_QUERY = gql`
+  query Pools {
+    pools(
+      first: 1000,
+      orderBy: totalValueLockedUSD,
+      orderDirection: desc
+    ) {
+      id
+      token0 {
+        id
+        symbol
+      }
+      token1 {
+        id
+        symbol
+      }
+      totalValueLockedUSD
+      volumeUSD
+      feesUSD
+      feeTier
+      poolDayData(
+        first: 2,
+        orderBy: date,
+        orderDirection: desc
+      ) {
+        date
+        tvlUSD
+        volumeUSD
+        feesUSD
+      }
+    }
+  }
+`;
+
+// 转换 V3 池子数据格式
+const transformV3PoolData = (pools: any[]): Pool[] => {
+  return pools.map((pool, index) => {
+    const dailyFees = parseFloat(pool.poolDayData[0]?.feesUSD || '0');
+    const tvl = parseFloat(pool.totalValueLockedUSD);
+    const apy = tvl > 0 ? (dailyFees * 365 / tvl) * 100 : 0;
+
+    return {
+      id: (index + 1).toString(),
+      token0: pool.token0.id,
+      token1: pool.token1.id,
+      pairsName: `${pool.token0.symbol}/${pool.token1.symbol}`,
+      pairsAddress: pool.id,
+      TVL: `$${parseFloat(pool.totalValueLockedUSD).toLocaleString()}`,
+      APY: apy,
+      tradingVolume1D: pool.volumeUSD,
+      tradingVolume30D: 0, // 需要额外查询30天数据
+      totalValueLockedUSD: pool.totalValueLockedUSD,
+      volumeUSD: pool.volumeUSD,
+      feeTier: pool.feeTier,
+      poolDayData: pool.poolDayData.map((day: any) => ({
+        date: day.date,
+        tvlUSD: day.tvlUSD,
+        volumeUSD: day.volumeUSD,
+        feeTier: pool.feeTier,
+        feeUSD: day.feesUSD
+      }))
+    };
+  });
+};
+
+export const getPoolsByVersion = async (version: 'v2' | 'v3' = 'v3'): Promise<Pool[]> => {
+  try {
+    if (version === 'v2') {
+      const pools = await getPools();
+      return pools.map(pool => ({
+        ...pool,
+        pairsName: `${pool.pairsName}`
+      }));
+    } else {
+      const client = v3Client;
+      const query = V3_POOLS_QUERY;
+      const { data } = await client.query({
+        query
+      });
+      
+      return transformV3PoolData(data.pools);
+    }
+  } catch (error) {
+    console.error('Failed to fetch pools:', error);
+    throw error;
+  }
+};
 
 export const getPoolPriceData = async (poolAddress: string, days: number): Promise<PoolPriceData[]> => {
   return poolPriceDataManager.request(

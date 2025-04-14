@@ -76,7 +76,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   token2 = "Select token",
   fee = 3000,
 }) => {
-  console.log(fee, 'fee====');
   const tokens = useSelector(selectTokens);
   const dispatch = useDispatch<AppDispatch>();
   const [showModal, setShowModal] = useState(false);

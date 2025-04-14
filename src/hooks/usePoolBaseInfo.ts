@@ -96,6 +96,8 @@ export const usePoolInfo = (token1Data: TokenData | null, token2Data: TokenData 
       functionName: 'getPool',
       args: [sortedToken0, sortedToken1, fee]
     })
+
+    console.log(poolAddress, 'poolAddress====');
     return poolAddress as `0x${string}`
   }
 

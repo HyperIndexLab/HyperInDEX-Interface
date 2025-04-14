@@ -113,6 +113,8 @@ export const useAddLiquidity = (
         : token1Data.address;
       
       let poolAddr = poolAddress;
+
+      console.log(existingPool, 'existingPool====');
       
       // 检查是否需要先创建池子
       if (!existingPool) {
