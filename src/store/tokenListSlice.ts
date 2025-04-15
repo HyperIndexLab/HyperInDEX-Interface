@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { RootState } from './index';
 import { getMyApiBaseUrl } from '../utils/getApiBaseUrl';
+import { stHSK_DEL } from '@/constant/value';
 
 // 定义token的类型
 export interface Token {
@@ -47,7 +48,11 @@ export const fetchTokenList = createAsyncThunk(
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        allTokens = [...allTokens, ...data.items];
+        // 过滤掉指定地址的token
+        const filteredItems = data.items.filter((token: Token) => 
+          token.address.toLowerCase() !== stHSK_DEL.toLowerCase()
+        );
+        allTokens = [...allTokens, ...filteredItems];
         
         // 检查是否还有更多数据
         if (data.items.length < pageSize || page * pageSize >= data.total) {
@@ -80,7 +85,11 @@ export const refreshTokenList = createAsyncThunk(
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const data = await response.json();
-      allTokens = [...allTokens, ...data.items];
+      // 过滤掉指定地址的token
+      const filteredItems = data.items.filter((token: Token) => 
+        token.address.toLowerCase() !== stHSK_DEL.toLowerCase()
+      );
+      allTokens = [...allTokens, ...filteredItems];
       
       // 检查是否还有更多数据
       if (data.items.length < pageSize || page * pageSize >= data.total) {
