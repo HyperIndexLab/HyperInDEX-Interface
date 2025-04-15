@@ -698,7 +698,19 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           {step === 1 ? (
             /* Step 1 Content */
             <div className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-6">
-              <h2 className="text-xl font-bold mb-3">Select Pair</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold mb-3">Select Pair</h2>
+
+                <div className="dropdown dropdown-end">
+                  <div tabIndex={0} role="button" className="btn btn-sm rounded-xl bg-[#1c1d22] hover:bg-[#2c2d33] border border-white/5">
+                    <span>V2 Position</span>
+                    <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  </div>
+                  <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-[#1c1d22] rounded-xl w-40 border border-white/5">
+                    <li><a href="/liquidity/v3" className="text-base-content/60 hover:bg-[#2c2d33] rounded-lg">V3 Position</a></li>
+                  </ul>
+                </div>
+              </div>
               <p className="text-md text-base-content/60 mb-8">
                 Select a pair of tokens you want to provide liquidity for.
               </p>
