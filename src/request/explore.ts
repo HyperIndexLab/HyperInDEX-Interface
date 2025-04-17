@@ -26,6 +26,11 @@ export interface Pool {
 	pairsName: string
 	pairsAddress: string
   feeTier?: string
+  totalValueLockedUSD: string
+  volumeUSD: string
+  totalValueLockedToken0?: string
+  totalValueLockedToken1?: string
+  totalValueLockedETH?: string
 }
 
 export interface PoolPriceData {
@@ -292,3 +297,119 @@ export const getTokenPriceData = async (tokenAddress: string, days: number): Pro
     days
   );
 }
+
+// 单个池子详情查询
+const POOL_DETAIL_QUERY = gql`
+  query Pool($id: String!) {
+    pool(id: $id) {
+      id
+      token0 {
+        id
+        symbol
+        name
+        decimals
+      }
+      token1 {
+        id
+        symbol
+        name
+        decimals
+      }
+      feeTier
+      liquidity
+      token0Price
+      token1Price
+      volumeUSD
+      totalValueLockedUSD
+      txCount
+      createdAtTimestamp
+      createdAtBlockNumber
+      collectedFeesToken0
+      collectedFeesToken1
+      collectedFeesUSD
+      totalValueLockedToken0
+      totalValueLockedToken1
+      totalValueLockedETH
+      poolDayData(first: 30, orderBy: date, orderDirection: desc) {
+        date
+        volumeUSD
+      }
+    }
+  }
+`;
+
+export interface PoolDetail {
+  id: string;
+  token0: {
+    id: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+  token1: {
+    id: string;
+    symbol: string;
+    name: string;
+    decimals: number;
+  };
+  feeTier: string;
+  liquidity: string;
+  token0Price: string;
+  token1Price: string;
+  volumeUSD: string;
+  totalValueLockedUSD: string;
+  txCount: string;
+  createdAtTimestamp: string;
+  createdAtBlockNumber: string;
+  collectedFeesToken0: string;
+  collectedFeesToken1: string;
+  collectedFeesUSD: string;
+  totalValueLockedToken0: string;
+  totalValueLockedToken1: string;
+  totalValueLockedETH: string;
+  poolDayData: { date: string; volumeUSD: string }[];
+}
+
+// 转换池子详情数据为 Pool 格式
+const transformPoolDetailToPool = (pool: PoolDetail): Pool => {
+  const dailyFees = parseFloat(pool.collectedFeesUSD);
+  const tvl = parseFloat(pool.totalValueLockedUSD);
+  const apy = tvl > 0 ? (dailyFees * 365 / tvl) * 100 : 0;
+
+  // 计算1天和30天的交易量
+  const volume1D = pool.poolDayData[0]?.volumeUSD || '0';
+  const volume30D = pool.poolDayData.reduce((sum, day) => sum + parseFloat(day.volumeUSD), 0);
+
+  return {
+    id: '0',
+    token0: pool.token0.id,
+    token1: pool.token1.id,
+    pairsName: `${pool.token0.symbol}/${pool.token1.symbol}`,
+    pairsAddress: pool.id,
+    TVL: `$${parseFloat(pool.totalValueLockedUSD).toLocaleString()}`,
+    APY: apy,
+    tradingVolume1D: parseFloat(volume1D),
+    tradingVolume30D: volume30D,
+    totalValueLockedUSD: pool.totalValueLockedUSD,
+    volumeUSD: pool.volumeUSD,
+    feeTier: pool.feeTier,
+    totalValueLockedToken0: pool.totalValueLockedToken0,
+    totalValueLockedToken1: pool.totalValueLockedToken1,
+    totalValueLockedETH: pool.totalValueLockedETH,
+  };
+};
+
+export const getPoolDetail = async (poolId: string): Promise<Pool> => {
+  try {
+    const { data } = await v3Client.query({
+      query: POOL_DETAIL_QUERY,
+      variables: {
+        id: poolId
+      }
+    });
+    return transformPoolDetailToPool(data.pool);
+  } catch (error) {
+    console.error('Failed to fetch pool detail:', error);
+    throw error;
+  }
+};

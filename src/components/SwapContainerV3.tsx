@@ -315,7 +315,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     if (tokens.length === 0) {
       return;
     }
-    console.log(tokens, 'tokens');
+    console.log(tokens,token1, token2, 'tokens');
     tokens.forEach(token => {
       if (token.address === token1) {
         const tokenData: TokenData = {

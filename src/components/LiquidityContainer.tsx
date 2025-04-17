@@ -707,7 +707,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                     <ChevronDownIcon className="w-4 h-4 ml-1" />
                   </div>
                   <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-[#1c1d22] rounded-xl w-40 border border-white/5">
-                    <li><a href="/liquidity/v3" className="text-base-content/60 hover:bg-[#2c2d33] rounded-lg">V3 Position</a></li>
+                    <li><a href={`/liquidity/v3?inputCurrency=${token1Data?.address}&outputCurrency=${token2Data?.address}`} className="text-base-content/60 hover:bg-[#2c2d33] rounded-lg">V3 Position</a></li>
                   </ul>
                 </div>
               </div>

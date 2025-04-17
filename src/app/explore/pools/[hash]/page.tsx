@@ -1,6 +1,6 @@
 'use client'
 
-import { getPoolPriceData, getPools, Pool, PoolPriceData } from '@/request/explore';
+import { getPoolDetail, getPoolPriceData, getPools, Pool, PoolPriceData } from '@/request/explore';
 import { useParams } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import {  isAddress } from 'viem';
@@ -18,6 +18,7 @@ import { formatTokenBalance } from '@/utils/formatTokenBalance';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
 import { readContract } from 'wagmi/actions';
 import { getNewApiBaseUrl } from '@/utils/getApiBaseUrl';
+import SwapContainerV3 from '@/components/SwapContainerV3';
 
 interface PoolWithTokens extends Pool {
 	token0Info: TokenData;
@@ -35,11 +36,18 @@ export default function Page() {
 	const [poolPriceData, setPoolPriceData] = useState<PoolPriceData[]>([]);
 	const [isReversed, setIsReversed] = useState(false);
 	const [reserves, setReserves] = useState<string[]>([]);
+	const [isV3, setIsV3] = useState(false);
 
 	const fetchPools = async () => {
 		setLoading(true)
 		try {
 			const pools = await getPools()
+			const poolDetail = await getPoolDetail(hash as string)
+
+			if (poolDetail) {
+				setIsV3(true)
+				pools.push(poolDetail)
+			}
 			setPoolData(pools)
 		} catch (error) {
 			console.error('Failed to fetch pool list:', error)
@@ -93,6 +101,7 @@ export default function Page() {
 			const token0Info = tokens.find(token => token.address.toLowerCase() === pool.token0.toLowerCase());
 			const token1Info = tokens.find(token => token.address.toLowerCase() === pool.token1.toLowerCase());
 			
+		
 			setPool({
 				...pool,
 				token0Info: token0Info ? token0Info as TokenData : {
@@ -303,13 +312,14 @@ export default function Page() {
 									>
 										Swap Tokens
 									</button>
-									<Link href={`/liquidity?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`} className='btn btn-primary rounded-full px-8 font-semibold'>
+									<Link href={isV3 ? `/liquidity/v3?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`  :`/liquidity?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`} className='btn btn-primary rounded-full px-8 font-semibold'>
 										Add Liquidity
 									</Link>
 								</div>
 								
 								<div className={`mt-6 transition-all duration-300 ease-in-out ${showSwap ? 'opacity-100' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-									<SwapContainer token1={pool?.token0} token2={pool?.token1} />
+									{/* <SwapContainer token1={pool?.token0} token2={pool?.token1} /> */}
+									<SwapContainerV3 token1={pool?.token0} token2={pool?.token1} />
 								</div>
 							</>
 						)}
@@ -339,7 +349,11 @@ export default function Page() {
 															  unoptimized />
 													</div>
 												</div>
-												<span>{reserves.length > 0 ? formatNumberToUnit(parseFloat(reserves[0])) : 0} {pool?.token0Info?.symbol}</span>
+												{pool?.totalValueLockedToken0 && pool?.totalValueLockedToken1 ? (
+													<span>{formatNumberToUnit(parseFloat(pool?.totalValueLockedToken0))} {pool?.token0Info?.symbol}</span>
+												) : (
+													<span>{reserves.length > 0 ? formatNumberToUnit(parseFloat(reserves[0])) : 0} {pool?.token0Info?.symbol}</span>
+												)}
 											</div>
 											<div className="flex items-center gap-2">
 												<div className="avatar">
@@ -350,20 +364,37 @@ export default function Page() {
 															  unoptimized />
 													</div>
 												</div>
-												<span>{reserves.length > 0 ? formatNumberToUnit(parseFloat(reserves[1])) : 0} {pool?.token1Info?.symbol}</span>
+												{pool?.totalValueLockedToken0 && pool?.totalValueLockedToken1 ? (
+													<span>{formatNumberToUnit(parseFloat(pool?.totalValueLockedToken1))} {pool?.token1Info?.symbol}</span>
+												) : (
+													<span>{reserves.length > 0 ? formatNumberToUnit(parseFloat(reserves[1])) : 0} {pool?.token1Info?.symbol}</span>
+												)}
 											</div>
 										</div>
 										<div className="w-full h-2 bg-base-300 rounded-full overflow-hidden">
-											<div className="h-full flex">
-												<div 
-													className="bg-primary" 
+											{pool?.totalValueLockedToken0 && pool?.totalValueLockedToken1 ? (
+												
+												<div className="h-full flex">
+												<div className="bg-primary" 
+													style={{ width: `${pool ? ( Number(pool?.totalValueLockedToken0) / (Number(pool?.totalValueLockedToken0) + Number(pool?.totalValueLockedToken1)) * 100) : 50}%` }}
+												></div>
+													<div 
+													className="bg-secondary" 
+													style={{ width: `${pool ? (Number(pool?.totalValueLockedToken1) / (Number(pool?.totalValueLockedToken0) + Number(pool?.totalValueLockedToken1)) * 100) : 50}%` }}
+													></div>
+												</div>
+											) : (
+												<div className="h-full flex">
+													<div 
+														className="bg-primary" 
 													style={{ width: `${pool ? ( Number(reserves[0]) / (Number(reserves[0]) + Number(reserves[1])) * 100) : 50}%` }}
 												></div>
 												<div 
 													className="bg-secondary" 
 													style={{ width: `${pool ? (Number(reserves[1]) / (Number(reserves[0]) + Number(reserves[1])) * 100) : 50}%` }}
 												></div>
-											</div>
+												</div>
+											)}
 										</div>
 									</div>
 									<div className="stat bg-base-200 rounded-box p-4">
