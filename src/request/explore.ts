@@ -413,3 +413,197 @@ export const getPoolDetail = async (poolId: string): Promise<Pool> => {
     throw error;
   }
 };
+
+const POOL_PRICE_HISTORY_QUERY = gql`
+  query PoolPriceHistory($poolId: String!, $startTime: Int!, $first: Int!) {
+    pool(id: $poolId) {
+      id
+      token0 {
+        id
+        symbol
+        name
+      }
+      token1 {
+        id
+        symbol
+        name
+      }
+    }
+    poolDayDatas(
+      first: $first
+      orderBy: date
+      orderDirection: desc
+      where: {
+        pool: $poolId
+        date_gte: $startTime
+      }
+    ) {
+      date
+      token0Price
+      token1Price
+    }
+  }
+`;
+
+interface PriceData {
+  date: number;
+  token0Price: string;
+  token1Price: string;
+}
+
+function fillMissingDayData(data: PriceData[], days: number): PriceData[] {
+  if (!data.length) return [];
+
+  const filledData: PriceData[] = [];
+  const now = Math.floor(Date.now() / 1000);
+  const oneDaySeconds = 24 * 60 * 60;
+  
+  // 确保数据按日期降序排列
+  const sortedData = [...data].sort((a, b) => b.date - a.date);
+  
+  // 创建日期映射
+  const dataMap = new Map(sortedData.map(item => [item.date, item]));
+  
+  // 从现在开始往前推days天
+  for (let i = days - 1; i >= 0; i--) {
+    const targetDate = now - (i * oneDaySeconds);
+    const normalizedDate = Math.floor(targetDate / oneDaySeconds) * oneDaySeconds;
+    
+    let dayData = dataMap.get(normalizedDate);
+    
+    if (!dayData) {
+      // 找到最近的前一个有数据的日期
+      let previousData: PriceData | undefined;
+      for (const data of sortedData) {
+        if (data.date < normalizedDate) {
+          previousData = data;
+          break;
+        }
+      }
+      
+      // 如果找到了前一个数据，用它来补充
+      if (previousData) {
+        dayData = {
+          date: normalizedDate,
+          token0Price: previousData.token0Price,
+          token1Price: previousData.token1Price
+        };
+      }
+    }
+    
+    if (dayData) {
+      filledData.push(dayData);
+    }
+  }
+  
+  return filledData;
+}
+
+export const getPoolPriceHistory = async (poolId: string, days: 7 | 30): Promise<PoolPriceData[]> => {
+  try {
+    const startTime = Math.floor(Date.now() / 1000) - (days * 24 * 60 * 60);
+    
+    const { data } = await v3Client.query({
+      query: POOL_PRICE_HISTORY_QUERY,
+      variables: {
+        poolId: poolId.toLowerCase(),
+        startTime,
+        first: days
+      }
+    });
+
+    const filledData = fillMissingDayData(data.poolDayDatas, days);
+    
+    // 转换为 PoolPriceData 格式
+    return filledData.map((item, index) => ({
+      id: index,
+      pairsName: `${data.pool.token0.symbol}/${data.pool.token1.symbol}`,
+      pairsAddress: poolId,
+      token0Address: data.pool.token0.id,
+      token0Symbol: data.pool.token0.symbol,
+      token0Name: data.pool.token0.name,
+      token1Address: data.pool.token1.id,
+      token1Symbol: data.pool.token1.symbol,
+      token1Name: data.pool.token1.name,
+      token0Balance: "0", // 这些数据在当前查询中没有，如果需要可以添加到查询中
+      token1Balance: "0",
+      token0VsToken1: item.token0Price,
+      token1VsToken0: item.token1Price,
+      blockNumber: 0, // 如果需要区块号，需要在查询中添加
+      timestamp: new Date(item.date * 1000).toISOString(),
+      createdAt: new Date(item.date * 1000).toISOString()
+    }));
+  } catch (error) {
+    console.error('Failed to fetch pool price history:', error);
+    return [];
+  }
+};
+
+// 交易记录查询
+const POOL_SWAPS_QUERY = gql`
+  query PoolSwaps($poolId: String!) {
+    swaps(
+      first: 100
+      orderBy: timestamp
+      orderDirection: desc
+      where: { pool: $poolId }
+    ) {
+      timestamp
+      amount0
+      amount1
+      sender
+      transaction {
+        id
+      }
+      pool {
+        token0 {
+          symbol
+          decimals
+        }
+        token1 {
+          symbol
+          decimals
+        }
+      }
+    }
+  }
+`;
+
+// 交易记录接口类型定义
+export interface SwapRecord {
+  timestamp: string;
+  amount0: string;
+  amount1: string;
+  sender: string;
+  transactionId: string;
+  token0Symbol: string;
+  token1Symbol: string;
+  token0Decimals: number;
+  token1Decimals: number;
+}
+
+export const getPoolSwaps = async (poolId: string): Promise<SwapRecord[]> => {
+  try {
+    const { data } = await v3Client.query({
+      query: POOL_SWAPS_QUERY,
+      variables: {
+        poolId: poolId.toLowerCase()
+      }
+    });
+
+    return data.swaps.map((swap: any) => ({
+      timestamp: new Date(parseInt(swap.timestamp) * 1000).toISOString(),
+      amount0: swap.amount0,
+      amount1: swap.amount1,
+      sender: swap.sender,
+      transactionId: swap.transaction.id,
+      token0Symbol: swap.pool.token0.symbol,
+      token1Symbol: swap.pool.token1.symbol,
+      token0Decimals: parseInt(swap.pool.token0.decimals),
+      token1Decimals: parseInt(swap.pool.token1.decimals)
+    }));
+  } catch (error) {
+    console.error('Failed to fetch pool swaps:', error);
+    return [];
+  }
+};
