@@ -358,6 +358,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     if (!token1Data || !token2Data) {
       return;
     }
+    
     // 处理 HSK/WHSK 和 WHSK/HSK 的交易对
     if (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') {
       setPairAddress(WHSK);
@@ -370,14 +371,45 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
 
     const fetchPoolAddress = async () => {
-      const poolAddress = await getPoolAddress(getQueryAddress(token1Data), getQueryAddress(token2Data), {
-        version: isV3 ? 'v3' : 'v2',
-      });
-      setPairAddress(poolAddress.poolAddress || '');
-      setIsV3(poolAddress.useV3);
+      try {
+        // 首先尝试获取 V3 池子地址
+        const v3PoolAddress = await getPoolAddress(getQueryAddress(token1Data), getQueryAddress(token2Data), {
+          version: 'v3',
+        });
+
+        // 如果启用了 V3 且找到了 V3 池子
+        if (v3Enabled && v3PoolAddress.poolAddress) {
+          setPairAddress(v3PoolAddress.poolAddress);
+          setIsV3(true);
+          return;
+        }
+
+        // 如果 V3 池子不存在或未启用 V3，且启用了 V2，则尝试获取 V2 池子地址
+        if (v2Enabled) {
+          const v2PoolAddress = await getPoolAddress(getQueryAddress(token1Data), getQueryAddress(token2Data), {
+            version: 'v2',
+          });
+
+          if (v2PoolAddress.poolAddress) {
+            setPairAddress(v2PoolAddress.poolAddress);
+            setIsV3(false);
+            return;
+          }
+        }
+
+        // 如果都没有找到池子
+        setPairAddress('');
+        setIsV3(v3Enabled); // 保持当前选择的版本
+        
+      } catch (error) {
+        console.error('Failed to fetch pool address:', error);
+        setPairAddress('');
+        setIsV3(v3Enabled);
+      }
     };
+
     fetchPoolAddress();
-  }, [token1Data, token2Data]);
+  }, [token1Data, token2Data, v3Enabled, v2Enabled]);
   
   
 
@@ -468,7 +500,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
     );
 
-    if (!token1Amount || isHskWhskPair) {
+    if (!token1Amount || isHskWhskPair || !pairAddress) {
       setIsCalculating(false);
       return;
     }
@@ -476,7 +508,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     // 设置新的计时器
     calculationTimeoutRef.current = setTimeout(() => {
       // 在开始计算前再次检查输入值是否有效
-      if (token1Amount && !isHskWhskPair) {
+      if (token1Amount && !isHskWhskPair && pairAddress) {
         calculateSwap();
       }
     }, 500); // 增加延迟时间到 500ms，减少计算频率
@@ -486,7 +518,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         clearTimeout(calculationTimeoutRef.current);
       }
     };
-  }, [token1Amount, token1Data, token2Data, calculateSwap]);
+  }, [token1Amount, token1Data, token2Data, pairAddress, calculateSwap]);
 
 
   useEffect(() => {
