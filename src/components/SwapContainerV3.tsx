@@ -82,6 +82,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const { address: userAddress } = useAccount();
   const { getPoolAddress } = usePoolAddress();
 
+  const [v3Enabled, setV3Enabled] = useState(true);
+  const [v2Enabled, setV2Enabled] = useState(true);
 
 
   // 检查授权额度
@@ -1199,9 +1201,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       }
     }
   };
-
-  const [v3Enabled, setV3Enabled] = useState(true);
-  const [v2Enabled, setV2Enabled] = useState(true);
 
   const handleV3Toggle = (checked: boolean) => {
     if (!checked && !v2Enabled) {
