@@ -1,19 +1,13 @@
 import { useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { 
   NONFUNGIBLE_POSITION_MANAGER_ADDRESS, 
   NONFUNGIBLE_POSITION_MANAGER_ABI 
 } from '@/constant/ABI/NonfungiblePositionManager';
 import { ROUTER_CONTRACT_ADDRESS, ROUTER_ABI } from '@/constant/ABI/HyperIndexRouter';
-import { erc20Abi } from 'viem';
-import JSBI from 'jsbi';
-import { Position, RemoveLiquidityOptions } from '@uniswap/v3-sdk';
-
-import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
-import { CurrencyAmount, MaxUint256, Percent } from '@uniswap/sdk-core';
-import { readContract, sendTransaction, waitForTransactionReceipt, writeContract } from 'wagmi/actions';
+import { Position } from '@uniswap/v3-sdk';
+import { waitForTransactionReceipt, writeContract } from 'wagmi/actions';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
-import { ROUTER_CONTRACT_V3_ADDRESS } from '@/constant/ABI/HyperindexV3Router';
 import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
 
 interface RemoveLiquidityParams {
@@ -43,10 +37,8 @@ export function useRemoveLiquidity() {
   const [isRemoving, setIsRemoving] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const { address: account } = useAccount();
 
   const { writeContractAsync: writeV2Router } = useWriteContract();
-  const { writeContractAsync: writeV3PositionManager } = useWriteContract();
   const { writeContractAsync: writeERC20 } = useWriteContract();
   
   const { isLoading: isWaiting } = useWaitForTransactionReceipt();
@@ -92,10 +84,6 @@ export function useRemoveLiquidity() {
         if (!params.tokenId || !params.position || !params.percentage) {
           throw new Error('TokenId and position are required for V3 removal');
         }
-
-        const slippageMultiplier = BigInt(10000 - ((0.5) * 100)) * BigInt(100);
-        const amount0Min = (params.amount0 * slippageMultiplier) / BigInt(1000000);
-        const amount1Min = (params.amount1 * slippageMultiplier) / BigInt(1000000);
   
         // 首先调用 decreaseLiquidity
         const decreaseTx = await writeContract(wagmiConfig, {

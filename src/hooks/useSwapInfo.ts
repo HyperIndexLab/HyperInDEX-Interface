@@ -1,6 +1,4 @@
-import { useEffect, useState } from 'react';
 import { parseUnits, formatUnits, Address } from 'viem';
-import { usePublicClient } from 'wagmi';
 import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Pool';
 import { QUOTE_CONTRACT_ADDRESS, QUOTE_ABI } from '../constant/ABI/HyperIndexV3Quote';
 import { PAIR_ABI } from '@/constant/ABI/HyperIndexPair';
@@ -49,11 +47,11 @@ export async function getSwapInfo({
   pairAddress,
 }: UseSwapInfoProps) {
   // 初始化返回值
-  let token2Amount = '0';
-  let minimumReceived = '0';
-  let priceImpact = '0';
-  let lpFee = '0';
-  let error: string | null = null;
+  const token2Amount = '0';
+  const minimumReceived = '0';
+  const priceImpact = '0';
+  const lpFee = '0';
+  const error: string | null = null;
 
   // 检查基本条件
   if (!token1 || !token2 || !amount1 || Number(amount1) === 0) {
@@ -188,7 +186,7 @@ async function calculateV3Swap(
     } else {
       // 如果缓存无效，执行完整的池子查找逻辑
       const possibleFees = [100, 500, 3000, 10000];
-      let poolQuotes: (PoolQuote & { poolInfo: any })[] = [];
+      const poolQuotes: (PoolQuote & { poolInfo: any })[] = [];
       
       for (const fee of possibleFees) {
         try {
@@ -228,6 +226,7 @@ async function calculateV3Swap(
             poolInfo: poolInfo || null
           });
         } catch (e) {
+          console.log(e, 'e');
           continue;
         }
       }

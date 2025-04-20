@@ -30,6 +30,7 @@ import { NONFUNGIBLE_POSITION_MANAGER_ADDRESS } from "@/constant/ABI/Nonfungible
 import { FACTORY_ABI_V3, FACTORY_CONTRACT_ADDRESS_V3 } from "@/constant/ABI/HyperIndexFactoryV3";
 import { readContract } from "wagmi/actions";
 import { wagmiConfig } from "./RainbowKitProvider";
+import Link from 'next/link';
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -46,10 +47,10 @@ interface TokenData {
   decimals?: string | null;
 }
 
-interface TickRange {
-  minTick: number;
-  maxTick: number;
-}
+// interface TickRange {
+//   minTick: number;
+//   maxTick: number;
+// }
 
 const DEFAULT_HSK_TOKEN: TokenData = {
   symbol: "HSK",
@@ -94,6 +95,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const [currentPrice, setCurrentPrice] = useState<string | null>(null);
   const [positionType, setPositionType] = useState<'full-range' | 'custom'>('full-range');
   const [pool, setPool] = useState<Pool | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [poolAddress, setPoolAddress] = useState<`0x${string}` | null>(null);
 
   const [token0Detail, setToken0Detail] = useState<TokenData | null>(null);
@@ -453,7 +455,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     calculateAmounts();
   }, [token1Amount, tickRange, calculateAmounts]);
 
-  const { needApprove, handleApprove, isApproving, isApproveSuccess } = useTokenApproval(
+  const { needApprove, handleApprove } = useTokenApproval(
     token1Data,
     token2Data,
     token1Amount,
@@ -536,14 +538,14 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       }
 
       // 处理单个价格为空的情况
-      let minTick = range.minPrice 
+      const minTick = range.minPrice 
         ? nearestUsableTick(
             Math.floor(Math.log(parseFloat(range.minPrice)) / Math.log(1.0001)),
             tickSpacing
           )
         : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
 
-      let maxTick = range.maxPrice
+      const maxTick = range.maxPrice
         ? nearestUsableTick(
             Math.ceil(Math.log(parseFloat(range.maxPrice)) / Math.log(1.0001)),
             tickSpacing
@@ -629,7 +631,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                     <ChevronDownIcon className="w-4 h-4 ml-1" />
                   </div>
                   <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-[#1c1d22] rounded-xl w-40 border border-white/5">
-                    <li><a href="/liquidity" className="text-base-content/60 hover:bg-[#2c2d33] rounded-lg">V2 Position</a></li>
+                    <li><Link href="/liquidity" className="text-base-content/60 hover:bg-[#2c2d33] rounded-lg">V2 Position</Link></li>
                   </ul>
                 </div>
               </div>

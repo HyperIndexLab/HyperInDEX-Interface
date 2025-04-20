@@ -11,7 +11,6 @@ import { Token, Percent } from '@uniswap/sdk-core';
 import JSBI from 'jsbi';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
 import { NONFUNGIBLE_POSITION_MANAGER_ADDRESS, NONFUNGIBLE_POSITION_MANAGER_ABI } from '@/constant/ABI/NonfungiblePositionManager';
-import { ROUTER_CONTRACT_V3_ADDRESS } from '@/constant/ABI/HyperindexV3Router';
 
 export interface PoolInfo {  
   token0Symbol: string;
@@ -54,17 +53,18 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
   const [percentage, setPercentage] = useState(0);
   const networkFee = "0.0001";
   const { toast } = useToast();
+  const dataV2 = usePoolData(pool.pairAddress, pool.userAddress);
+
   let poolData: any, loading: any;
   if (pool.isV3) { 
     loading = false;
     poolData = pool;
   } else {
-    const data = usePoolData(pool.pairAddress, pool.userAddress);
-    poolData = data.data;
-    loading = data.loading;
+    poolData = dataV2.data;
+    loading = dataV2.loading;
   }
  
-  const { remove, approve, isRemoving, isApproving, isWaiting, isSuccess } = useRemoveLiquidity();
+  const { remove, approve, isRemoving, isApproving, isWaiting } = useRemoveLiquidity();
   const [needsApproval, setNeedsApproval] = useState(true);
 
   const amounts = useMemo(() => {

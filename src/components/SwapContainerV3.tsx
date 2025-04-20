@@ -19,7 +19,7 @@ import { ROUTER_CONTRACT_V3_ADDRESS } from '@/constant/ABI/HyperindexV3Router';;
 import { useToast } from '@/components/ToastContext';
 import { WETH_ABI } from '@/constant/ABI/weth';
 import { Token as UniToken, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core'
-import { FeeAmount, Pool, Route, SwapQuoter, SwapRouter, Trade } from '@uniswap/v3-sdk'
+import { FeeAmount, Pool, Route, SwapRouter, Trade } from '@uniswap/v3-sdk'
 import { wagmiConfig } from './RainbowKitProvider';
 import { sendTransaction, waitForTransactionReceipt } from 'wagmi/actions';
 import { hashkeyTestnet } from 'viem/chains';
@@ -927,8 +927,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       }
       
       // 其他代币对的常规 swap 逻辑
-      const expectedAmount = parseUnits(token2Amount, Number(token2Data.decimals || '18'));
-      const slippagePercent = Number(slippage);
+      // const expectedAmount = parseUnits(token2Amount, Number(token2Data.decimals || '18'));
+      // const slippagePercent = Number(slippage);
 
       // 使用封装的 gas 检查函数
       const canProceed = await estimateAndCheckGas(hskBalance);

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Image from "next/image";
 import {
   PlusIcon,
@@ -61,15 +61,12 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
 
   // 确定 token0 和 token1
   const isToken1Token0 = token1Data && token2Data && token1Data.address < token2Data.address;
-  const token0Data = isToken1Token0 ? token1Data : token2Data;
-  const token1DataActual = isToken1Token0 ? token2Data : token1Data;
   const currentPriceActual = isToken1Token0 ? currentPrice : (1 / parseFloat(currentPrice!)).toString();
 
   // 验证价格范围
-  const validatePriceRange = () => {
+  const validatePriceRange = useCallback(() => {
     if (!currentPriceActual) return null;
     
-    const current = parseFloat(currentPriceActual);
     const min = parseFloat(priceRange.minPrice);
     const max = parseFloat(priceRange.maxPrice);
 
@@ -86,11 +83,11 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
     }
 
     return null;
-  };
+  }, [currentPriceActual, priceRange]);
 
   useEffect(() => {
     setPriceRangeMessage(validatePriceRange());
-  }, [priceRange]);
+  }, [priceRange, validatePriceRange]);
 
   // 处理拖动开始
   const handleDragStart = (type: 'min' | 'max') => {

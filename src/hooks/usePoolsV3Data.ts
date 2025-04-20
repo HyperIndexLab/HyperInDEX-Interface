@@ -1,9 +1,9 @@
-import { useAccount, useReadContract, useReadContracts } from 'wagmi'
+import {  useReadContract, useReadContracts } from 'wagmi'
 import { Abi, Address, erc20Abi, formatUnits } from 'viem'
 import { useMemo } from 'react'
 import { NONFUNGIBLE_POSITION_MANAGER_ABI, NONFUNGIBLE_POSITION_MANAGER_ADDRESS } from '../constant/ABI/NonfungiblePositionManager'
 import { Token } from '@uniswap/sdk-core'
-import { nearestUsableTick, Pool, Position, TickMath, computePoolAddress } from '@uniswap/v3-sdk'
+import { Pool, Position, TickMath } from '@uniswap/v3-sdk'
 import { FACTORY_ABI_V3, FACTORY_CONTRACT_ADDRESS_V3 } from '@/constant/ABI/HyperIndexFactoryV3'
 import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Pool'
 import JSBI from 'jsbi'
@@ -205,7 +205,7 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
 
   const poolAddressCalls = useMemo(() => {
     if (!positionsData || !tokenSymbols) return [];
-    return positionsData.map((position, index) => {
+    return positionsData.map((position) => {
       if (!position?.result) return null;
       const positionResult = position.result as unknown as PositionResult;
       
@@ -315,7 +315,7 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
         pool: tokenAmounts.pool,
       };
     }).filter(Boolean) as PoolData[];
-  }, [positionsData, tokenSymbols, tokenIds, slot0DataArray, liquidityDataArray, tokenDecimals]);
+  }, [positionsData, tokenSymbols, tokenIds, slot0DataArray, liquidityDataArray, tokenDecimals, poolAddresses, userAddress]);
   
 
   const isLoading = balanceLoading || tokenIdsLoading || positionsLoading || symbolsLoading || decimalsLoading;

@@ -1,11 +1,11 @@
 import { usePublicClient, useWriteContract } from 'wagmi';
 import { waitForTransactionReceipt, readContract } from 'wagmi/actions';
-import { sendTransaction, simulateContract, writeContract } from '@wagmi/core';
+import { sendTransaction } from 'wagmi/actions';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
-import { parseGwei, parseUnits } from 'viem';
+import {  parseUnits } from 'viem'; 
 import { FACTORY_ABI_V3, FACTORY_CONTRACT_ADDRESS_V3 } from '@/constant/ABI/HyperIndexFactoryV3';
 import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Pool';
-import { NONFUNGIBLE_POSITION_MANAGER_ABI, NONFUNGIBLE_POSITION_MANAGER_ADDRESS } from '@/constant/ABI/NonfungiblePositionManager';
+import { NONFUNGIBLE_POSITION_MANAGER_ADDRESS } from '@/constant/ABI/NonfungiblePositionManager';
 import { useToast } from '@/components/ToastContext';
 import { AddLiquidityOptions, encodeSqrtRatioX96, MintOptions } from '@uniswap/v3-sdk';
 import JSBI from 'jsbi';
@@ -17,10 +17,9 @@ import { useCallback, useState } from 'react';
 import { Pool, Position } from '@uniswap/v3-sdk';
 import { Percent } from '@uniswap/sdk-core';
 import { TickMath } from '@uniswap/v3-sdk';
-import { nearestUsableTick, FeeAmount } from '@uniswap/v3-sdk';
 import { NonfungiblePositionManager } from '@uniswap/v3-sdk';
 import { hashkeyTestnet } from 'viem/chains';
-import { getV3Positions, useV3Positions } from '@/hooks/useV3Positions';
+import { getV3Positions } from '@/hooks/useV3Positions';
 
 export const useAddLiquidity = (
   token1Data: any,
@@ -311,12 +310,6 @@ export const useAddLiquidity = (
       if (needApprove.token2) {
         await handleApprove(false);
       }
-        
-      let currentTick;
-      currentTick = Number(slot0[1]);
-
-      console.log(sqrtPriceX96, currentTick, TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString())), 'sqrtPriceX96, currentTick====');
-
 
       const amount0 = parseUnits(
         token1Data.address.toLowerCase() < token2Data.address.toLowerCase() ? token1Amount : token2Amount,

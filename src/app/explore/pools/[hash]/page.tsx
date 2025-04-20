@@ -80,7 +80,10 @@ export default function Page() {
 	const fetchPoolSwaps = useCallback(async () => {
 		try {
 			const swapsData = await getPoolSwaps(hash as string);
-			setSwaps(swapsData);
+			setSwaps(swapsData.map(swap => ({
+				...swap,
+				type: parseFloat(swap.amount1) > 0 ? 'buy' : 'sell'
+			})));
 		} catch (error) {
 			console.error('获取交易记录失败:', error);
 		}
@@ -88,7 +91,7 @@ export default function Page() {
 
 	useEffect(() => {
 		fetchPools()
-	}, [])
+	}, [fetchPools])
 
 	useEffect(() => {
 		if (isV3) {

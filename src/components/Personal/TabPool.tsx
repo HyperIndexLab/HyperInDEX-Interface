@@ -54,7 +54,7 @@ const PoolSkeleton = () => (
 export default function TabPool({ tokenData }: { tokenData: Token[] }) {
   const { pools, isLoading } = usePoolsData();
   const { address: userAddress } = useAccount();
-  const { poolsData, isLoading: isLoadingV3, error } = useUserPoolsV3Data(userAddress);
+  const { poolsData } = useUserPoolsV3Data(userAddress);
  
   const [tabPools, setTabPools] = useState<TabPoolProps[]>([]);
 

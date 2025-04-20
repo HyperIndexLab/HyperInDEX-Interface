@@ -8,7 +8,7 @@ import { useUserPoolsV3Data } from '@/hooks/usePoolsV3Data';
 const PoolsContainer: React.FC = () => {
   const [selectedPool, setSelectedPool] = useState<PoolInfo | null>(null);
   const { pools, isLoading, userAddress, refetch } = usePoolsData();
-  const { poolsData, isLoading: isLoadingV3, error, refetch: refetchV3 } = useUserPoolsV3Data(userAddress);
+  const { poolsData, refetch: refetchV3 } = useUserPoolsV3Data(userAddress);
 
   const handleRemove = (pool: PoolInfo, isV3?: boolean) => {
     if (isV3) {

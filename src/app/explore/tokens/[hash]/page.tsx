@@ -7,7 +7,7 @@ import Image from 'next/image';
 import Chart from '@/components/Chart';
 import { getTokens, getTokenPriceData, Token, TokenPriceData } from '@/request/explore';
 import dayjs from 'dayjs';
-import SwapContainer from '@/components/SwapContainer';
+// import SwapContainer from '@/components/SwapContainer';
 import { formatTradeVolume } from '@/components/Explore';
 import SwapContainerV3 from '@/components/SwapContainerV3';
 
@@ -47,7 +47,7 @@ export default function TokenPage() {
             fetchTokenData();
             fetchTokenPriceData(1);
         }
-    }, [hash]);
+    }, [hash, fetchTokenData, fetchTokenPriceData]);
 
 
     useEffect(() => {
