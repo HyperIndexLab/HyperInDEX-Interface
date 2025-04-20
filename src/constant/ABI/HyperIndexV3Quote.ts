@@ -1,6 +1,6 @@
 export const QUOTE_CONTRACT_ADDRESS = process.env.NODE_ENV === "development" 
   ? '0x8715EBbFbe7c723e1CDaF2e94F77f69f04316465'
-  : '0x8715EBbFbe7c723e1CDaF2e94F77f69f04316465';
+  : '0x1E7Bce2cb6b1F3f61232878605790F09eD22C8e5';
 
 export const QUOTE_ABI =[
   {
