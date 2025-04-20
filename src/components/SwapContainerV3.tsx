@@ -680,7 +680,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         disabled: false,
         onClick: () => {
           // 跳转到添加流动性页面
-          window.location.href = `/liquidity?inputCurrency=${getQueryAddress(token1Data)}&outputCurrency=${getQueryAddress(token2Data)}`;
+          window.location.href = `/liquidity/v3?inputCurrency=${getQueryAddress(token1Data)}&outputCurrency=${getQueryAddress(token2Data)}`;
         }
       };
     }

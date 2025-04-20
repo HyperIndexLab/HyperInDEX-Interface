@@ -223,7 +223,7 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
               {/* Bottom section with add button */}
               <div className="mt-4 flex justify-end">
                 <Link
-                  href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
+                  href={`/liquidity/v3?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
                   className="bg-custom-purple text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center transition-colors"
                 >
                   Add
@@ -236,7 +236,7 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
         <div className="flex flex-col items-center justify-center mt-10 py-10 bg-[#131629]/60 border border-[#2a2f42] rounded-xl">
           <span className="text-[#8c93b8]">No pools yet</span>
           <Link 
-            href="/liquidity" 
+            href="/liquidity/v3" 
             className="mt-4 bg-[#2172e5] hover:bg-[#1a66d6] text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center transition-colors"
           >
             <PlusIcon className="w-4 h-4 mr-1" />
