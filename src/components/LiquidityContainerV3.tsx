@@ -31,6 +31,7 @@ import { FACTORY_ABI_V3, FACTORY_CONTRACT_ADDRESS_V3 } from "@/constant/ABI/Hype
 import { readContract } from "wagmi/actions";
 import { wagmiConfig } from "./RainbowKitProvider";
 import Link from 'next/link';
+import BigNumber from "bignumber.js";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -315,26 +316,32 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             maxPrice: '' 
           });
         } else {
-          // 非全范围情况下，根据当前tick计算范围
-          const currentTick = newPool.tickCurrent;
-          const tickSpacing = newPool.tickSpacing;
-          
-          // 计算上下限tick（默认为当前tick的±10个tickSpacing）
-          const minTick = nearestUsableTick(currentTick - (tickSpacing * 100), tickSpacing);
-          const maxTick = nearestUsableTick(currentTick + (tickSpacing * 100), tickSpacing);
-          
-          setTickRange({ minTick, maxTick });
-        }
-    
-        // 设置默认的中等范围 (±10%)
-        const currentPriceNum = parseFloat(price);
-        const defaultMinPrice = (currentPriceNum * 0.9).toFixed(6);  // -10%
-        const defaultMaxPrice = (currentPriceNum * 1.1).toFixed(6);  // +10%
+        // 统一基于tick计算价格范围
+        const { tickCurrent, tickSpacing, token0, token1 } = newPool;
+        const minTick = nearestUsableTick(tickCurrent - 100 * tickSpacing, tickSpacing);
+        const maxTick = nearestUsableTick(tickCurrent + 100 * tickSpacing, tickSpacing);
+
+        // 通过tick计算实际价格（考虑代币顺序和小数位）
+        const sqrtRatioA = TickMath.getSqrtRatioAtTick(minTick);
+        const sqrtRatioB = TickMath.getSqrtRatioAtTick(maxTick);
         
-        setPriceRange({ 
-          minPrice: defaultMinPrice,
-          maxPrice: defaultMaxPrice 
-        });
+        // 判断基准代币
+        const isToken0Base = token1.address.toLowerCase() === token0.address.toLowerCase();
+        const decimalsFactor = 10 ** (token0.decimals - token1.decimals);
+
+        // 计算价格
+        const minPrice = isToken0Base 
+          ? (1 / ((Number(JSBI.multiply(sqrtRatioB, sqrtRatioB)) / 2 ** 192) * decimalsFactor)).toFixed(6)
+          : (Number(JSBI.multiply(sqrtRatioA, sqrtRatioA)) / 2 ** 192 * decimalsFactor).toFixed(6);
+
+        const maxPrice = isToken0Base 
+          ? (1 / ((Number(JSBI.multiply(sqrtRatioA, sqrtRatioA)) / 2 ** 192) * decimalsFactor)).toFixed(6)
+          : (Number(JSBI.multiply(sqrtRatioB, sqrtRatioB)) / 2 ** 192 * decimalsFactor).toFixed(6);
+
+        // 同步设置tick范围和价格范围
+        setTickRange({ minTick, maxTick });
+        setPriceRange({ minPrice, maxPrice });
+        }
       } catch (error) {
         console.error("初始化Pool失败:", error);
         // 设置一个未初始化状态
@@ -517,6 +524,33 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
   }, [pool, tickRange]);
 
+
+  const priceToExactTick = useCallback((price: number, token0: Token, token1: Token) => {
+    try {
+      // 判断代币顺序并计算小数位差异
+      const isToken0Base = token1Data?.address.toLowerCase() === token0.address.toLowerCase();
+      const decimalsDiff = isToken0Base 
+        ? token1.decimals - token0.decimals  // token0 是基准时
+        : token0.decimals - token1.decimals; // token1 是基准时
+      
+      const decimalsFactor = Math.pow(10, decimalsDiff);
+      
+      // 根据代币顺序调整价格
+      const adjustedPrice = new BigNumber(isToken0Base ? 1 / price : price).times(decimalsFactor);
+      
+      // 计算 tick
+      const tick = Math.round(
+        Math.log(adjustedPrice.toNumber()) / Math.log(1.0001)
+      );
+      
+      return tick;
+    } catch (error) {
+      console.error('Error converting price to tick:', error);
+      return 0;
+    }
+  }, [token1Data]);
+
+
   const setPriceRangeFn = useCallback(async (range: { minPrice: string; maxPrice: string }) => {
     try {
       const { token0, token1 } = getTokens();
@@ -537,35 +571,50 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         return;
       }
 
-      // 处理单个价格为空的情况
-      const minTick = range.minPrice 
-        ? nearestUsableTick(
-            Math.floor(Math.log(parseFloat(range.minPrice)) / Math.log(1.0001)),
-            tickSpacing
-          )
-        : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
+      // 判断代币顺序
+      const isToken0Base = token1Data?.address.toLowerCase() === token0.address.toLowerCase();
+      
+      // 计算 minTick 和 maxTick，注意价格反转
+      let minTick, maxTick;
+      if (isToken0Base) {
+        // 如果 token0 是基准，价格需要反转
+        // 注意：较大的价格对应较小的 tick
+        minTick = range.minPrice 
+          ? nearestUsableTick(
+              priceToExactTick(1 / parseFloat(range.minPrice), token0, token1),
+              tickSpacing
+            )
+          : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
 
-      const maxTick = range.maxPrice
-        ? nearestUsableTick(
-            Math.ceil(Math.log(parseFloat(range.maxPrice)) / Math.log(1.0001)),
-            tickSpacing
-          )
-        : nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
+        maxTick = range.maxPrice
+          ? nearestUsableTick(
+              priceToExactTick(1 / parseFloat(range.maxPrice), token0, token1),
+              tickSpacing
+            )
+          : nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
+      } else {
+        // 如果 token1 是基准，直接使用价格
+        minTick = range.minPrice 
+          ? nearestUsableTick(
+              priceToExactTick(parseFloat(range.minPrice), token0, token1),
+              tickSpacing
+            )
+          : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
 
-      // 如果两个价格都有值，进行验证
-      if (range.minPrice && range.maxPrice) {
-        const minPriceNum = parseFloat(range.minPrice);
-        const maxPriceNum = parseFloat(range.maxPrice);
+        maxTick = range.maxPrice
+          ? nearestUsableTick(
+              priceToExactTick(parseFloat(range.maxPrice), token0, token1),
+              tickSpacing
+            )
+          : nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
+      }
 
-        if (isNaN(minPriceNum) || isNaN(maxPriceNum)) {
-          setPriceRangeMessage('请输入有效的价格范围');
-          return;
-        }
+      console.log(minTick, maxTick, 'minTick, maxTick====');
 
-        if (minPriceNum <= 0 || maxPriceNum <= 0) {
-          setPriceRangeMessage('价格必须大于0');
-          return;
-        }
+      // 验证并设置价格范围
+      if (minTick >= maxTick) {
+        setPriceRangeMessage('最小价格必须小于最大价格');
+        return;
       }
 
       setTickRange({ minTick, maxTick });
@@ -575,7 +624,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       console.error("计算 tick 范围失败:", error);
       setPriceRangeMessage('计算价格范围时出错');
     }
-  }, [getTokens, tickSpacing]);
+  }, [getTokens, tickSpacing, priceToExactTick, token1Data]);
 
   // 更新按钮显示
   const renderTokenButton = (type: "token1" | "token2") => {
