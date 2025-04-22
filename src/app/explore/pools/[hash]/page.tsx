@@ -55,9 +55,10 @@ export default function Page() {
 
 			if (poolDetail) {
 				setIsV3(true)
-				pools.push(poolDetail)
+				setPoolData([poolDetail])
+			} else {
+				setPoolData(pools)
 			}
-			setPoolData(pools)
 		} catch (error) {
 			console.error('Failed to fetch pool list:', error)
 		} finally {
@@ -91,7 +92,7 @@ export default function Page() {
 
 	useEffect(() => {
 		fetchPools()
-	}, [fetchPools])
+	}, [hash])
 
 	useEffect(() => {
 		if (isV3) {
