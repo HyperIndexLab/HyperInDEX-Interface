@@ -567,21 +567,16 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
         return;
       }
-
-      // 判断代币顺序
-      const isToken0Base = token1Data?.address.toLowerCase() === token0.address.toLowerCase();
       
       // 计算 minTick 和 maxTick，注意价格反转
-      let minTick, maxTick;
-
-      minTick = range.minPrice 
+      const minTick = range.minPrice 
         ? nearestUsableTick(
             priceToExactTick(parseFloat(range.minPrice), token0, token1),
             tickSpacing
           )
         : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
 
-      maxTick = range.maxPrice
+      const maxTick = range.maxPrice
         ? nearestUsableTick(
             priceToExactTick(parseFloat(range.maxPrice), token0, token1),
             tickSpacing
