@@ -173,7 +173,7 @@ export function useUserPoolsV3Data(userAddress: Address | undefined): {
     return calls;
   }, [positionsData]);
 
-  console.log(positionsData, 'positionsData=====')
+  console.log(positionsData, process.env.BUILD_ENV, 'positionsData=====')
 
   const { data: tokenSymbols, isLoading: symbolsLoading, refetch: refetchSymbols } = useReadContracts({
     contracts: tokenSymbolCalls
