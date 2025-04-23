@@ -4,7 +4,7 @@ import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexR
 import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
 import { erc20Abi } from 'viem';
 import { WHSK } from '../constant/value';
-import { simulateContract, waitForTransactionReceipt } from 'wagmi/actions';
+import { waitForTransactionReceipt } from 'wagmi/actions';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
 
 interface RemoveLiquidityParams {
