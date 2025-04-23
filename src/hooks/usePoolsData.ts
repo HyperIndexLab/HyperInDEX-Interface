@@ -115,12 +115,12 @@ export const usePoolsData = () => {
 
       // 获取 LP 精度
       const lpDecimals = 18;
-      let lpBalanceBigInt = BigInt(String(lpBalance));
+      const lpBalanceBigInt = BigInt(String(lpBalance));
     
 
       if (lpBalanceBigInt > 0n) {
         const reservesTyped = reserves as readonly [bigint, bigint, number];
-        let totalSupplyBigInt = BigInt(String(totalSupply));
+        const totalSupplyBigInt = BigInt(String(totalSupply));
         
 
         const poolShare = (lpBalanceBigInt * 10000n) / totalSupplyBigInt;
