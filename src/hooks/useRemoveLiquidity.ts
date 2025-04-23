@@ -91,6 +91,7 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
       const isToken1WHSK = token1Address.toLowerCase() === WHSK.toLowerCase();
       setIsWaiting(true)
 
+
       const hash = await writeContractAsync({
         address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
         abi: ROUTER_ABI,
@@ -108,10 +109,10 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
           lpAmount.toString(),
           amountAMin.toString(),
           amountBMin.toString(),
+          userAddress as `0x${string}`,
           deadline.toString(),
         ],
       });
-
    
       await waitForTransactionReceipt(wagmiConfig, { hash: hash as `0x${string}` });
       setIsSuccess(true)
