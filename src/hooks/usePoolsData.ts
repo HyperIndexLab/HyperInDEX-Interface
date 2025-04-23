@@ -116,8 +116,6 @@ export const usePoolsData = () => {
       // 获取 LP 精度
       const lpDecimals = 18;
       let lpBalanceBigInt = BigInt(String(lpBalance));
-
-      console.log(lpBalance, token0Address, token1Address, reserves, totalSupply, 'pairsInfo====');
     
 
       if (lpBalanceBigInt > 0n) {
