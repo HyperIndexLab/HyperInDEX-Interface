@@ -4,7 +4,7 @@ import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexR
 import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
 import { erc20Abi } from 'viem';
 import { WHSK } from '../constant/value';
-import { waitForTransactionReceipt } from 'wagmi/actions';
+import { simulateContract, waitForTransactionReceipt } from 'wagmi/actions';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
 
 interface RemoveLiquidityParams {
@@ -91,6 +91,7 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
       const isToken1WHSK = token1Address.toLowerCase() === WHSK.toLowerCase();
       setIsWaiting(true)
 
+
       const hash = await writeContractAsync({
         address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
         abi: ROUTER_ABI,
@@ -108,10 +109,10 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
           lpAmount.toString(),
           amountAMin.toString(),
           amountBMin.toString(),
+          userAddress as `0x${string}`,
           deadline.toString(),
         ],
       });
-
    
       await waitForTransactionReceipt(wagmiConfig, { hash: hash as `0x${string}` });
       setIsSuccess(true)
