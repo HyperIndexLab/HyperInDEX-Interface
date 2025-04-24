@@ -42,7 +42,7 @@ export const fetchTokenList = createAsyncThunk(
       let hasMoreData = true;
       
       while (hasMoreData) {
-        const response = await fetch(`${newBaseUrl}/api/tokenlist?page=${page}&pageSize=${pageSize}`);
+        const response = await fetch(`${newBaseUrl}${TOKEN_PATH}?page=${page}&pageSize=${pageSize}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -64,6 +64,8 @@ export const fetchTokenList = createAsyncThunk(
   }
 );
 
+const TOKEN_PATH =  process.env.NODE_ENV === 'development'  ?  '/api/tokenlist/test-tokenlist' : '/api/tokenlist'
+
 // 添加手动刷新action
 export const refreshTokenList = createAsyncThunk(
   'tokenList/refresh',
@@ -75,7 +77,7 @@ export const refreshTokenList = createAsyncThunk(
     let hasMoreData = true;
     
     while (hasMoreData) {
-      const response = await fetch(`${newBaseUrl}/api/tokenlist?page=${page}&pageSize=${pageSize}`);
+      const response = await fetch(`${newBaseUrl}${TOKEN_PATH}?page=${page}&pageSize=${pageSize}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
