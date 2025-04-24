@@ -9,6 +9,7 @@ import { Position } from '@uniswap/v3-sdk';
 import { waitForTransactionReceipt, writeContract } from 'wagmi/actions';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
 import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
+import { WHSK } from '@/constant/value';
 
 interface RemoveLiquidityParams {
   lpAmount: bigint;
@@ -119,21 +120,42 @@ export function useRemoveLiquidity() {
         setIsSuccess(true);
         return { success: true, hash };
       } else {
+        const isToken0WHSK = params.token0Address === WHSK;
+        const isToken1WHSK = params.token1Address === WHSK;
+
+        const token0Address = isToken0WHSK ? params.token1Address : params.token0Address;
+        const token1Address = isToken0WHSK ? params.token0Address : params.token1Address;
+        const lpAmount = params.lpAmount;
+        const amountAMin = params.amount0;
+        const amountBMin = params.amount1;
+        const userAddress = params.userAddress;
+        const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
+        
         // V2: 调用 Router 的 removeLiquidity 方法
         hash = await writeV2Router({
-          address: ROUTER_CONTRACT_ADDRESS,
+          address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
           abi: ROUTER_ABI,
-          functionName: 'removeLiquidity',
-          args: [
-            params.token0Address,
-            params.token1Address,
-            params.lpAmount,
-            params.amount0,
-            params.amount1,
-            params.userAddress,
-            BigInt(Math.floor(Date.now() / 1000) + 1800) // 30分钟后过期
-          ]
+          functionName: isToken0WHSK || isToken1WHSK ? 'removeLiquidityETH' : 'removeLiquidity',
+          args: isToken0WHSK || isToken1WHSK ? [
+            isToken0WHSK ? token1Address : token0Address as `0x${string}`,  
+            lpAmount.toString(),                                          
+            isToken0WHSK ? amountBMin : amountAMin.toString(),             
+            isToken0WHSK ? amountAMin : amountBMin.toString(),             
+            userAddress as `0x${string}`,                                 
+            deadline.toString(),                                           
+          ] : [
+            token0Address as `0x${string}`,
+            token1Address as `0x${string}`,
+            lpAmount.toString(),
+            amountAMin.toString(),
+            amountBMin.toString(),
+            userAddress as `0x${string}`,
+            deadline.toString(),
+          ],
         });
+
+        await waitForTransactionReceipt(wagmiConfig, { hash: hash as `0x${string}` });
+        setIsSuccess(true)
       }
 
       setIsSuccess(true);

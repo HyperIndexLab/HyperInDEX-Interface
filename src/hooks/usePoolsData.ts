@@ -97,13 +97,13 @@ export const usePoolsData = () => {
 
   // 添加 USDT 地址常量
   const USDT_ADDRESS = "0xF1B50eD67A9e2CC94Ad3c477779E2d4cBfFf9029".toLowerCase();
-
+ 
   // 处理基本池子数据
   useEffect(() => {
     if (!pairsInfo || !pairAddresses || !userAddress) return;
 
     const processedPools: PoolInfo[] = [];
-    
+
     for (let i = 0; i < pairsInfo.length; i += 5) {
       const [lpBalance, token0Address, token1Address, reserves, totalSupply] =
         pairsInfo.slice(i, i + 5).map((d) => d.result);
@@ -111,25 +111,17 @@ export const usePoolsData = () => {
       // 检查是否是 USDT 池子
       const isToken0USDT = (token0Address as string).toLowerCase() === USDT_ADDRESS;
       const isToken1USDT = (token1Address as string).toLowerCase() === USDT_ADDRESS;
-      const isUSDTPair = isToken0USDT || isToken1USDT;
+      // const isUSDTPair = isToken0USDT || isToken1USDT;
 
       // 获取 LP 精度
-      const lpDecimals = isUSDTPair ? 6 : 18;
-      
-      let lpBalanceBigInt = BigInt(String(lpBalance));
-      // 如果是 6 位精度，转换为 18 位进行比较
-      if (isUSDTPair) {
-        lpBalanceBigInt = lpBalanceBigInt * BigInt(10 ** 12); // 6位转18位
-      }
+      const lpDecimals = 18;
+      const lpBalanceBigInt = BigInt(String(lpBalance));
+    
 
       if (lpBalanceBigInt > 0n) {
         const reservesTyped = reserves as readonly [bigint, bigint, number];
-        let totalSupplyBigInt = BigInt(String(totalSupply));
+        const totalSupplyBigInt = BigInt(String(totalSupply));
         
-        // 总供应量也需要同样处理
-        if (isUSDTPair) {
-          totalSupplyBigInt = totalSupplyBigInt * BigInt(10 ** 12);
-        }
 
         const poolShare = (lpBalanceBigInt * 10000n) / totalSupplyBigInt;
         const token0Amount = (reservesTyped[0] * lpBalanceBigInt) / totalSupplyBigInt;
@@ -150,7 +142,7 @@ export const usePoolsData = () => {
           token1Address: token1Address as string,
           token0Symbol: "Loading...",
           token1Symbol: "Loading...",
-          userLPBalance: Number(formatUnits(originalLPBalance, lpDecimals)).toFixed(4),
+          userLPBalance: Number(formatUnits(originalLPBalance, lpDecimals)).toFixed(6),
           poolShare: `${formatPercent(poolShare)}%`,
           token0Amount: formatToken0Amount(token0Amount),
           token1Amount: formatToken1Amount(token1Amount),

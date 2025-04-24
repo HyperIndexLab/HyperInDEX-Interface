@@ -1,3 +1,4 @@
+import { stHSK_DEL } from '@/constant/value'
 import api from '@/utils/api'
 import { ApolloClient, InMemoryCache, gql } from '@apollo/client';
 
@@ -162,7 +163,11 @@ export const getTokens = async (): Promise<Token[]> => {
       ? '/api/testnet-explore/tokens'
       : '/api/explore/tokens';
     const res = await api.get(requestUrl);
-    return res.data as Token[];
+    // 过滤掉指定地址的token
+    const filteredData = (res.data as Token[]).filter(
+      token => token.address.toLowerCase() !== stHSK_DEL.toLowerCase()
+    );
+    return filteredData;
   });
 }
 
