@@ -159,7 +159,7 @@ const tokenPriceDataManager = new ParameterizedRequestManager<TokenPriceData[], 
 
 export const getTokens = async (): Promise<Token[]> => {
   return tokensManager.request(async () => {
-    const requestUrl = process.env.NODE_ENV === 'development' 
+    const requestUrl = process.env.BUILD_ENV !== 'production' 
       ? '/api/testnet-explore/tokens'
       : '/api/explore/tokens';
     const res = await api.get(requestUrl);
@@ -173,7 +173,7 @@ export const getTokens = async (): Promise<Token[]> => {
 
 export const getPools = async (): Promise<Pool[]> => {
   return poolsManager.request(async () => {
-    const requestUrl = process.env.NODE_ENV === 'development' 
+    const requestUrl = process.env.BUILD_ENV !== 'production' 
       ? '/api/testnet-explore/pools'
       : '/api/explore/pools';
     const res = await api.get(requestUrl);
@@ -278,7 +278,7 @@ export const getPoolsByVersion = async (version: 'v2' | 'v3' = 'v3'): Promise<Po
 export const getPoolPriceData = async (poolAddress: string, days: number): Promise<PoolPriceData[]> => {
   return poolPriceDataManager.request(
     async (address, days) => {
-      const requestUrl = process.env.NODE_ENV === 'development' 
+      const requestUrl = process.env.BUILD_ENV !== 'production' 
         ? `api/explore/pool/${address}/${days}`
         : `/api/explore/pool/${address}/${days}`;
       const res = await api.get(requestUrl);
@@ -292,7 +292,7 @@ export const getPoolPriceData = async (poolAddress: string, days: number): Promi
 export const getTokenPriceData = async (tokenAddress: string, days: number): Promise<TokenPriceData[]> => {
   return tokenPriceDataManager.request(
     async (address, days) => {
-      const requestUrl = process.env.NODE_ENV === 'development' 
+      const requestUrl = process.env.BUILD_ENV !== 'production' 
         ? `api/explore/token/${address}/${days}`
         : `/api/explore/token/${address}/${days}`;
       const res = await api.get(requestUrl);

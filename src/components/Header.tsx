@@ -205,7 +205,7 @@ export default function Header() {
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       const chainIdInt = parseInt(chainId || '0', 16);
 
-      const changeChaindId = process.env.NODE_ENV === 'development' ? TESTNET_CHAIN_ID : MAINNET_CHAIN_ID;
+      const changeChaindId = process.env.BUILD_ENV !== 'production' ? TESTNET_CHAIN_ID : MAINNET_CHAIN_ID;
    
       if (chainIdInt !== changeChaindId) {
         setIsWrongNetwork(true);

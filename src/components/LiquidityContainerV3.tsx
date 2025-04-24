@@ -528,15 +528,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const priceToExactTick = useCallback((price: number, token0: Token, token1: Token) => {
     try {
       // 判断代币顺序并计算小数位差异
-      const isToken0Base = token1Data?.address.toLowerCase() === token0.address.toLowerCase();
-      const decimalsDiff = isToken0Base 
-        ? token1.decimals - token0.decimals  // token0 是基准时
-        : token0.decimals - token1.decimals; // token1 是基准时
+      const decimalsDiff = token1.decimals - token0.decimals  // token0 是基准时
       
       const decimalsFactor = Math.pow(10, decimalsDiff);
       
       // 根据代币顺序调整价格
-      const adjustedPrice = new BigNumber(isToken0Base ? 1 / price : price).times(decimalsFactor);
+      const adjustedPrice = new BigNumber(price).times(decimalsFactor);
       
       // 计算 tick
       const tick = Math.round(
@@ -570,44 +567,42 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
         return;
       }
-
-      // 判断代币顺序
-      const isToken0Base = token1Data?.address.toLowerCase() === token0.address.toLowerCase();
       
       // 计算 minTick 和 maxTick，注意价格反转
-      let minTick, maxTick;
-      if (isToken0Base) {
-        // 如果 token0 是基准，价格需要反转
-        // 注意：较大的价格对应较小的 tick
-        minTick = range.minPrice 
-          ? nearestUsableTick(
-              priceToExactTick(1 / parseFloat(range.minPrice), token0, token1),
-              tickSpacing
-            )
-          : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
+      const minTick = range.minPrice 
+        ? nearestUsableTick(
+            priceToExactTick(parseFloat(range.minPrice), token0, token1),
+            tickSpacing
+          )
+        : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
 
-        maxTick = range.maxPrice
-          ? nearestUsableTick(
-              priceToExactTick(1 / parseFloat(range.maxPrice), token0, token1),
-              tickSpacing
-            )
-          : nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
-      } else {
-        // 如果 token1 是基准，直接使用价格
-        minTick = range.minPrice 
-          ? nearestUsableTick(
-              priceToExactTick(parseFloat(range.minPrice), token0, token1),
-              tickSpacing
-            )
-          : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
+      const maxTick = range.maxPrice
+        ? nearestUsableTick(
+            priceToExactTick(parseFloat(range.maxPrice), token0, token1),
+            tickSpacing
+          )
+        : nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
+        // if (isToken0Base) {
+        // 先注释掉，因为外部强制规定了token0和token1，这里先不用2次判断，除非有新需求
+        //   // 如果 token0 是基准，价格需要反转
+        //   // 注意：较大的价格对应较小的 tick
+        //   minTick = range.minPrice 
+        //     ? nearestUsableTick(
+        //         priceToExactTick(1 / parseFloat(range.minPrice), token0, token1),
+        //         tickSpacing
+        //       )
+        //     : nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
 
-        maxTick = range.maxPrice
-          ? nearestUsableTick(
-              priceToExactTick(parseFloat(range.maxPrice), token0, token1),
-              tickSpacing
-            )
-          : nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
-      }
+        //   maxTick = range.maxPrice
+        //     ? nearestUsableTick(
+        //         priceToExactTick(1 / parseFloat(range.maxPrice), token0, token1),
+        //         tickSpacing
+        //       )
+        //     : nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
+        // } else {
+        //   // 如果 token1 是基准，直接使用价格
+        
+        // }
 
       console.log(minTick, maxTick, 'minTick, maxTick====');
 

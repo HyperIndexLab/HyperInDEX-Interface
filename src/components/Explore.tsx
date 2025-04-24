@@ -140,7 +140,6 @@ export default function Explore({ activeTab }: { activeTab: number }) {
     try {
       const pools = await getPools();
       const poolsv3 = await getPoolsByVersion('v3');
-      console.log(poolsv3, 'poolsv3====');
       setPoolData([...pools, ...poolsv3]);
     } catch (error) {
       console.error("Failed to fetch pool list:", error);
@@ -149,15 +148,13 @@ export default function Explore({ activeTab }: { activeTab: number }) {
     }
   };
 
- 
   useEffect(() => {
     if (activeTab === 1 && tokenData.length === 0) {
       fetchTokens();
-    } else if (activeTab === 2 && poolData.length === 0) {
+    } else if (activeTab === 2) {
       fetchPools();
     }
-  }, [activeTab, tokenData.length, poolData.length]);
-
+  }, [activeTab]);
 
   // 添加上升下降指示器组件
   const PriceChangeIndicator = ({ value }: { value: string }) => {

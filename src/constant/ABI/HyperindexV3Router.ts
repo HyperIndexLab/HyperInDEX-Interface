@@ -1,4 +1,4 @@
-export const ROUTER_CONTRACT_V3_ADDRESS = process.env.NODE_ENV === "development" 
+export const ROUTER_CONTRACT_V3_ADDRESS = process.env.BUILD_ENV !== "production" 
   ? '0xe269e80cE5db7F49bcd1FCdc60eeD345288FE010'
   : '0x862DE2dB0d74fb20f1ab9777b7893631cB91e761';
 
