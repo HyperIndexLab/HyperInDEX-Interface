@@ -155,6 +155,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     if (tokens.length === 0) {
       return;
     }
+
     tokens.forEach(token => {
       if (token.address === token1) {
         const tokenData: TokenData = {

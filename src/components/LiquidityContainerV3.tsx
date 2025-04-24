@@ -129,7 +129,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       return;
     }
     tokens.forEach(token => {
-      if (token.address === token1) {
+      // 将地址转换为小写进行比较
+      if (token.address?.toLowerCase() === token1?.toLowerCase()) {
         const tokenData: TokenData = {
           symbol: token.symbol || '',
           name: token.name || '',
@@ -139,7 +140,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         };
         setToken1Data(tokenData);
       }
-      if (token.address === token2) {
+      if (token.address?.toLowerCase() === token2?.toLowerCase()) {
         const tokenData: TokenData = {
           symbol: token.symbol || '',
           name: token.name || '',
@@ -147,6 +148,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           icon_url: token.icon_url,
           decimals: token.decimals,
         };
+        console.log(tokenData, 'tokenData====22');
         setToken2Data(tokenData);
       }
     });

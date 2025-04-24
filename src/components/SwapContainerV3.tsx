@@ -317,9 +317,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     if (tokens.length === 0) {
       return;
     }
-    console.log(tokens,token1, token2, 'tokens');
     tokens.forEach(token => {
-      if (token.address === token1) {
+      if (token.address.toLowerCase() === token1?.toLowerCase()) {
         const tokenData: TokenData = {
           symbol: token.symbol || '',
           name: token.name || '',
@@ -327,10 +326,9 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           icon_url: token.icon_url,
           decimals: token.decimals,
         };
-        console.log(tokenData, 'tokenData');
         setToken1Data(tokenData);
       }
-      if (token.address === token2) {
+      if (token.address.toLowerCase() === token2?.toLowerCase()) {
         const tokenData: TokenData = {
           symbol: token.symbol || '',
           name: token.name || '',
