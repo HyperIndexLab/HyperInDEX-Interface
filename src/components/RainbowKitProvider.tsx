@@ -60,7 +60,7 @@ const wagmiConfig = getDefaultConfig({
 		},
 	],
 	chains: [
-		process.env.NODE_ENV === 'development' ? hashkeyTestnet : hashkeyMainnet,
+		process.env.BUILD_ENV !== 'production' ? hashkeyTestnet : hashkeyMainnet,
 	],
 	transports: {
 		[hashkeyMainnet.id]: fallback([

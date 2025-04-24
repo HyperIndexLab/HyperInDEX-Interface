@@ -20,6 +20,7 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
             time: item.time,
             price: item.price
         }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [data.length, data[0]?.time, data[0]?.price, data[data.length - 1]?.time, data[data.length - 1]?.price]); // 只比较数组长度和首尾数据
 
     const calculateAPY = (price: number): number => {
@@ -122,6 +123,7 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
                 containLabel: true,
             },
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [memoizedData, token0, token1, type]); // 使用 memoizedData 替代 data
 
     useEffect(() => {
@@ -176,6 +178,7 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
                 chartInstance.current = null;
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [memoizedData]); // 依赖于 data 的变化
 
     const handleRangeChange = async (range: '1d' | '1w') => {

@@ -28,14 +28,14 @@ export const usePoolsData = () => {
   const { address: userAddress } = useAccount();
 
   // 获取所有交易对地址和基本信息
-  const { data: pairLength } = useReadContract({
+  const { data: pairLength, refetch: refetchPairLength } = useReadContract({
     address: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
     abi: FACTORY_ABI as Abi,
     functionName: "allPairsLength",
   });
 
   // 获取所有交易对地址
-  const { data: pairAddresses } = useReadContracts({
+  const { data: pairAddresses, refetch: refetchPairAddresses } = useReadContracts({
     contracts: Array.from({ length: Number(pairLength || 0) }, (_, i) => ({
       address: FACTORY_CONTRACT_ADDRESS as `0x${string}`,
       abi: FACTORY_ABI as Abi,
@@ -45,7 +45,7 @@ export const usePoolsData = () => {
   });
 
   // 获取所有交易对的详细信息
-  const { data: pairsInfo } = useReadContracts({
+  const { data: pairsInfo, refetch: refetchPairsInfo } = useReadContracts({
     contracts: pairAddresses?.flatMap((pairData) => {
       const pairAddress = pairData.result as `0x${string}`;
       return [
@@ -80,7 +80,7 @@ export const usePoolsData = () => {
   });
 
   // 获取代币符号
-  const { data: tokenSymbols } = useReadContracts({
+  const { data: tokenSymbols, refetch: refetchTokenSymbols } = useReadContracts({
     contracts: pools.flatMap((pool) => [
       {
         address: pool.token0Address as `0x${string}`,
@@ -178,9 +178,20 @@ export const usePoolsData = () => {
     }
   }, [tokenSymbols]); // 移除 pools 依赖
 
+  // 添加 refetch 方法
+  const refetch = async () => {
+    await Promise.all([
+      refetchPairLength(),
+      refetchPairAddresses(),
+      refetchPairsInfo(),
+      refetchTokenSymbols()
+    ]);
+  };
+
   return {
     pools,
     isLoading: !pairsInfo || !pairAddresses,
     userAddress,
+    refetch, // 导出 refetch 方法
   };
 };

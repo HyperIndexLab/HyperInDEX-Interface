@@ -101,6 +101,9 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       enabled: !!(token1Data && token2Data),
     },
   });
+  
+
+  console.log(pairAddress, 'pairAddress====');
 
   // 添加获取 token0 地址的调用
   const { data: token0Address } = useReadContract({
@@ -272,8 +275,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   useEffect(() => {
     fetchTokenPrices();
   }, []);
-
-
 
 
   // 修改价格计算相关的 useEffect
