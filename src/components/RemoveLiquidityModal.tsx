@@ -35,7 +35,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
   const { toast } = useToast();
   
   const { data: poolData, loading } = usePoolData(pool.pairAddress, pool.userAddress);
-  const { remove, approve, isRemoving, isApproving, isWaiting, isSuccess } = useRemoveLiquidity();
+  const { remove, approve, isRemoving, isApproving, isWaiting } = useRemoveLiquidity();
   const [needsApproval, setNeedsApproval] = useState(true);
 
   const amounts = useMemo(() => {
@@ -163,15 +163,15 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       });
 
 
+
+
       if (result.success) {
-        if (isSuccess) {
-          toast({
-            type: 'success',
-            message: 'Successfully removed liquidity',
-            isAutoClose: true
-          });
-          onClose();
-        }
+        toast({
+          type: 'success',
+          message: 'Successfully removed liquidity',
+          isAutoClose: true
+        });
+        onClose();
       } else {
         toast({
           type: 'error',
