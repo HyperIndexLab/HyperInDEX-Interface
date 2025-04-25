@@ -116,7 +116,6 @@ export const useRemoveLiquidity = (pairAddress?: string, userAddress?: string, l
    
       await waitForTransactionReceipt(wagmiConfig, { hash: hash as `0x${string}` });
       setIsSuccess(true)
-
       return { success: true };
     } catch (error) {
       const wagmiError = error as BaseError;
