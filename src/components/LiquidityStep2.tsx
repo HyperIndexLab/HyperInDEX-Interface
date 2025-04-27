@@ -245,45 +245,127 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
         {/* 价格范围可视化 */}
         {pool && positionType === 'custom' && (
           <div 
-            className="bg-base-200 rounded-xl p-4 h-20 mt-6 relative cursor-pointer"
+            className="bg-base-200 rounded-xl p-4 h-40 mt-6 relative cursor-pointer"
             onMouseMove={handleDrag}
             onMouseUp={handleDragEnd}
             onMouseLeave={handleDragEnd}
           >
-            {/* 当前价格指示器 */}
-            <div className="absolute top-0 bottom-0 w-0.5 bg-primary" 
-                style={{ left: '50%' }}></div>
-            
-            {/* 选择的价格范围 - 左半部分 */}
-            <div className="absolute top-0 bottom-0"
-                style={{ 
-                  left: `${rangePosition.min}%`, 
+            {/* 左右两侧面积渐变色块（拖拽点到中间线） */}
+            {rangePosition.min < 50 && (
+              <div
+                className="absolute z-0 pointer-events-none"
+                style={{
+                  left: `${rangePosition.min}%`,
+                  top: 0,
+                  height: '100%',
                   width: `${50 - rangePosition.min}%`,
-                  background: 'linear-gradient(to right, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.2))'
-                }}></div>
-            
-            {/* 选择的价格范围 - 右半部分 */}
-            <div className="absolute top-0 bottom-0"
-              style={{ 
-                left: '50%', 
-                width: `${rangePosition.max - 50}%`,
-                background: 'linear-gradient(to right, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1))'
-            }}></div>
-            
-            {/* 拖动手柄 */}
-            <div 
-              className="absolute top-0 bottom-0 w-1 cursor-ew-resize bg-green-500/20 hover:bg-green-500/50"
-              style={{ left: `${rangePosition.min}%` }}
+                  background: 'linear-gradient(to right, rgba(20,234,178,0.12), rgba(20,234,178,0.01))',
+                  borderTopLeftRadius: rangePosition.min < 2 ? '12px' : '0',
+                  borderBottomLeftRadius: rangePosition.min < 2 ? '12px' : '0',
+                  borderTopRightRadius: '0',
+                  borderBottomRightRadius: '0',
+                }}
+              />
+            )}
+            {rangePosition.max > 50 && (
+              <div
+                className="absolute z-0 pointer-events-none"
+                style={{
+                  left: '50%',
+                  top: 0,
+                  height: '100%',
+                  width: `${rangePosition.max - 50}%`,
+                  background: 'linear-gradient(to left, rgba(244,63,94,0.12), rgba(244,63,94,0.01))',
+                  borderTopRightRadius: rangePosition.max > 98 ? '12px' : '0',
+                  borderBottomRightRadius: rangePosition.max > 98 ? '12px' : '0',
+                  borderTopLeftRadius: '0',
+                  borderBottomLeftRadius: '0',
+                }}
+              />
+            )}
+            {/* 浅色柱状图，全宽且分布更陡峭，两侧也有很矮的柱 */}
+            <svg className="absolute left-0 right-0 top-6 w-full h-16 z-10" width="100%" height="64">
+              {Array.from({ length: 40 }).map((_, i) => {
+                const x = i / 39;
+                const height = 6 + 38 * Math.exp(-20 * Math.pow(x - 0.5, 2));
+                return (
+                  <rect
+                    key={i}
+                    x={`${(x * 100).toFixed(2)}%`}
+                    y={64 - height}
+                    width="2%"
+                    height={height}
+                    rx="2"
+                    fill="rgba(110,231,183,0.10)"
+                  />
+                );
+              })}
+            </svg>
+            {/* 拖拽区间阴影 */}
+            <div
+              className="absolute top-[88px] h-2 z-20"
+              style={{
+                left: '0%',
+                width: `${rangePosition.min}%`,
+                background: 'linear-gradient(to right, rgba(34,197,94,0.18), rgba(34,197,94,0.01))',
+                borderRadius: '4px',
+              }}
+            />
+            <div
+              className="absolute top-[88px] h-2 z-20"
+              style={{
+                left: `${rangePosition.max}%`,
+                width: `${100 - rangePosition.max}%`,
+                background: 'linear-gradient(to right, rgba(239,68,68,0.01), rgba(239,68,68,0.18))',
+                borderRadius: '4px',
+              }}
+            />
+            {/* X轴：左绿右红渐变 */}
+            <svg className="absolute left-0 right-0 top-[88px] w-full h-2 z-10" width="100%" height="8">
+              <defs>
+                <linearGradient id="xAxisGradient" x1="0" y1="0" x2="1" y2="0">
+                  <stop offset="0%" stopColor="#14eab2" stopOpacity="0.5" />
+                  <stop offset="50%" stopColor="#14eab2" stopOpacity="0.5" />
+                  <stop offset="50%" stopColor="#f43f5e" stopOpacity="0.5" />
+                  <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.5" />
+                </linearGradient>
+              </defs>
+              <rect x="0" y="0" width="100%" height="8" rx="4" fill="url(#xAxisGradient)" />
+            </svg>
+            {/* 拖动圆点 - min */}
+            <div
+              className="absolute top-[80px] w-5 h-5 rounded-full bg-teal-400 border-4 border-white shadow-lg z-20 cursor-ew-resize"
+              style={{ left: `calc(${rangePosition.min}% - 10px)` }}
               onMouseDown={() => handleDragStart('min')}
             />
-            <div 
-              className="absolute top-0 bottom-0 w-1 cursor-ew-resize bg-red-500/20 hover:bg-red-500/50"
-              style={{ left: `${rangePosition.max}%` }}
+            {/* 拖动圆点 - max */}
+            <div
+              className="absolute top-[80px] w-5 h-5 rounded-full bg-rose-400 border-4 border-white shadow-lg z-20 cursor-ew-resize"
+              style={{ left: `calc(${rangePosition.max}% - 10px)` }}
               onMouseDown={() => handleDragStart('max')}
             />
-            <div className="absolute top-[-16px] left-1/2 transform -translate-x-1/2 text-xs text-primary">
-              Current Price: {currentPrice}
+            {/* 当前价格气泡 */}
+            <div className="absolute left-1/2 top-[-38px] z-30 transform -translate-x-1/2">
+              <div className="bg-black text-white text-xs px-3 py-1 rounded-lg shadow font-medium">
+                Current Price {currentPrice}
+              </div>
             </div>
+            {/* 当前价格指示器（精确到底部X轴顶部） */}
+            <div className="absolute z-30 left-1/2" style={{top: '24px', height: '64px', width: '0'}}>
+              <div style={{height: '64px', borderLeft: '2px solid #7dd3fc', marginLeft: '-1px'}} />
+            </div>
+            {/* 坐标轴 */}
+            <div className="absolute left-0 right-0 top-[108px] flex justify-between text-xs text-base-content/60 px-2 select-none z-30">
+              <span>{priceRange.minPrice}</span>
+              <span className="text-primary font-bold">{currentPrice}</span>
+              <span>{priceRange.maxPrice}</span>
+            </div>
+          </div>
+        )}
+        {/* 区间提示信息，移动到这里 */}
+        {priceRangeMessage && (
+          <div className="mt-4 mb-2 px-4 py-3 rounded-xl bg-base-300/60 text-base-content/80 text-md">
+            {priceRangeMessage}
           </div>
         )}
       </div>
@@ -360,7 +442,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
 
       {/* 添加流动性按钮 */}
       <button
-        className="w-full mt-6 rounded-full py-4 text-lg font-normal transition-all
+        className="w-full mt-6 rounded-lg py-4 text-lg font-normal transition-all
           bg-primary/90 hover:bg-primary text-primary-content disabled:opacity-50"
         onClick={() => addLiquidity()}
         disabled={addLiquidityLoading}

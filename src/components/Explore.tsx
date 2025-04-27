@@ -249,6 +249,11 @@ export default function Explore({ activeTab }: { activeTab: number }) {
               </Link>
             ))}
           </div>
+          {activeTab === 2 && (
+            <Link href="/liquidity/v3" className="btn btn-sm btn-primary rounded-md ml-6">
+              Add Liquidity
+            </Link>
+          )}
         </div>
 
         {/* Table Card */}
@@ -298,7 +303,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                     tokenData.map((row) => (
                       <tr
                         key={row.id}
-                        className="hover:bg-base-200/30 transition-colors duration-200 cursor-pointer"
+                        className="hover:bg-base-content/10 transition-colors duration-200 cursor-pointer"
                         onClick={() => {
                           window.location.href = `/explore/tokens/${row.address}`;
                         }}
@@ -367,7 +372,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
 
                   {/* Pools */}
                   {poolData.length > 0 && activeTab === 2 && poolData.map(row => (
-                    <tr key={row.pairsAddress} className="hover:bg-base-200/30 transition-colors duration-200">
+                    <tr key={row.pairsAddress} className="hover:bg-base-content/10 transition-colors duration-200">
                       <td className="font-mono text-sm text-base-content/70">{row.id}</td>
                       <td>
                         <Link href={`/explore/pools/${row.pairsAddress}`} className="flex items-center gap-3">

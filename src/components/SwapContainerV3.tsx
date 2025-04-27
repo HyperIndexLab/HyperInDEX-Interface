@@ -1559,7 +1559,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             const buttonState = getButtonState();
             return (
               <button 
-                className={`btn w-full h-12 rounded-xl font-medium ${
+                className={`btn w-full h-16 rounded-xl font-medium text-xl ${
                   buttonState.disabled ? 'btn-disabled' : 'btn-primary'
                 }`}
                 disabled={buttonState.disabled}

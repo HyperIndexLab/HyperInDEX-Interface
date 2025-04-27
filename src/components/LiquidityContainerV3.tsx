@@ -630,7 +630,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
     return (
       <button
-        className="w-full bg-base-300/50 hover:bg-base-300/70 rounded-full py-4 px-6 
+        className="w-full bg-base-content/10 hover:bg-base-300/70 rounded-lg py-2 px-6 
           flex justify-between items-center transition-all border border-transparent 
           hover:border-base-content/10"
         onClick={() => {
@@ -659,7 +659,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[860px] px-4 sm:px-6 lg:px-0">
+    <div className="w-full max-w-[960px] px-4 sm:px-6 lg:px-0">
       <div className="flex w-full flex-col lg:flex-row gap-8">
         <div className="hidden lg:block w-[360px] flex-shrink-0">
           <StepIndicator currentStep={step} />
@@ -705,7 +705,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                     <button
                       key={fee}
                       onClick={() => setFeeTier(fee)}
-                      className={`flex flex-col items-start p-4 rounded-2xl border transition-all
+                      className={`flex flex-col items-start p-4 rounded-2xl border border-base-content/30 transition-all
                         ${
                           feeTier === fee
                             ? "bg-primary/10 border-primary"
@@ -725,7 +725,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 </div>
 
                 <button
-                  className={`w-full rounded-full py-4 text-lg font-normal transition-all
+                  className={`w-full rounded-lg py-4 text-xl font-normal transition-all
                     ${
                       canContinue && !requestLoading
                         ? "bg-primary/90 hover:bg-primary text-primary-content"

@@ -89,7 +89,7 @@ const PoolsContainer: React.FC = () => {
       <div className="flex gap-2">
         <button 
           onClick={() => handleRemove(pool, isV3)} 
-          className="btn btn-outline btn-error flex-1 rounded-full text-lg"
+          className="btn btn-outline btn-error flex-1 rounded-sm text-lg"
         >
           Remove
         </button>
@@ -153,13 +153,13 @@ const PoolsContainer: React.FC = () => {
                 <div className="flex gap-2 justify-end">
                   <button 
                     onClick={() => handleRemove(pool, false)} 
-                    className="btn btn-sm btn-outline btn-error rounded-full px-6"
+                    className="btn btn-sm btn-outline btn-error rounded-sm px-6"
                   >
                     Remove
                   </button>
                   <Link 
                     href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
-                    className="btn btn-sm btn-primary rounded-full px-6"
+                    className="btn btn-sm btn-primary rounded-sm px-6"
                   >
                     Add
                   </Link>
@@ -257,7 +257,7 @@ const PoolsContainer: React.FC = () => {
         <h1 className="text-3xl font-bold">Your Liquidity Positions</h1>
         <Link 
           href="/liquidity/v3"
-          className="btn btn-primary rounded-full text-md px-6"
+          className="btn btn-sm btn-primary rounded-md text-md px-6"
         >
           Add Liquidity
         </Link>

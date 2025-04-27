@@ -661,7 +661,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
     return (
       <button
-        className="w-full bg-base-300/50 hover:bg-base-300/70 rounded-full py-4 px-6 
+        className="w-full bg-base-content/30 hover:bg-base-300/70 rounded-full py-4 px-6 
           flex justify-between items-center transition-all border border-transparent 
           hover:border-base-content/10"
         onClick={() => {
@@ -690,7 +690,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[860px] px-4 sm:px-6 lg:px-0">
+    <div className="w-full max-w-[960px] px-4 sm:px-6 lg:px-0">
       <div className="flex w-full flex-col lg:flex-row gap-8">
         <div className="hidden lg:block w-[360px] flex-shrink-0">
           <StepIndicator currentStep={step} />

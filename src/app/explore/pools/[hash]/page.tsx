@@ -340,8 +340,8 @@ export default function Page() {
 							)}
 						</div>
 						{/* 添加交易记录列表 */}
-						<div className="card bg-base-100 p-6 mt-6">
-							<h2 className="text-xl font-bold mb-4">Transaction</h2>
+						<div className="card bg-base-100 py-6 px-3 mt-6">
+							<h2 className="text-xl font-bold mb-4 ml-2">Transaction</h2>
 							<div className="overflow-x-auto">
 								<table className="table w-full">
 									<thead>
@@ -387,7 +387,7 @@ export default function Page() {
 						</div>
 					</div>
 					{/* 池子信息卡片 */}
-					<div className="card bg-base-100 shadow-xl p-6 h-fit">
+					<div className="card bg-base-100 w-[500px] shadow-xl p-6 h-fit">
 						{/* Swap按钮骨架屏 */}
 						{loading ? (
 							<div className="flex justify-center items-center gap-4">
@@ -396,14 +396,14 @@ export default function Page() {
 							</div>
 						) : (
 							<>
-								<div className="text-center flex justify-center items-center gap-4">
+								<div className="text-center flex justify-between items-center gap-4">
 									<button 
-										className='btn btn-primary rounded-full px-8 font-semibold'
+										className='btn btn-primary flex-1 rounded-lg px-8 font-semibold'
 										onClick={() => setShowSwap(!showSwap)}
 									>
 										Swap Tokens
 									</button>
-									<Link href={isV3 ? `/liquidity/v3?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`  :`/liquidity?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`} className='btn btn-primary rounded-full px-8 font-semibold'>
+									<Link href={isV3 ? `/liquidity/v3?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`  :`/liquidity?inputCurrency=${pool?.token0}&outputCurrency=${pool?.token1}`} className='btn flex-1 btn-primary rounded-lg px-8 font-semibold'>
 										Add Liquidity
 									</Link>
 								</div>
