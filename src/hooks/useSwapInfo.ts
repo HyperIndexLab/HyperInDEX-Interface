@@ -149,7 +149,6 @@ async function calculateV3Swap(
       poolCache.data && 
       Date.now() - poolCache.timestamp < 20000
     ) {
-      console.log('使用缓存的池子数据');
       // 使用缓存的池子数据，但仍需计算具体的输出值
       const params = {
         tokenIn: token1.address,
@@ -226,7 +225,6 @@ async function calculateV3Swap(
             poolInfo: poolInfo || null
           });
         } catch (e) {
-          console.log(e, 'e');
           continue;
         }
       }
@@ -379,7 +377,6 @@ async function calculateV2Swap(
   slippage: number,
   pairAddress: Address,
 ) {
-  console.log(token1, token2, amount1, slippage, pairAddress, 'token1, token2, amount1, slippage, pairAddress');
   try {
     const reserves = await readContract(wagmiConfig, {
       address: pairAddress as `0x${string}`,
@@ -425,8 +422,6 @@ async function calculateV2Swap(
       const priceImpactBps = ((executionPrice - currentPrice) * BigInt(10000)) / currentPrice;
       priceImpactValue = (Number(priceImpactBps) / 100).toFixed(2);
     }
-
-    console.log(amountOut, minReceived, priceImpactValue, feeAmount, 'amountOut, minReceived, priceImpactValue, feeAmount');
 
     return {
       token2Amount: formatUnits(amountOut, token2.decimals),

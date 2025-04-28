@@ -113,9 +113,6 @@ export const useAddLiquidity = (
       
       let poolAddr = poolAddress;
 
-      console.log(existingPool, 'existingPool====');
-      
-      // 检查是否需要先创建池子
       if (!existingPool) {
         // 创建新池子
         toast({
@@ -124,8 +121,6 @@ export const useAddLiquidity = (
           isAutoClose: true
         });
 
-        console.log(token0Address, token1Address,token1Data, token2Data,  feeTier, 'token0Address, token1Address, feeTier====');
-        // 调用工厂合约创建池子
         const createPoolTx = await writeContractAsync({
           address: FACTORY_CONTRACT_ADDRESS_V3 as `0x${string}`,
           abi: FACTORY_ABI_V3,
@@ -164,9 +159,7 @@ export const useAddLiquidity = (
         const sqrtPriceX96 = BigInt(encodeSqrtRatioX96(amount1.toString(), amount0.toString()).toString());
 
 
-        console.log(sqrtPriceX96, 'sqrtPriceX96====');
-        const tick3 = TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
-        console.log(tick3, 'tick3====');
+        TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
         poolAddr = await readContract(wagmiConfig, {
           address: FACTORY_CONTRACT_ADDRESS_V3 as `0x${string}`,
           abi: FACTORY_ABI_V3,
@@ -232,16 +225,11 @@ export const useAddLiquidity = (
 
 
       let sqrtPriceX96: bigint;
-      
-      console.log(poolAddr, 'poolAddr====222');
-      // 检查池子是否已初始化
       const slot0 = await readContract(wagmiConfig, {
         address: poolAddr as `0x${string}`,
         abi: POOL_ABI,
         functionName: 'slot0'
       }) as Slot0Data;
-
-      console.log(slot0, 'slot0====');
 
       sqrtPriceX96 = slot0[0]
 
@@ -259,9 +247,7 @@ export const useAddLiquidity = (
           );
 
           sqrtPriceX96 = BigInt(encodeSqrtRatioX96(amount1.toString(), amount0.toString()).toString());
-          console.log(sqrtPriceX96, 'sqrtPriceX96====111');
-          const tick2 = TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
-          console.log(tick2, 'tick2====111');
+          TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
 
           const initializeTx = await writeContractAsync({
             address: poolAddr as `0x${string}`,
@@ -323,7 +309,6 @@ export const useAddLiquidity = (
   
       // sqrtPriceX96 = BigInt(encodeSqrtRatioX96(amount1.toString(), amount0.toString()).toString());
       const tick = TickMath.getTickAtSqrtRatio(JSBI.BigInt(sqrtPriceX96.toString()));
-      console.log('sqrtPriceX96:', sqrtPriceX96.toString(), 'tick:', tick);
   
       const { token0, token1 } = getTokens();
       if (!token0 || !token1) return;
@@ -333,8 +318,6 @@ export const useAddLiquidity = (
         abi: POOL_ABI,
         functionName: 'liquidity'
       }) as BigintIsh;
-
-      console.log(liquidity, tickRange, amount0, amount1, tick, sqrtPriceX96.toString(), 'liquidity,tickRange====');
     
       const configuredPool = new Pool(
         token0,
@@ -345,7 +328,6 @@ export const useAddLiquidity = (
         tick
       );
 
-      console.log(amount0, amount1, 'amount0, amount1====');
       let position;
       if (amount0 === BigInt(0)) {
         // 只提供 token1
@@ -420,9 +402,7 @@ export const useAddLiquidity = (
           position,
           mintOptions
         );
-
-        console.log(calldata, value,   'calldata, value====');
-
+        
         transaction = {
           data: calldata as `0x${string}`,
           to: NONFUNGIBLE_POSITION_MANAGER_ADDRESS as `0x${string}`,

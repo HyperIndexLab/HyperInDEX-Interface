@@ -99,9 +99,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       enabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
     },
   });
-
-  console.log(allowance, userAddress, token1Data, ROUTER_CONTRACT_V3_ADDRESS, 'userAddress');
-
   // 修改 useBalance hook 的调用,解构出 refetch 函数
   const { 
     data: hskBalance, 
@@ -203,7 +200,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         // 先去掉价格中的 $ 符号，然后格式化
         const priceString = token2PriceData.price.replace('$', '');
         const formattedPrice = parseFloat(priceString);
-        console.log('formattedPrice', formattedPrice, token2Amount);
         setToken2Price((formattedPrice * parseFloat(token2Amount) || 0).toFixed(2));
       } else {
         setToken2Price('-');
@@ -459,8 +455,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         symbol: token2Data.symbol === 'HSK' ? 'WHSK' : token2Data.symbol,
         decimals: Number(token2Data.decimals),
       };
-
-      console.log(isV3, 'isV3');
 
       const swapInfo = await getSwapInfo({
         token1: calculationToken1,
@@ -949,9 +943,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           setTxStatus('failed');
           return;
         }
-        console.log('depositSuccess', depositSuccess);
-
-        // 等待一段时间确保 deposit 已经完成
 
         // 刷新余额
         await refetchHskBalance();
@@ -1007,8 +998,6 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         JSBI.BigInt(poolInfo?.liquidity.toString()),
         poolInfo?.tick
       );
-
-      console.log(pool, 'pool');
 
       const swapRoute = new Route([pool], token1Instance, token2Instance);
 

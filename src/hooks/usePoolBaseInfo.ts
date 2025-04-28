@@ -97,7 +97,6 @@ export const usePoolInfo = (token1Data: TokenData | null, token2Data: TokenData 
       args: [sortedToken0, sortedToken1, fee]
     })
 
-    console.log(poolAddress, 'poolAddress====');
     return poolAddress as `0x${string}`
   }
 
@@ -153,8 +152,6 @@ export const usePoolInfo = (token1Data: TokenData | null, token2Data: TokenData 
           functionName: 'token1',
         })
       ]);
-
-      console.log(poolData, 'poolData====');
 
       const poolInfo = {
         address: poolAddress,

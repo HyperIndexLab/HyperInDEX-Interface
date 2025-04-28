@@ -104,8 +104,6 @@ export const usePoolAddress = () => {
       const useV3 = version === 'v3' ? v3Result.exists : 
                     version === 'v2' ? false :
                     v3Result.exists;
-
-      console.log(v3Result, v2Result,useV3, 'v3Result, v2Result====');
       return {
         v3Pool: v3Result.poolAddress,
         v2Pool: v2Result.poolAddress,

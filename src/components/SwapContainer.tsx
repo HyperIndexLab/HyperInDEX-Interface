@@ -101,9 +101,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       enabled: !!(token1Data && token2Data),
     },
   });
-  
-
-  console.log(pairAddress, 'pairAddress====');
 
   // 添加获取 token0 地址的调用
   const { data: token0Address } = useReadContract({
@@ -412,7 +409,6 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         // 先去掉价格中的 $ 符号，然后格式化
         const priceString = token2PriceData.price.replace('$', '');
         const formattedPrice = parseFloat(priceString);
-        console.log('formattedPrice', formattedPrice, token2Amount);
         setToken2Price((formattedPrice * parseFloat(token2Amount) || 0).toFixed(2));
       } else {
         setToken2Price('-');

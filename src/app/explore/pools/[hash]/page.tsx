@@ -68,13 +68,12 @@ export default function Page() {
 
 	const fetchPoolPriceData = useCallback(async (num: number) => {
 		const poolPriceData = await getPoolPriceData(hash as string, num)
-		console.log(poolPriceData, 'poolPriceData')
+		return poolPriceData
 		// setPoolPriceData(poolPriceData)
 	}, [hash])
 
 	const fetchPoolPriceHistory = useCallback(async (num: 7 | 30) => {
 		const poolPriceHistory = await getPoolPriceHistory(hash as string, num)
-		console.log(poolPriceHistory, 'poolPriceHistory')
 		setPoolPriceData(poolPriceHistory)
 	}, [hash])
 
@@ -96,8 +95,7 @@ export default function Page() {
 
 	useEffect(() => {
 		if (isV3) {
-			const swaps = fetchPoolSwaps()
-			console.log(swaps, 'swaps')
+			fetchPoolSwaps()
 		}
 	}, [isV3, fetchPoolSwaps])
 

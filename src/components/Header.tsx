@@ -212,7 +212,6 @@ export default function Header() {
         try {
           await switchChain(wagmiConfig, { chainId: changeChaindId });
           setIsWrongNetwork(false);
-          console.log(`链切换成功到链ID ${changeChaindId}`);
         } catch (error) {
           console.error('切换链失败：', error);
         }

@@ -148,7 +148,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           icon_url: token.icon_url,
           decimals: token.decimals,
         };
-        console.log(tokenData, 'tokenData====22');
         setToken2Data(tokenData);
       }
     });
@@ -271,7 +270,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           // 设置默认的tick范围为全范围
           const minTick = nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
           const maxTick = nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
-          console.log(minTick, maxTick, 'minTick, maxTick====');
           setTickRange({ minTick, maxTick });
           
           // 对于未初始化的池子，不设置具体价格范围
@@ -292,22 +290,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           JSBI.BigInt(liquidity) as unknown as BigintIsh,
           tick
         );
-
-        // 添加更多调试信息
-        console.log('Pool Info:', {
-          currentTick: newPool.tickCurrent,
-          token0Price: newPool.token0Price.toSignificant(6),
-          token1Price: newPool.token1Price.toSignificant(6)
-        });
         
         setPool(newPool);
         
         // 设置当前价格
         const price = newPool.token0Price.toSignificant(6);
         setCurrentPrice(price);
-
-        console.log(newPool, positionType, newPool.tickCurrent, newPool.tickSpacing, 'newPool.tickCurrent, newPool.tickSpacing====');
-
         if (positionType === 'full-range') {
           const minTick = nearestUsableTick(TickMath.MIN_TICK, tickSpacing);
           const maxTick = nearestUsableTick(TickMath.MAX_TICK, tickSpacing);
@@ -380,7 +368,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       ];
 
       const currentTick = pool.tickCurrent;
-      console.log(currentTick, tickRange, 'currentTick, tickRange====');
       const inputIsToken0 = token1Data?.address.toLowerCase() === token0?.address.toLowerCase();
       
       // 转换输入金额为正确的精度
@@ -606,7 +593,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         
         // }
 
-      console.log(minTick, maxTick, 'minTick, maxTick====');
 
       // 验证并设置价格范围
       if (minTick >= maxTick) {

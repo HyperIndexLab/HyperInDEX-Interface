@@ -55,6 +55,16 @@ const formatAddress = (address: string) => {
 	return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
+// 单位缩写格式化函数
+function formatWithUnit(num: string | number) {
+	const n = Number(num);
+	if (isNaN(n)) return num;
+	if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+	if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+	if (n >= 1e3) return (n / 1e3).toFixed(2) + 'K';
+	return n.toLocaleString(undefined, { maximumFractionDigits: 6 });
+}
+
 export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 	return (
 		<div className="mt-4 px-2">
@@ -109,8 +119,7 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 							<div className="text-base">
 								{tokenPrice === '0' ? (
 									<>
-										<span className="text-white">{balanceParts.integer}</span>
-										<span className="text-gray-500">{balanceParts.decimal}</span>
+										<span className="text-white">{formatWithUnit(balance)}</span>
 									</>
 								) : (
 									<>
@@ -121,8 +130,7 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 								)}
 							</div>
 							<div className="text-xs text-gray-400 mt-1">
-								<span>{balanceParts.integer}</span>
-								<span className="text-gray-500">{balanceParts.decimal}</span>
+								<span>{formatWithUnit(balance)}</span>
 								<span className="ml-1">{token.token.symbol}</span>
 							</div>
 						</div>
