@@ -27,6 +27,7 @@ body {
   font-family: Sora, Arial, Helvetica, sans-serif;
 }
 
+/* 去除ul的margin */
 ul {
   margin: 0;
 }
