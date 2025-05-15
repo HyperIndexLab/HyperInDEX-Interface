@@ -6,6 +6,7 @@ import { useToast } from '@/components/ToastContext';
 import { useReadContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
+import BigNumber from 'bignumber.js';
 
 interface RemoveLiquidityModalProps {
   isOpen: boolean;
@@ -41,25 +42,26 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
   const amounts = useMemo(() => {
     if (!poolData) return null;
 
-    const userBalanceBigInt = poolData.userBalance;
-    const totalSupplyBigInt = poolData.totalSupply;
-    const reservesTyped = poolData.reserves;
+    const userBalance = new BigNumber(poolData.userBalance.toString());
+    const totalSupply = new BigNumber(poolData.totalSupply.toString());
+    const reserve0 = new BigNumber(poolData.reserves[0].toString());
+    const reserve1 = new BigNumber(poolData.reserves[1].toString());
     const token0Decimals = pool.token0Symbol === "USDT" ? 6 : 18;
     const token1Decimals = pool.token1Symbol === "USDT" ? 6 : 18;
 
-    const token0Amount = (reservesTyped[0] * userBalanceBigInt) / totalSupplyBigInt;
-    const token1Amount = (reservesTyped[1] * userBalanceBigInt) / totalSupplyBigInt;
+    const token0Amount = reserve0.multipliedBy(userBalance).dividedBy(totalSupply);
+    const token1Amount = reserve1.multipliedBy(userBalance).dividedBy(totalSupply);
     
     // 根据不同代币的精度来格式化数值
-    const formatTokenAmount = (amount: bigint, decimals: number) => {
-      return Number(amount) / 10 ** decimals;
+    const formatTokenAmount = (amount: BigNumber, decimals: number) => {
+      return amount.dividedBy(new BigNumber(10).pow(decimals));
     };
 
-    const token0Formatted = formatTokenAmount(reservesTyped[0], token0Decimals);
-    const token1Formatted = formatTokenAmount(reservesTyped[1], token1Decimals);
+    const token0Formatted = formatTokenAmount(reserve0, token0Decimals);
+    const token1Formatted = formatTokenAmount(reserve1, token1Decimals);
     
-    const token0Price = token1Formatted / token0Formatted;
-    const token1Price = token0Formatted / token1Formatted;
+    const token0Price = token1Formatted.dividedBy(token0Formatted);
+    const token1Price = token0Formatted.dividedBy(token1Formatted);
 
     return {
       token0Amount,
@@ -69,9 +71,11 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     };
   }, [pool.token0Symbol, pool.token1Symbol, poolData]);
 
-  const calculateTokenAmount = (amount: bigint, percentage: number, decimals: number) => {
-    const rawAmount = (amount * BigInt(percentage)) / 100n;
-    return (Number(rawAmount) / 10 ** decimals).toFixed(4);
+  const calculateTokenAmount = (amount: string, percentage: number, decimals: number) => {
+    const amountBN = new BigNumber(amount);
+    const percentageBN = new BigNumber(percentage).dividedBy(100);
+    const rawAmount = amountBN.multipliedBy(percentageBN);
+    return rawAmount.dividedBy(new BigNumber(10).pow(decimals)).toFixed(4);
   };
 
   const { data: allowance } = useReadContract({
@@ -161,8 +165,6 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         amount1,
         pairAddress: pool.pairAddress,
       });
-
-
 
 
       if (result.success) {
