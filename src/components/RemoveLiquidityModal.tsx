@@ -7,6 +7,7 @@ import { useReadContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
 import BigNumber from 'bignumber.js';
+import { confluxESpace } from 'viem/chains';
 
 interface RemoveLiquidityModalProps {
   isOpen: boolean;
@@ -145,8 +146,8 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     if (!amounts || !poolData) return;
     
     const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
-    const amount0 = amounts.token0Amount * BigInt(percentage) / 100n;
-    const amount1 = amounts.token1Amount * BigInt(percentage) / 100n;
+    const amount0 = BigNumber(amounts.token0Amount).multipliedBy(percentage).dividedBy(100).integerValue();
+    const amount1 = BigNumber(amounts.token1Amount).multipliedBy(percentage).dividedBy(100).integerValue();
 
     toast({
       type: 'info',
@@ -154,6 +155,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       isAutoClose: true
     });
 
+    console.log(amount0.toString(), amount1.toString(), '2xxxx===');
 
     try {
       const result = await remove({
@@ -161,8 +163,8 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         token1Address: pool.token1Address,
         userAddress: pool.userAddress,
         lpAmount,
-        amount0,
-        amount1,
+        amount0: BigInt(amount0.toString()),
+        amount1: BigInt(amount1.toString()),
         pairAddress: pool.pairAddress,
       });
 
@@ -278,7 +280,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
                 {/* 第一个代币 */}
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-3xl">{calculateTokenAmount(amounts.token0Amount, percentage, pool.token0Symbol === "USDT" ? 6 : 18)}</div>
+                    <div className="text-3xl">{calculateTokenAmount(amounts.token0Amount.toString(), percentage, pool.token0Symbol === "USDT" ? 6 : 18)}</div>
                     <div className="text-sm text-base-content">
                       1 {pool.token0Symbol} = {amounts.token0Price} {pool.token1Symbol}
                     </div>
@@ -289,7 +291,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
                 {/* 第二个代币 */}
                 <div className="flex justify-between items-center">
                   <div>
-                    <div className="text-3xl">{calculateTokenAmount(amounts.token1Amount, percentage, pool.token1Symbol === "USDT" ? 6 : 18)}</div>
+                    <div className="text-3xl">{calculateTokenAmount(amounts.token1Amount.toString(), percentage, pool.token1Symbol === "USDT" ? 6 : 18)}</div>
                     <div className="text-sm text-base-content">
                       1 {pool.token1Symbol} = {amounts.token1Price} {pool.token0Symbol}
                     </div>

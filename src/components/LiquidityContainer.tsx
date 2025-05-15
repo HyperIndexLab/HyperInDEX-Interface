@@ -25,9 +25,10 @@ import { getPools, Pool } from "@/request/explore";
 import { formatTokenBalance } from "@/utils/formatTokenBalance";
 import { estimateAndCheckGas } from "@/utils";
 import { useToast } from "@/components/ToastContext";
-import { simulateContract } from "wagmi/actions";
+import { readContract, simulateContract } from "wagmi/actions";
 import { wagmiConfig } from "./RainbowKitProvider";
 import BigNumber from "bignumber.js";
+import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -88,7 +89,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const { toast } = useToast();
   const [poolShare, setPoolShare] = useState("0.00");
   const [calculationTimeout, setCalculationTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [currentCalculationId, setCurrentCalculationId] = useState(0);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   const { 
     data: hskBalance,
@@ -180,6 +181,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const canContinue = token1Data && token2Data;
 
   const handleAmountChange = async (value: string, isToken1: boolean) => {
+    if (isCalculating) return;
     if (isFirstProvider) {
       if (isToken1) {
         setAmount1(value);
@@ -188,50 +190,60 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       }
     } else if (poolInfo) {
       const amount = parseFloat(value);
+      setIsCalculating(true);
 
-      const pool = poolData.find(pool => pool.pairsAddress === poolInfo.pairAddress);
-      // 检查用户选择的代币顺序是否与池子一致
-      const isOrderMatched = token1Data?.address === pool?.token0;
+      try {
+        const token0Address = await readContract(wagmiConfig, {
+          address: poolInfo.pairAddress as `0x${string}`,
+          abi: PAIR_ABI,
+          functionName: "token0"
+        });
+        
+        const isOrderMatched = token1Data?.address === token0Address;
 
-      if (isToken1) {
-        setAmount1(value);
-        if (amount > 0) {
-          const token1Decimals = Number(token1Data?.decimals || '18');
-          const token2Decimals = Number(token2Data?.decimals || '18');
-          // 将 reserve 转换为实际数值
-          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
-          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
-          
-          const ratio = isOrderMatched
-            ? reserve1 / reserve0
-            : reserve0 / reserve1;
-         
-          const adjustedAmount = amount * ratio;
-          const formattedAmount = adjustedAmount.toFixed(Number(token2Data?.decimals || 18));
-          setAmount2(formattedAmount);
+        if (isToken1) {
+          setAmount1(value);
+          if (amount > 0) {
+            const token1Decimals = Number(token1Data?.decimals || '18');
+            const token2Decimals = Number(token2Data?.decimals || '18');
+            
+            const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
+            const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
+        
+            const ratio = isOrderMatched
+              ? reserve1 / reserve0
+              : reserve0 / reserve1;
+
+            const adjustedAmount = amount * ratio;
+            const formattedAmount = adjustedAmount.toFixed(Number(token2Data?.decimals || 18));
+            setAmount2(formattedAmount);
+          } else {
+            setAmount2("");
+          }
         } else {
-          setAmount2("");
+          setAmount2(value);
+          if (amount > 0) {
+            const token1Decimals = Number(token1Data?.decimals || '18');
+            const token2Decimals = Number(token2Data?.decimals || '18');
+            
+            const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
+            const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
+            
+            const ratio = isOrderMatched
+              ? reserve0 / reserve1
+              : reserve1 / reserve0;
+            
+            const adjustedAmount = amount * ratio;
+            const formattedAmount = adjustedAmount.toFixed(Number(token1Data?.decimals || 18));
+            setAmount1(formattedAmount);
+          } else {
+            setAmount1("");
+          }
         }
-      } else {
-        setAmount2(value);
-        if (amount > 0) {
-          const token1Decimals = Number(token1Data?.decimals || '18');
-          const token2Decimals = Number(token2Data?.decimals || '18');
-          
-          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
-          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
-          
-          const ratio = isOrderMatched
-            ? reserve0 / reserve1
-            : reserve1 / reserve0;
-          // 根据代币小数位数调整计算结果
-          const adjustedAmount = amount * ratio;
-          // 将结果格式化为指定小数位数
-          const formattedAmount = adjustedAmount.toFixed(Number(token1Data?.decimals || 18));
-          setAmount1(formattedAmount);
-        } else {
-          setAmount1("");
-        }
+      } catch (error) {
+        console.error("Error calculating amount:", error);
+      } finally {
+        setIsCalculating(false);
       }
     }
   };
@@ -242,8 +254,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     }
 
     const timeoutId = setTimeout(() => {
-      const calculationId = Date.now();
-      setCurrentCalculationId(calculationId);
       calculatePoolShare();
     }, 300);
 
@@ -314,6 +324,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             value: ethAmount,
           });
         } catch (error) {
+          console.error("addLiquidityETH failed:", error);
           setPoolShare('99.99');
           return;
         }
@@ -336,6 +347,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             ],
           });
         } catch (error) {
+          console.error("addLiquidity failed:", error);
           setPoolShare('99.99');
           return;
         }
@@ -583,20 +595,29 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           <div className="bg-base-200 rounded-3xl p-6">
             <div className="text-md mb-2">Input</div>
             <div className="flex justify-between items-center">
-              <input
-                type="number"
-                min="0"
-                className="input input-ghost w-[60%] text-2xl focus:outline-none px-4 
-                  [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
-                  [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
-                  [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
-                  [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
-                  [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
-                  [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
-                placeholder="0"
-                value={amount1}
-                onChange={(e) => handleAmountChange(e.target.value, true)}
-              />
+              <div className="flex items-center w-[60%]">
+                <div className="relative w-[90%]">
+                  <input
+                    type="number"
+                    min="0"
+                    className="input input-ghost w-full text-2xl focus:outline-none px-4 
+                      [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
+                      [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
+                      [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
+                      [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
+                      [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
+                      [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
+                    placeholder="0"
+                    value={amount1}
+                    onChange={(e) => handleAmountChange(e.target.value, true)}
+                  />
+                  {isCalculating && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="loading loading-spinner loading-xs"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
                 <Image
                   src={token1Data?.icon_url || getDefaultTokenIcon(token1Data)}
@@ -623,20 +644,29 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           <div className="bg-base-200 rounded-3xl p-6">
             <div className="text-md mb-2">Input</div>
             <div className="flex justify-between items-center">
-              <input
-                type="number"
-                min="0"
-                className="input input-ghost w-[60%] text-2xl focus:outline-none px-4 
-                  [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
-                  [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
-                  [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
-                  [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
-                  [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
-                  [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
-                placeholder="0"
-                value={amount2}
-                onChange={(e) => handleAmountChange(e.target.value, false)}
-              />
+              <div className="flex items-center w-[60%]">
+                <div className="relative w-[90%]">
+                  <input
+                    type="number"
+                    min="0"
+                    className="input input-ghost w-full text-2xl focus:outline-none px-4 
+                      [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
+                      [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
+                      [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
+                      [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
+                      [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
+                      [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
+                    placeholder="0"
+                    value={amount2}
+                    onChange={(e) => handleAmountChange(e.target.value, false)}
+                  />
+                  {isCalculating && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="loading loading-spinner loading-xs"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
                 <Image
                   src={token2Data?.icon_url || getDefaultTokenIcon(token2Data)}
@@ -673,7 +703,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               </div>
             </div>
             <div>
-              <div className="text-lg mb-2">{poolShare}%</div>
+              <div className="text-lg mb-2">{isCalculating ? "Calculating..." : `${poolShare}%`}</div>
               <div className="text-sm text-base-content/60">Share of Pool</div>
             </div>
           </div>
