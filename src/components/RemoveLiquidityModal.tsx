@@ -7,7 +7,6 @@ import { useReadContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
 import BigNumber from 'bignumber.js';
-import { confluxESpace } from 'viem/chains';
 
 interface RemoveLiquidityModalProps {
   isOpen: boolean;
