@@ -114,6 +114,9 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     message: string;
   } | null>(null);
 
+  // 添加一个状态来跟踪最后修改的输入框
+  const [lastModifiedInput, setLastModifiedInput] = useState<'token1' | 'token2'>('token1');
+
   useEffect(() => {
     if (!token1Data && token1 === "HSK") {
       setToken1Data(DEFAULT_HSK_TOKEN);
@@ -352,8 +355,13 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
   // 计算流动性和代币数量
   const calculateAmounts = useCallback(() => {
-    if (!pool || !token1Amount || parseFloat(token1Amount) <= 0) {
-      setToken2Amount('');
+    if (!pool) {
+      return;
+    }
+
+    // 如果两个输入都为空，直接返回
+    if ((!token1Amount || parseFloat(token1Amount) <= 0) && 
+        (!token2Amount || parseFloat(token2Amount) <= 0)) {
       return;
     }
     
@@ -361,7 +369,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       const { token0, token1 } = getTokens();
       if (!token0 || !token1) return;
 
-  
       const [lowerTick, upperTick] = [
         Math.min(tickRange.minTick, tickRange.maxTick),
         Math.max(tickRange.minTick, tickRange.maxTick)
@@ -370,18 +377,37 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       const currentTick = pool.tickCurrent;
       const inputIsToken0 = token1Data?.address.toLowerCase() === token0?.address.toLowerCase();
       
-      // 转换输入金额为正确的精度
-      const inputAmount = parseUnits(
-        token1Amount,
-        inputIsToken0 ? parseInt(token0.decimals.toString()) : parseInt(token1.decimals.toString())
-      ).toString();
+      // 确定输入金额和代币
+      let inputAmount: string;
+      let isToken1Input: boolean;
+      
+      // 根据最后修改的输入框来决定使用哪个值
+      if (lastModifiedInput === 'token1' && token1Amount && parseFloat(token1Amount) > 0) {
+        inputAmount = parseUnits(
+          token1Amount,
+          inputIsToken0 ? parseInt(token0.decimals.toString()) : parseInt(token1.decimals.toString())
+        ).toString();
+        isToken1Input = true;
+      } else if (lastModifiedInput === 'token2' && token2Amount && parseFloat(token2Amount) > 0) {
+        inputAmount = parseUnits(
+          token2Amount,
+          inputIsToken0 ? parseInt(token1.decimals.toString()) : parseInt(token0.decimals.toString())
+        ).toString();
+        isToken1Input = false;
+      } else {
+        return;
+      }
 
       // 创建 Position 实例
       let position;
       if (currentTick < lowerTick) {
         // 价格低于范围，只接受 token0
-        if (!inputIsToken0) {
-          setToken2Amount('0');
+        if ((isToken1Input && !inputIsToken0) || (!isToken1Input && inputIsToken0)) {
+          if (isToken1Input) {
+            setToken2Amount('0');
+          } else {
+            setToken1Amount('0');
+          }
           return;
         }
         position = Position.fromAmount0({
@@ -393,8 +419,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
       } else if (currentTick > upperTick) {
         // 价格高于范围，只接受 token1
-        if (inputIsToken0) {
-          setToken2Amount('0');
+        if ((isToken1Input && inputIsToken0) || (!isToken1Input && !inputIsToken0)) {
+          if (isToken1Input) {
+            setToken2Amount('0');
+          } else {
+            setToken1Amount('0');
+          }
           return;
         }
         position = Position.fromAmount1({
@@ -405,7 +435,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
       } else {
         // 价格在范围内，根据输入token类型创建position
-        if (inputIsToken0) {
+        if ((isToken1Input && inputIsToken0) || (!isToken1Input && !inputIsToken0)) {
           position = Position.fromAmount0({
             pool,
             tickLower: lowerTick,
@@ -427,29 +457,48 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       const { amount0, amount1 } = position.mintAmounts;
       
       // 计算输出金额
-      const outputAmount = inputIsToken0 ? amount1 : amount0;
-      const outputDecimals = inputIsToken0 
-        ? parseInt(token1.decimals.toString())
-        : parseInt(token0.decimals.toString());
+      const outputAmount = isToken1Input ? 
+        (inputIsToken0 ? amount1 : amount0) : 
+        (inputIsToken0 ? amount0 : amount1);
+      
+      const outputDecimals = isToken1Input ?
+        (inputIsToken0 ? parseInt(token1.decimals.toString()) : parseInt(token0.decimals.toString())) :
+        (inputIsToken0 ? parseInt(token0.decimals.toString()) : parseInt(token1.decimals.toString()));
 
       // 格式化输出金额
       const rawAmount = parseFloat(outputAmount.toString()) / Math.pow(10, outputDecimals);
       const formattedAmount = rawAmount.toFixed(6);
 
-      setToken2Amount(formattedAmount);
+      // 根据输入类型设置对应的输出
+      if (isToken1Input) {
+        setToken2Amount(formattedAmount);
+      } else {
+        setToken1Amount(formattedAmount);
+      }
+      
       setPriceRangeMessage(null);
 
     } catch (error) {
       console.error("计算流动性失败:", error);
-      setToken2Amount('');
       setPriceRangeMessage('计算流动性时出错');
     }
-  }, [pool, token1Amount, tickRange, getTokens, token1Data]);
-  
-  // 当token1Amount或价格范围变化时重新计算
+  }, [pool, token1Amount, token2Amount, tickRange, getTokens, token1Data, lastModifiedInput]);
+
+  // 修改输入处理函数
+  const handleToken1AmountChange = (value: string) => {
+    setToken1Amount(value);
+    setLastModifiedInput('token1');
+  };
+
+  const handleToken2AmountChange = (value: string) => {
+    setToken2Amount(value);
+    setLastModifiedInput('token2');
+  };
+
+  // 当任一输入框变化时重新计算
   useEffect(() => {
     calculateAmounts();
-  }, [token1Amount, tickRange, calculateAmounts]);
+  }, [token1Amount, token2Amount, calculateAmounts]);
 
   const { needApprove, handleApprove } = useTokenApproval(
     token1Data,
@@ -754,9 +803,9 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               positionType={positionType}
               setPositionType={setPositionType}
               token1Amount={token1Amount}
-              setToken1Amount={setToken1Amount}
+              setToken1Amount={handleToken1AmountChange}
               token2Amount={token2Amount}
-              setToken2Amount={setToken2Amount}
+              setToken2Amount={handleToken2AmountChange}
               addLiquidity={addLiquidityFn}
               setStep={setStep}
               addLiquidityLoading={addLiquidityLoading}

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import TokenModal from "./TokenModal";
 import {
   PlusIcon,
@@ -25,6 +25,10 @@ import { getPools, Pool } from "@/request/explore";
 import { formatTokenBalance } from "@/utils/formatTokenBalance";
 import { estimateAndCheckGas } from "@/utils";
 import { useToast } from "@/components/ToastContext";
+import { readContract, simulateContract } from "wagmi/actions";
+import { wagmiConfig } from "./RainbowKitProvider";
+import BigNumber from "bignumber.js";
+import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -83,7 +87,9 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     error: writeError,
   } = useWriteContract();
   const { toast } = useToast();
-
+  const [poolShare, setPoolShare] = useState("0.00");
+  const [calculationTimeout, setCalculationTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isCalculating, setIsCalculating] = useState(false);
 
   const { 
     data: hskBalance,
@@ -94,8 +100,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     },
   });
 
-
-  // 同样为 token1Balance 添加 refetch
   const { 
     data: token1Balance, 
   } = useBalance({
@@ -106,7 +110,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     },
   });
 
-
   const { data: token2Balance } = useBalance({
     address: userAddress,
     token: token2Data?.symbol !== 'HSK' ? token2Data?.address as `0x${string}` : undefined,
@@ -115,9 +118,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     },
   });
 
-  // 获取池子的详细数据
   const [poolData, setPoolData] = useState<Pool[]>([]);
-  // Custom hooks
   const { isFirstProvider, poolInfo, refreshPool, isLoading } =
     useLiquidityPool(token1Data, token2Data);
 
@@ -144,14 +145,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     });
   }, []);
 
-   // 需要拉取一下tokenList，才能获取到token1和token2的详细数据
-   useEffect(() => {
+  // 需要拉取一下tokenList，才能获取到token1和token2的详细数据
+  useEffect(() => {
     dispatch(fetchTokenList());
   }, [dispatch]);
 
-  
-   // 根据url中的参数设置初始化的token
-   useEffect(() => {
+  useEffect(() => {
     if (tokens.length === 0) {
       return;
     }
@@ -180,25 +179,10 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     });
   }, [tokens, token1, token2]);
 
-  // // 获取池子信息
-  // const { data: pairInfo } = useReadContract({
-  //   address: poolInfo?.pairAddress as `0x${string}`,
-  //   abi: PAIR_ABI,
-  //   functionName: "getReserves",
-  // });
-
-  // // 获取 totalSupply
-  // const { data: totalSupply } = useReadContract({
-  //   address: poolInfo?.pairAddress as `0x${string}`,
-  //   abi: PAIR_ABI,
-  //   functionName: "totalSupply",
-  // });
-
-  // 判断是否可以继续
   const canContinue = token1Data && token2Data;
 
-  // 修改 handleAmountChange 函数
-  const handleAmountChange = (value: string, isToken1: boolean) => {
+  const handleAmountChange = async (value: string, isToken1: boolean) => {
+    if (isCalculating) return;
     if (isFirstProvider) {
       if (isToken1) {
         setAmount1(value);
@@ -207,111 +191,210 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       }
     } else if (poolInfo) {
       const amount = parseFloat(value);
+      setIsCalculating(true);
 
-      const pool = poolData.find(pool => pool.pairsAddress === poolInfo.pairAddress);
-      // 检查用户选择的代币顺序是否与池子一致
-      const isOrderMatched = token1Data?.address === pool?.token0;
+      try {
+        const token0Address = await readContract(wagmiConfig, {
+          address: poolInfo.pairAddress as `0x${string}`,
+          abi: PAIR_ABI,
+          functionName: "token0"
+        });
+        
+        const isOrderMatched = token1Data?.address === token0Address;
 
-      if (isToken1) {
-        setAmount1(value);
-        if (amount > 0) {
-          const token1Decimals = Number(token1Data?.decimals || '18');
-          const token2Decimals = Number(token2Data?.decimals || '18');
-          
-          // 将 reserve 转换为实际数值
-          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
-          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
-          
-          const ratio = isOrderMatched
-            ? reserve1 / reserve0
-            : reserve0 / reserve1;
-         
-          // 根据代币小数位数调整计算结果
-          const adjustedAmount = amount * ratio;
-          // 将结果格式化为指定小数位数
-          const formattedAmount = adjustedAmount.toFixed(Number(token2Data?.decimals || 18));
-          setAmount2(formattedAmount);
+        if (isToken1) {
+          setAmount1(value);
+          if (amount > 0) {
+            const token1Decimals = Number(token1Data?.decimals || '18');
+            const token2Decimals = Number(token2Data?.decimals || '18');
+            
+            const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
+            const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
+        
+            const ratio = isOrderMatched
+              ? reserve1 / reserve0
+              : reserve0 / reserve1;
+
+            const adjustedAmount = amount * ratio;
+            const formattedAmount = adjustedAmount.toFixed(Number(token2Data?.decimals || 18));
+            setAmount2(formattedAmount);
+          } else {
+            setAmount2("");
+          }
         } else {
-          setAmount2("");
+          setAmount2(value);
+          if (amount > 0) {
+            const token1Decimals = Number(token1Data?.decimals || '18');
+            const token2Decimals = Number(token2Data?.decimals || '18');
+            
+            const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
+            const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
+            
+            const ratio = isOrderMatched
+              ? reserve0 / reserve1
+              : reserve1 / reserve0;
+            
+            const adjustedAmount = amount * ratio;
+            const formattedAmount = adjustedAmount.toFixed(Number(token1Data?.decimals || 18));
+            setAmount1(formattedAmount);
+          } else {
+            setAmount1("");
+          }
         }
-      } else {
-        setAmount2(value);
-        if (amount > 0) {
-          const token1Decimals = Number(token1Data?.decimals || '18');
-          const token2Decimals = Number(token2Data?.decimals || '18');
-          
-          // 将 reserve 转换为实际数值
-          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
-          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
-          
-          const ratio = isOrderMatched
-            ? reserve0 / reserve1
-            : reserve1 / reserve0;
-          
-          // 根据代币小数位数调整计算结果
-          const adjustedAmount = amount * ratio;
-          // 将结果格式化为指定小数位数
-          const formattedAmount = adjustedAmount.toFixed(Number(token1Data?.decimals || 18));
-          setAmount1(formattedAmount);
-        } else {
-          setAmount1("");
-        }
+      } catch (error) {
+        console.error("Error calculating amount:", error);
+      } finally {
+        setIsCalculating(false);
       }
     }
   };
 
-  // 计算池子份额
-  const calculatePoolShare = () => {
-    if (!amount1 || !amount2) return "0.00";
-    
-    // 如果是第一个流动性提供者
-    if (isFirstProvider) {
-      return "100.00";
+  useEffect(() => {
+    if (calculationTimeout) {
+      clearTimeout(calculationTimeout);
     }
-    
-    // 如果已有流动性池
-    if (poolInfo && poolInfo.totalSupply) {
-      const amount1Big = BigInt(Math.floor(parseFloat(amount1) * 1e18));
-      const totalSupply = poolInfo.totalSupply;
-      if (totalSupply === BigInt(0)) return "0.00";
-      
-      const share = Number(
-        (amount1Big * BigInt(100)) / (totalSupply + amount1Big)
-      );
-      return share.toFixed(2);
-    }
-    
-    return "0.00";
-  };
 
-  // 修改 handleSupply 函数
+    const timeoutId = setTimeout(() => {
+      calculatePoolShare();
+    }, 300);
+
+    setCalculationTimeout(timeoutId);
+
+    return () => {
+      if (calculationTimeout) {
+        clearTimeout(calculationTimeout);
+      }
+    };
+  }, [amount1, amount2]);
+
+  const calculatePoolShare = useCallback(async () => {
+    let share = "0.00";
+    let result: any = {};
+
+    if (!amount1 || !amount2) {
+      setPoolShare(share);
+      return;
+    }
+
+
+    if (isFirstProvider) {
+      share = "100.00";
+    }
+    
+    if (poolInfo && poolInfo.totalSupply) {
+      if (!token1Data || !token2Data) {
+        setPoolShare(share);
+        return;
+      }
+
+      const token1Decimals = Number(token1Data.decimals || '18');
+      const token2Decimals = Number(token2Data.decimals || '18');
+      
+      const amount1Big = BigInt(Math.floor(parseFloat(amount1) * Math.pow(10, token1Decimals)));
+      const amount2Big = BigInt(Math.floor(parseFloat(amount2) * Math.pow(10, token2Decimals)));
+      // 计算最小接收数量
+      const minAmount1 = (amount1Big * BigInt(99)) / BigInt(100);
+      const minAmount2 = (amount2Big * BigInt(99)) / BigInt(100);
+      // 判断是否包含 HSK
+      const isToken1HSK = token1Data.symbol === "HSK";
+      const isToken2HSK = token2Data.symbol === "HSK";
+
+      if (isToken1HSK || isToken2HSK) {
+        const tokenAddress = isToken1HSK
+          ? token2Data.address
+          : token1Data.address;
+        const tokenAmount = isToken1HSK ? amount2Big : amount1Big;
+        const ethAmount = isToken1HSK ? amount1Big : amount2Big;
+        const minTokenAmount = isToken1HSK ? minAmount2 : minAmount1;
+        const minEthAmount = isToken1HSK ? minAmount1 : minAmount2;
+       
+        try { 
+           // 如果其中一个是 HSK，使用 addLiquidityETH
+          result = await simulateContract(wagmiConfig, {
+              address: ROUTER_CONTRACT_ADDRESS,
+              abi: ROUTER_ABI,
+              functionName: "addLiquidityETH",
+              args: [
+              tokenAddress,
+              tokenAmount,
+              minTokenAmount,
+              minEthAmount,
+              userAddress,
+              BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
+            ],
+            value: ethAmount,
+          });
+        } catch (error) {
+          console.error("addLiquidityETH failed:", error);
+          setPoolShare('99.99');
+          return;
+        }
+      } else {
+        try {
+           // 如果都不是 HSK，使用 addLiquidity
+          result = await simulateContract(wagmiConfig, {
+            address: ROUTER_CONTRACT_ADDRESS,
+            abi: ROUTER_ABI,
+            functionName: "addLiquidity",
+            args: [
+              token1Data.address,
+              token2Data.address,
+              amount1Big,
+              amount2Big,
+              minAmount1,
+              minAmount2,
+              userAddress,
+              BigInt(Math.floor(Date.now() / 1000) + 60 * 20),
+            ],
+          });
+        } catch (error) {
+          console.error("addLiquidity failed:", error);
+          setPoolShare('99.99');
+          return;
+        }
+      }
+
+      const totalSupply: bigint = poolInfo.totalSupply;
+      const tokenShareAmount: bigint = result.result[2];
+      if (totalSupply === BigInt(0)) {
+        share = "0.00"  ;
+      } else {
+
+        share = BigNumber(tokenShareAmount.toString())
+          .div(BigNumber(totalSupply.toString()).plus(tokenShareAmount.toString()))
+          .multipliedBy(100)
+          .toFixed(2)
+          .toString();
+      }
+     
+    }
+    setPoolShare(share);
+  }, [amount1, amount2, token1Data, token2Data, poolInfo, isFirstProvider]);
+  
+
   const handleSupply = async () => {
     if (!token1Data || !token2Data || !amount1 || !amount2 || !userAddress)
       return;
 
     try {
       setIsPending(true);
-
-      // 根据代币的小数位数计算金额
+       // 根据代币的小数位数计算金额
       const token1Decimals = Number(token1Data.decimals || '18');
       const token2Decimals = Number(token2Data.decimals || '18');
       
       const amount1Big = BigInt(Math.floor(parseFloat(amount1) * Math.pow(10, token1Decimals)));
       const amount2Big = BigInt(Math.floor(parseFloat(amount2) * Math.pow(10, token2Decimals)));
-
       // 计算最小接收数量
       const minAmount1 = (amount1Big * BigInt(99)) / BigInt(100);
       const minAmount2 = (amount2Big * BigInt(99)) / BigInt(100);
-
       // 判断是否包含 HSK
       const isToken1HSK = token1Data.symbol === "HSK";
       const isToken2HSK = token2Data.symbol === "HSK";
 
       if (isToken1HSK || isToken2HSK) {
-        // 如果其中一个是 HSK，使用 addLiquidityETH
         const tokenAddress = isToken1HSK
           ? token2Data.address
-          : token1Data.address; // 不需要转换为 WHSK
+          : token1Data.address;
         const tokenAmount = isToken1HSK ? amount2Big : amount1Big;
         const ethAmount = isToken1HSK ? amount1Big : amount2Big;
         const minTokenAmount = isToken1HSK ? minAmount2 : minAmount1;
@@ -332,7 +415,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           value: ethAmount,
         });
       } else {
-        // 如果都不是 HSK，使用 addLiquidity
         await writeContract({
           address: ROUTER_CONTRACT_ADDRESS,
           abi: ROUTER_ABI,
@@ -360,7 +442,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     }
   };
 
-  // 修改交易成功的监听
   useEffect(() => {
     if (isWriteSuccess && !isWritePending) {
       setTimeout(() => {
@@ -377,12 +458,10 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       }, 3000);
     }
 
-
     if (isWriteError && writeError) {
       setIsPending(false);
       let errorMessage = "add liquidity failed, please try again.";
       
-      // 尝试从错误对象中提取更具体的错误信息
       if (typeof writeError === 'object' && writeError !== null) {
         if ('message' in writeError) {
           const message = (writeError as any).message?.toLowerCase();
@@ -409,17 +488,14 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
   }, [isWriteSuccess, isWritePending]);
 
-  // 添加一个清除 step2 数据的函数
   const clearStep2Data = () => {
     setAmount1("");
     setAmount2("");
     setIsPending(false);
   };
 
-  // 添加 useEffect 来监听授权成功
   useEffect(() => {
     if (isApproveSuccess) {
-      // 如果授权成功，刷新授权状态
       toast({
         type: 'success',
         message: 'Token approved successfully!',
@@ -428,49 +504,42 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     }
   }, [isApproveSuccess]);
 
-  // 渲染步骤 2 的内容
   const renderStep2 = () => {
-    // 计算价格和份额
     let price1 = "0", price2 = "0";
     let token0Symbol = token1Data?.symbol || "";
     let token1Symbol = token2Data?.symbol || "";
 
     if (isFirstProvider) {
-      // 如果是第一个流动性提供者，使用输入值计算价格
-      if (amount1 && amount2 && parseFloat(amount1) > 0 && parseFloat(amount2) > 0) {
-        price1 = (parseFloat(amount2) / parseFloat(amount1)).toFixed(6);
-        price2 = (parseFloat(amount1) / parseFloat(amount2)).toFixed(6);
+      if (amount1 && amount2 && new BigNumber(amount1).gt(0) && new BigNumber(amount2).gt(0)) {
+        price1 = new BigNumber(amount2).div(amount1).toFixed(6);
+        price2 = new BigNumber(amount1).div(amount2).toFixed(6);
       }
     } else if (poolInfo) {
       const pool = poolData.find(pool => pool.pairsAddress === poolInfo.pairAddress);
      
       if (pool) {
-        // 确定代币在池子中的顺序
         if (token1Data?.address === pool.token0) {
           token0Symbol = token1Data.symbol || "";
           token1Symbol = token2Data?.symbol || "";
           const token0Decimals = Number(token1Data?.decimals || '18');
           const token1Decimals = Number(token2Data?.decimals || '18');
           
-          // 将 reserve 转换为实际数值
-          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, token0Decimals);
-          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, token1Decimals);
-
+          const reserve0 = new BigNumber(poolInfo.reserve0.toString()).div(new BigNumber(10).pow(token0Decimals));
+          const reserve1 = new BigNumber(poolInfo.reserve1.toString()).div(new BigNumber(10).pow(token1Decimals));
           
-          price1 = (reserve1 / reserve0).toFixed(6);
-          price2 = (reserve0 / reserve1).toFixed(6);
+          price1 = reserve1.div(reserve0).toFixed(6);
+          price2 = reserve0.div(reserve1).toFixed(6);
         } else {
           token0Symbol = token2Data?.symbol || "";
           token1Symbol = token1Data?.symbol || "";
           const token0Decimals = Number(token2Data?.decimals || '18');
           const token1Decimals = Number(token1Data?.decimals || '18');
           
-          // 将 reserve 转换为实际数值
-          const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, token0Decimals);
-          const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, token1Decimals);
+          const reserve0 = new BigNumber(poolInfo.reserve0.toString()).div(new BigNumber(10).pow(token0Decimals));
+          const reserve1 = new BigNumber(poolInfo.reserve1.toString()).div(new BigNumber(10).pow(token1Decimals));
           
-          price1 = (reserve0 / reserve1).toFixed(6);
-          price2 = (reserve1 / reserve0).toFixed(6);
+          price1 = reserve0.div(reserve1).toFixed(6);
+          price2 = reserve1.div(reserve0).toFixed(6);
         }
       }
     }
@@ -479,13 +548,9 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       return parseFloat(price).toString();
     };
 
-    const poolShare = calculatePoolShare();
-
-    // 检查是否需要授权
     const needsApproval = needApprove.token1 || needApprove.token2;
     const isButtonDisabled = !amount1 || !amount2 || isPending || isWritePending || isApproving;
 
-    // 获取按钮文本
     const getButtonText = () => {
       if (isPending || isWritePending) return "Processing...";
       if (isApproving) return "Approving...";
@@ -494,7 +559,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       return "Supply";
     };
 
-    // 处理按钮点击
     const handleButtonClick = async () => {
       const canProceed = await estimateAndCheckGas(hskBalance);
       if (!canProceed) {
@@ -506,23 +570,20 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         return;
       }
       if (needsApproval) {
-        // 如果需要授权，先处理授权
         await handleApprove(needApprove.token1);
       } else {
-        // 如果不需要授权，直接供应
         await handleSupply();
       }
     };
 
     return (
       <div className="bg-base-200/30 backdrop-blur-sm rounded-3xl p-6">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <button
             className="p-2 hover:bg-base-300/50 rounded-full"
             onClick={() => {
               setStep(1);
-              clearStep2Data(); // 返回时清除数据
+              clearStep2Data();
             }}
           >
             <ChevronLeftIcon className="w-4 h-4" />
@@ -531,26 +592,33 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           <div className="w-10 h-10 rounded-full bg-base-300/50"></div>
         </div>
 
-        {/* Token Inputs */}
         <div className="space-y-4">
-          {/* First Token Input */}
           <div className="bg-base-200 rounded-3xl p-6">
             <div className="text-md mb-2">Input</div>
             <div className="flex justify-between items-center">
-              <input
-                type="number"
-                min="0"
-                className="input input-ghost w-[60%] text-2xl focus:outline-none px-4 
-                  [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
-                  [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
-                  [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
-                  [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
-                  [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
-                  [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
-                placeholder="0"
-                value={amount1}
-                onChange={(e) => handleAmountChange(e.target.value, true)}
-              />
+              <div className="flex items-center w-[60%]">
+                <div className="relative w-[90%]">
+                  <input
+                    type="number"
+                    min="0"
+                    className="input input-ghost w-full text-2xl focus:outline-none px-4 
+                      [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
+                      [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
+                      [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
+                      [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
+                      [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
+                      [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
+                    placeholder="0"
+                    value={amount1}
+                    onChange={(e) => handleAmountChange(e.target.value, true)}
+                  />
+                  {isCalculating && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="loading loading-spinner loading-xs"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
                 <Image
                   src={token1Data?.icon_url || getDefaultTokenIcon(token1Data)}
@@ -563,7 +631,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 <span className="text-md">{token1Data?.symbol}</span>
               </div>
             </div>
-            {/* 显示 token1Balance */}
             <div className="flex justify-end items-center mt-2">
               <span className="text-sm text-base-content/60">
                 Balance: {token1Balance ? formatTokenBalance(token1Balance.value.toString(), token1Data?.decimals || '18') : '0'} {token1Data ? token1Data.symbol : token1}
@@ -571,29 +638,36 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             </div>
           </div>
 
-          {/* Plus Icon */}
           <div className="flex justify-center py-2">
             <PlusIcon className="w-5 h-5 text-base-content/60" />
           </div>
 
-          {/* Second Token Input */}
           <div className="bg-base-200 rounded-3xl p-6">
             <div className="text-md mb-2">Input</div>
             <div className="flex justify-between items-center">
-              <input
-                type="number"
-                min="0"
-                className="input input-ghost w-[60%] text-2xl focus:outline-none px-4 
-                  [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
-                  [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
-                  [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
-                  [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
-                  [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
-                  [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
-                placeholder="0"
-                value={amount2}
-                onChange={(e) => handleAmountChange(e.target.value, false)}
-              />
+              <div className="flex items-center w-[60%]">
+                <div className="relative w-[90%]">
+                  <input
+                    type="number"
+                    min="0"
+                    className="input input-ghost w-full text-2xl focus:outline-none px-4 
+                      [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none
+                      [&::-webkit-inner-spin-button]:opacity-100 [&::-webkit-outer-spin-button]:opacity-100
+                      [&::-webkit-inner-spin-button]:bg-base-300 [&::-webkit-outer-spin-button]:bg-base-300
+                      [&::-webkit-inner-spin-button]:h-full [&::-webkit-outer-spin-button]:h-full
+                      [&::-webkit-inner-spin-button]:m-0 [&::-webkit-outer-spin-button]:m-0
+                      [&::-webkit-inner-spin-button]:rounded-r-lg [&::-webkit-outer-spin-button]:rounded-r-lg"
+                    placeholder="0"
+                    value={amount2}
+                    onChange={(e) => handleAmountChange(e.target.value, false)}
+                  />
+                  {isCalculating && (
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                      <div className="loading loading-spinner loading-xs"></div>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-base-300">
                 <Image
                   src={token2Data?.icon_url || getDefaultTokenIcon(token2Data)}
@@ -606,7 +680,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 <span className="text-md">{token2Data?.symbol}</span>
               </div>
             </div>
-            {/* 显示 token2Balance */}
             <div className="flex justify-end items-center mt-2">
             <span className="text-sm text-base-content/60">
               Balance: {token2Balance ? formatTokenBalance(token2Balance.value.toString(), token2Data?.decimals || '18') : '0'} {token2Data ? token2Data.symbol : token2}
@@ -615,7 +688,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           </div>
         </div>
 
-        {/* Price and Pool Share Info */}
         <div className="mt-6 bg-base-200 rounded-3xl p-6">
           <h3 className="text-lg mb-4">Prices and pool share</h3>
           <div className="grid grid-cols-3 gap-4 text-center">
@@ -632,13 +704,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               </div>
             </div>
             <div>
-              <div className="text-lg mb-2">{poolShare}%</div>
+              <div className="text-lg mb-2">{isCalculating ? "Calculating..." : `${poolShare}%`}</div>
               <div className="text-sm text-base-content/60">Share of Pool</div>
             </div>
           </div>
         </div>
 
-        {/* Supply Button */}
         <button
           className={`w-full rounded-lg py-4 text-xl mt-6 ${
             isButtonDisabled
@@ -654,7 +725,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     );
   };
 
-  // 更新按钮显示
   const renderTokenButton = (type: "token1" | "token2") => {
     const tokenData = type === "token1" ? token1Data : token2Data;
     const defaultText = type === "token1" ? token1 : token2;
@@ -697,7 +767,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         </div>
         <div className="flex-1">
           {step === 1 ? (
-            /* Step 1 Content */
             <div className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold mb-3">Select Pair</h2>
@@ -716,13 +785,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 Select a pair of tokens you want to provide liquidity for.
               </p>
 
-              {/* Token Selection */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
                 {renderTokenButton("token1")}
                 {renderTokenButton("token2")}
               </div>
 
-              {/* Fee Tier */}
               <div>
                 <h3 className="text-xl font-bold text-base-content/60 mb-3">
                   Fee Tier
@@ -732,7 +799,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                   of the pool.
                 </p>
 
-                {/* Loading or First Provider Message */}
                 {canContinue && (isLoading || isFirstProvider) && (
                   <div className="mb-8 bg-base-100 px-4 py-2 rounded-lg">
                     {isLoading ? (
@@ -770,13 +836,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
               </div>
             </div>
           ) : (
-            /* Step 2 Content */
             renderStep2()
           )}
         </div>
       </div>
 
-      {/* Token Modal */}
       {showModal && (
         <TokenModal
           address={userAddress || ""}
