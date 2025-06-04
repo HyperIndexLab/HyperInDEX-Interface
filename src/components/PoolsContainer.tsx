@@ -153,13 +153,13 @@ const PoolsContainer: React.FC = () => {
                 <div className="flex gap-2 justify-end">
                   <button 
                     onClick={() => handleRemove(pool, false)} 
-                    className="btn btn-sm btn-outline btn-error rounded-sm px-6"
+                    className="btn btn-sm btn-outline btn-error rounded-full px-6"
                   >
                     Remove
                   </button>
                   <Link 
                     href={`/liquidity?inputCurrency=${pool.token0Address}&outputCurrency=${pool.token1Address}`}
-                    className="btn btn-sm btn-primary rounded-sm px-6"
+                    className="btn btn-sm btn-primary rounded-full px-6"
                   >
                     Add
                   </Link>
