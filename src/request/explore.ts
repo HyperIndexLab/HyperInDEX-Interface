@@ -182,7 +182,7 @@ export const getPools = async (): Promise<Pool[]> => {
 }
 
 const v3Client = new ApolloClient({
-  uri: 'https://api.studio.thegraph.com/query/106985/dex-v3/version/latest',
+  uri:  process.env.BUILD_ENV !== 'production' ? 'https://api.studio.thegraph.com/query/106985/dex-v3/version/latest' : 'https://api.studio.thegraph.com/query/106985/dex-v-3/version/latest',
   cache: new InMemoryCache(),
 });
 

@@ -11,6 +11,7 @@ import { Token, Percent } from '@uniswap/sdk-core';
 import JSBI from 'jsbi';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
 import { NONFUNGIBLE_POSITION_MANAGER_ADDRESS, NONFUNGIBLE_POSITION_MANAGER_ABI } from '@/constant/ABI/NonfungiblePositionManager';
+import BigNumber from 'bignumber.js';
 
 export interface PoolInfo {  
   token0Symbol: string;
@@ -35,8 +36,6 @@ export interface PoolInfo {
   token1?: Token;
   pool?: Pool;
 }
-
-import BigNumber from 'bignumber.js';
 
 interface RemoveLiquidityModalProps {
   isOpen: boolean;
@@ -67,6 +66,11 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
  
   const { remove, approve, isRemoving, isApproving, isWaiting } = useRemoveLiquidity();
   const [needsApproval, setNeedsApproval] = useState(true);
+
+    // 根据不同代币的精度来格式化数值
+  const formatTokenAmount = (amount: BigNumber, decimals: number) => {
+    return amount.dividedBy(new BigNumber(10).pow(decimals));
+  };
 
   const amounts = useMemo(() => {
     if (!poolData) return null;
@@ -115,13 +119,9 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       const token0Amount = reserve0.multipliedBy(userBalance).dividedBy(totalSupply);
       const token1Amount = reserve1.multipliedBy(userBalance).dividedBy(totalSupply);
       
-      // 根据不同代币的精度来格式化数值
-      const formatTokenAmount = (amount: BigNumber, decimals: number) => {
-        return amount.dividedBy(new BigNumber(10).pow(decimals));
-      };
-  
       const token0Formatted = formatTokenAmount(reserve0, token0Decimals);
       const token1Formatted = formatTokenAmount(reserve1, token1Decimals);
+    
       
       const token0Price = token1Formatted.dividedBy(token0Formatted);
       const token1Price = token0Formatted.dividedBy(token1Formatted);
@@ -256,6 +256,11 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
   const handleRemove = async () => {
     if (!amounts || !poolData) return;
     
+
+    // 设置滑点
+    const slippage = 0.005; // 0.5%
+
+
     let removeParams;
     if (pool.isV3) {
       removeParams = {
@@ -272,19 +277,34 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       };
     } else {
       const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
-      const amount0 = BigNumber(amounts.token0Amount.toString()).multipliedBy(percentage).dividedBy(100).integerValue();
-      const amount1 = BigNumber(amounts.token1Amount.toString()).multipliedBy(percentage).dividedBy(100).integerValue();
+     // 原始数量（无滑点）
+      const rawAmount0 = new BigNumber(amounts.token0Amount.toString())
+      .multipliedBy(percentage)
+      .dividedBy(100);
 
-      console.log(amount0.toString(), amount1.toString(), 'amount0, amount1');
-      
+      const rawAmount1 = new BigNumber(amounts.token1Amount.toString())
+      .multipliedBy(percentage)
+      .dividedBy(100);
+
+      // 加入滑点后再转 BigInt（向下取整）
+      const amount0 = rawAmount0
+      .multipliedBy(1 - slippage)
+      .integerValue(BigNumber.ROUND_DOWN)
+      .toFixed();
+
+      const amount1 = rawAmount1
+      .multipliedBy(1 - slippage)
+      .integerValue(BigNumber.ROUND_DOWN)
+      .toFixed();
+
       removeParams = {
         isV3: false,
         token0Address: pool.token0Address,
         token1Address: pool.token1Address,
         userAddress: pool.userAddress,
         lpAmount,
-        amount0: BigInt(amount0.toString()),
-        amount1: BigInt(amount1.toString()),
+        amount0: BigInt(amount0),
+        amount1: BigInt(amount1),
         pairAddress: pool.pairAddress,
       }
     }
