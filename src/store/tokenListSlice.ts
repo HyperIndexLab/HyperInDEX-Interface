@@ -169,7 +169,7 @@ export const fetchTokenList = createAsyncThunk(
   }
 );
 
-const TOKEN_PATH =  process.env.BUILD_ENV !== 'production'  ?  '/api/tokenlist/test-tokenlist' : '/api/tokenlist'
+const TOKEN_PATH =  process.env.BUILD_ENV !== 'production'  ?  '/api/tokenlist' : '/api/tokenlist'
 
 // 添加手动刷新action
 export const refreshTokenList = createAsyncThunk(
