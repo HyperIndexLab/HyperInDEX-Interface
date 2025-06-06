@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "BUILD_ENV=production next build",
-    "build:test": "BUILD_ENV=test next build",
+    "build:test": "BUILD_ENV=production next build",
     "build:prod": "BUILD_ENV=production next build",
     "start": "next start",
     "lint": "next lint"
