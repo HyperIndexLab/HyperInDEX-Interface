@@ -154,13 +154,16 @@ export const fetchTokenList = createAsyncThunk(
           },
       ];
 
-      // 提取所有 ERC-20 类型的 token
-      const erc20Tokens = jsonData
-          .filter((item: { token: { type: string } }) => item.token.type === 'ERC-20')
+
+      if (process.env.BUILD_ENV === 'test') {
+        // 提取所有 ERC-20 类型的 token
+        const erc20Tokens = jsonData
+            .filter((item: { token: { type: string } }) => item.token.type === 'ERC-20')
           .map((item: { token: any }) => item.token);
 
-      // 将提取出的 token 添加到 allTokens
-      allTokens = [...allTokens, ...erc20Tokens];
+        // 将提取出的 token 添加到 allTokens
+        allTokens = [...allTokens, ...erc20Tokens];
+      }
 
       return allTokens;
     } catch (error) {
