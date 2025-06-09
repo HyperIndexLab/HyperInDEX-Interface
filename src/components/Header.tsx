@@ -198,7 +198,6 @@ export default function Header() {
   
   // const chainId = useChainId();
   const { isConnected, address } = useAccount();
-  
   // 检查网络并在需要时自动切换
   useEffect(() => {
     const switchNetwork = async () => {

@@ -4,9 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "BUILD_ENV=production next build",
-    "build:test": "BUILD_ENV=production next build",
-    "build:prod": "BUILD_ENV=production next build",
+    "build": "cross-env BUILD_ENV=production next build",
+    "build:test": "cross-env BUILD_ENV=test next build",
+    "build:prod": "cross-env BUILD_ENV=production next build",
     "start": "next start",
     "lint": "next lint"
   },
@@ -29,6 +29,7 @@
     "@uniswap/v3-sdk": "^3.19.0",
     "axios": "^1.7.9",
     "bignumber.js": "^9.1.2",
+    "cross-env": "^7.0.3",
     "echarts": "^5.6.0",
     "graphql": "^16.10.0",
     "gray-matter": "^4.0.3",
