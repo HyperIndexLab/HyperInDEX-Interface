@@ -159,7 +159,7 @@ const tokenPriceDataManager = new ParameterizedRequestManager<TokenPriceData[], 
 
 export const getTokens = async (): Promise<Token[]> => {
   return tokensManager.request(async () => {
-    const requestUrl = process.env.BUILD_ENV !== 'production' 
+    const requestUrl = process.env.BUILD_ENV === 'test' 
       ? '/api/testnet-explore/tokens'
       : '/api/explore/tokens';
     const res = await api.get(requestUrl);
@@ -173,7 +173,7 @@ export const getTokens = async (): Promise<Token[]> => {
 
 export const getPools = async (): Promise<Pool[]> => {
   return poolsManager.request(async () => {
-    const requestUrl = process.env.BUILD_ENV !== 'production' 
+    const requestUrl = process.env.BUILD_ENV === 'test' 
       ? '/api/testnet-explore/pools'
       : '/api/explore/pools';
     const res = await api.get(requestUrl);
@@ -182,7 +182,7 @@ export const getPools = async (): Promise<Pool[]> => {
 }
 
 const v3Client = new ApolloClient({
-  uri:  process.env.BUILD_ENV !== 'production' ? 'https://api.studio.thegraph.com/query/106985/dex-v3/version/latest' : 'https://api.studio.thegraph.com/query/106985/dex-v-3/version/latest',
+  uri:  process.env.BUILD_ENV === 'test' ? 'https://api.studio.thegraph.com/query/106985/dex-v3/version/latest' : 'https://api.studio.thegraph.com/query/106985/dex-v-3/version/latest',
   cache: new InMemoryCache(),
 });
 
@@ -278,7 +278,7 @@ export const getPoolsByVersion = async (version: 'v2' | 'v3' = 'v3'): Promise<Po
 export const getPoolPriceData = async (poolAddress: string, days: number): Promise<PoolPriceData[]> => {
   return poolPriceDataManager.request(
     async (address, days) => {
-      const requestUrl = process.env.BUILD_ENV !== 'production' 
+      const requestUrl = process.env.BUILD_ENV === 'test' 
         ? `api/explore/pool/${address}/${days}`
         : `/api/explore/pool/${address}/${days}`;
       const res = await api.get(requestUrl);
@@ -292,7 +292,7 @@ export const getPoolPriceData = async (poolAddress: string, days: number): Promi
 export const getTokenPriceData = async (tokenAddress: string, days: number): Promise<TokenPriceData[]> => {
   return tokenPriceDataManager.request(
     async (address, days) => {
-      const requestUrl = process.env.BUILD_ENV !== 'production' 
+      const requestUrl = process.env.BUILD_ENV === 'test' 
         ? `api/explore/token/${address}/${days}`
         : `/api/explore/token/${address}/${days}`;
       const res = await api.get(requestUrl);

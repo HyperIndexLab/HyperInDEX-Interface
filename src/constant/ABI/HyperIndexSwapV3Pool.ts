@@ -1,4 +1,4 @@
-export const SWAP_V3_POOL_ADDRESS = process.env.BUILD_ENV !== "production" 
+export const SWAP_V3_POOL_ADDRESS = process.env.BUILD_ENV === 'test' 
   ? '0x2469B4692b8550686C69Ad4Edd643B78f0815558'
   : '0x2833E47F3d85Cb7eC0568C4f9BE32360047bfDE5';
 
