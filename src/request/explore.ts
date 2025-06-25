@@ -377,26 +377,6 @@ export interface PoolDetail {
 
 // 转换池子详情数据为 Pool 格式
 const transformPoolDetailToPool = (pool: PoolDetail): Pool => {
-  console.log(pool, 'pool');
-  if (!pool) {
-    return {
-      id: '0',
-      token0: '',
-      token1: '',
-      pairsName: '',
-      pairsAddress: '',
-      TVL: '0',
-      APY: 0,
-      tradingVolume1D: 0,
-      tradingVolume30D: 0,
-      totalValueLockedUSD: '0',
-      volumeUSD: '0',
-      feeTier: '0',
-      totalValueLockedToken0: '0',
-      totalValueLockedToken1: '0',
-      totalValueLockedETH: '0',
-    }
-  }
   const dailyFees = parseFloat(pool.collectedFeesUSD);
   const tvl = parseFloat(pool.totalValueLockedUSD);
   const apy = tvl > 0 ? (dailyFees * 365 / tvl) * 100 : 0;

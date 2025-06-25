@@ -49,8 +49,9 @@ export default function Page() {
 
 	const fetchPools = async () => {
 		setLoading(true)
+		const pools = await getPools()
 		try {
-			const pools = await getPools()
+			
 			const poolDetail = await getPoolDetail(hash as string)
 
 			if (poolDetail) {
@@ -60,7 +61,7 @@ export default function Page() {
 				setPoolData(pools)
 			}
 		} catch (error) {
-			console.error('Failed to fetch pool list:', error)
+			setPoolData(pools)
 		} finally {
 			setLoading(false)
 		}
@@ -135,6 +136,7 @@ export default function Page() {
 	}, [hash, pool])
 
 	useEffect(() => {
+		console.log('poolData===2', poolData)
 		const pool = poolData.find((pool) => pool.pairsAddress === hash);
 		
 		if (pool && tokens.length > 0) {
