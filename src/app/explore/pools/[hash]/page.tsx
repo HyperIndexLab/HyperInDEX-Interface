@@ -273,12 +273,14 @@ export default function Page() {
 								<Chart 
 									token0={isReversed ? poolPriceData[0]?.token0Symbol : poolPriceData[0]?.token1Symbol || ''} 
 									token1={isReversed ? poolPriceData[0]?.token1Symbol : poolPriceData[0]?.token0Symbol || ''} 
-									data={poolPriceData.map((item) => ({
-										time: dayjs(item.timestamp).format('MM-DD HH:mm'),
-										price: isReversed ? 
-											Number(parseFloat(item.token1VsToken0).toFixed(6)) : 
-											Number(parseFloat(item.token0VsToken1).toFixed(4))
-									}))} 
+									data={poolPriceData
+										.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+										.map((item) => ({
+											time: dayjs(item.timestamp).format('MM-DD HH:mm'),
+											price: isReversed ? 
+												Number(parseFloat(item.token1VsToken0).toFixed(6)) : 
+												Number(parseFloat(item.token0VsToken1).toFixed(4))
+										}))} 
 									type="pool" 
 									onRangeChange={handleRangeChange}
 								/>
