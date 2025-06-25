@@ -18,6 +18,8 @@ import {
 } from "@tanstack/react-query";
 import { particleWallet, particleGoogleWallet, particleTwitterWallet } from './ParticleWallet';
 
+console.log(process.env.BUILD_ENV, 'process.env.BUILD_ENV');
+
 export const MAINNET_CHAIN_ID = 177;
 export const TESTNET_CHAIN_ID = 133;
 const hashkeyMainnet = {
@@ -60,7 +62,7 @@ const wagmiConfig = getDefaultConfig({
 		},
 	],
 	chains: [
-		process.env.NODE_ENV === 'development' ? hashkeyTestnet : hashkeyMainnet,
+		process.env.BUILD_ENV === 'test' ? hashkeyTestnet : hashkeyMainnet,
 	],
 	transports: {
 		[hashkeyMainnet.id]: fallback([
@@ -68,7 +70,7 @@ const wagmiConfig = getDefaultConfig({
 			http('https://mainnet.0xhsk.xyz'),
 		]),
 		[hashkeyTestnet.id]: fallback([
-			http('https://hashkeychain-testnet.alt.technology'),
+			http('https://testnet.hsk.xyz'),
 		]),
 	},
 	ssr: true,

@@ -7,7 +7,10 @@ import { fetchTokenList, selectTokens, selectTokensLoading, refreshTokenList } f
 import { fetchUserTokens, selectUserTokens, selectUserTokensLoading, refreshUserTokens } from '../store/userTokensSlice';
 import { AppDispatch } from '../store';
 import { RootState } from '../store';
-import { formatTokenBalance } from '../utils/formatTokenBalance';
+import { formatTokenBalance, formatNumberAbbr } from '../utils/formatTokenBalance';
+import { ArrowPathIcon, CircleStackIcon } from '@heroicons/react/24/outline';
+import { StarIcon, XMarkIcon } from '@heroicons/react/24/solid';
+import BigNumber from 'bignumber.js';
 
 export const DEFAULT_TOKEN_ICON = 'https://hyperindex.4everland.store/index-coin.jpg';
 
@@ -99,6 +102,16 @@ const TokenModal: React.FC<TokenModalProps> = ({
     setSearchQuery(value.toLowerCase());
   };
 
+  // 获取token价格
+  const getTokenPrice = (symbol: string | null) => {
+    if (!symbol) return 0;
+    const found = tokens.find(t => t.symbol === symbol);
+    if (!found || !(found as any).price) return 0;
+    // 兼容价格带$和不带$的情况
+    const priceStr = (found as any).price;
+    return parseFloat(typeof priceStr === 'string' ? priceStr.replace('$', '') : priceStr);
+  };
+
   // 过滤用户代币列表
   const filteredUserTokens = userTokens.filter(userToken => 
     userToken.token.symbol?.toLowerCase().includes(searchQuery) || 
@@ -158,22 +171,28 @@ const TokenModal: React.FC<TokenModalProps> = ({
     );
   };
 
+  // 格式化地址
+  const formatAddress = (address: string) => {
+    if (!address) return '';
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
   return (
     <div className="fixed inset-0 flex justify-center items-center z-50">
       <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="relative bg-base-100 rounded-lg w-[400px] max-h-[80vh] overflow-y-auto shadow-lg">
-        <div className="flex justify-between items-center p-6">
+      <div className="relative bg-base-100 rounded-lg w-[400px] max-h-[80vh] overflow-y-auto shadow-lg border border-base-content/30">
+        <div className="flex justify-between items-center py-6 px-4">
           <h2 className="text-lg font-semibold text-base-content">Select Token</h2>
           <button 
             className="text-base-content hover:text-error" 
             onClick={onClose}
           >
-            &times;
+           <XMarkIcon className='w-4 h-4 text-base-content/60' />
           </button>
         </div>
         
-        <label className="input input-bordered flex items-center gap-2 mx-6 mb-6">
+        <label className="input input-bordered flex items-center gap-2 mx-4 mb-6">
           <input type="text" className="grow" placeholder="Search" onChange={(e) => handleSearch(e.target.value)} />
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -189,22 +208,16 @@ const TokenModal: React.FC<TokenModalProps> = ({
 
         {userTokens.length > 0 && (
           <>
-            <div className="px-6 py-2 text-sm font-medium text-neutral flex justify-between items-center">
-              <span>Your Tokens</span>
+            <div className="px-6 py-2 text-sm font-medium text-neutral flex justify-between items-center ">
+              <div className='flex items-center gap-2'>
+                <CircleStackIcon className='w-4 h-4 text-base-content/60' />
+                <span className='text-base-content/60'>Your Tokens</span>
+              </div>
               <button 
                 onClick={handleUserTokensRefresh}
-                className="btn btn-ghost btn-xs"
+                className="btn btn-ghost btn-xs text-base-content/60"
               >
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  strokeWidth={1.5} 
-                  stroke="currentColor" 
-                  className="w-4 h-4"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-                </svg>
+                <ArrowPathIcon className='w-4 h-4' />
               </button>
             </div>
             {userTokensLoading ? (
@@ -221,62 +234,62 @@ const TokenModal: React.FC<TokenModalProps> = ({
               </div>
             ) : (
               <div className="mb-4">
-                {filteredUserTokens.map((userToken) => (
-                  <div 
-                    key={userToken.token.address} 
-                    className="flex justify-between items-center py-2 px-6 hover:bg-black hover:bg-opacity-20 cursor-pointer"
-                    onClick={() => handleTokenSelect(
-                      userToken.token, 
-                      userToken.value,
-                      userToken.token.decimals
-                    )}
-                  >
-                    <div className="flex items-center">
-                      <img 
-                        src={userToken.token.icon_url || DEFAULT_TOKEN_ICON} 
-                        alt={userToken.token.name || 'Token'} 
-                        className="w-8 h-8 mr-3 rounded-full" 
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = DEFAULT_TOKEN_ICON;
-                        }}
-                      />
-                      <div>
-                        <div className="text-base-content font-medium">
-                          {userToken.token.symbol || '-'}
-                          {userToken.token.source_platform && (
-                            <span className="ml-2">{renderSourcePlatform(userToken.token.source_platform)}</span>
-                          )}
+                {filteredUserTokens.map((userToken) => {
+                  const price = getTokenPrice(userToken.token.symbol);
+                  const balance = formatTokenBalance(userToken.value, userToken.token.decimals);
+                  const value = BigNumber(balance).multipliedBy(price).toNumber();
+                  return (
+                    <div 
+                      key={userToken.token.address} 
+                      className="flex justify-between items-center py-2 px-4 hover:bg-black hover:bg-opacity-20 cursor-pointer"
+                      onClick={() => handleTokenSelect(
+                        userToken.token, 
+                        userToken.value,
+                        userToken.token.decimals
+                      )}
+                    >
+                      <div className="flex items-center">
+                        <img 
+                          src={userToken.token.icon_url || DEFAULT_TOKEN_ICON} 
+                          alt={userToken.token.name || 'Token'} 
+                          className="w-8 h-8 mr-3 rounded-full" 
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = DEFAULT_TOKEN_ICON;
+                          }}
+                        />
+                        <div className="min-w-0 truncate">
+                          <div className="text-base-content font-medium truncate">
+                            {userToken.token.name || '-'}
+                            {userToken.token.source_platform && (
+                              <span className="ml-2">{renderSourcePlatform(userToken.token.source_platform)}</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-base-content/60 truncate">{userToken.token.symbol || 'Unknown Token'} <span className='text-base-content/40'>{formatAddress(userToken.token.address)}</span></div>
                         </div>
-                        <div className="text-xs text-neutral">{userToken.token.name || 'Unknown Token'}</div>
+                      </div>
+                      <div className="text-right text-sm text-base-content/60 flex flex-col items-end">
+                        <span>{formatNumberAbbr(balance)}</span>
+                        <span className="text-xs text-primary mt-1"> ${value > 0.01 ? value.toFixed(2) : value > 0 ? value.toPrecision(2) : '0.00'}</span>
                       </div>
                     </div>
-                    <div className="text-right text-sm text-neutral">
-                      {formatTokenBalance(userToken.value, userToken.token.decimals)}
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </>
         )}
 
-        <div className="px-6 py-2 text-sm font-medium text-neutral flex justify-between items-center">
-          <span>All Tokens</span>
+        <div className="px-4 py-2 text-sm font-medium text-neutral flex justify-between items-center">
+          <div className='flex items-center gap-2'>
+            <StarIcon className='w-4 h-4 text-base-content/60' />
+            <span className='text-base-content/60'>All Tokens</span>
+          </div>
           <button 
             onClick={handleAllTokensRefresh}
-            className="btn btn-ghost btn-xs"
+            className="btn btn-ghost btn-xs text-base-content/60"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              fill="none" 
-              viewBox="0 0 24 24" 
-              strokeWidth={1.5} 
-              stroke="currentColor" 
-              className="w-4 h-4"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-            </svg>
+            <ArrowPathIcon className='w-4 h-4' />
           </button>
         </div>
         {tokensLoading ? (
@@ -296,7 +309,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
             {filteredTokens.map((token) => (
               <div 
                 key={token.address} 
-                className="flex justify-between items-center py-2 px-6 hover:bg-black hover:bg-opacity-20 cursor-pointer"
+                className="flex justify-between items-center py-2 px-4 hover:bg-black hover:bg-opacity-20 cursor-pointer"
                 onClick={() => handleTokenSelect(token)}
               >
                 <div className="flex items-center">
@@ -316,7 +329,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
                         <span className="ml-2">{renderSourcePlatform(token.source_platform)}</span>
                       )}
                     </div>
-                    <div className="text-xs text-neutral">{token.name || 'Unknown Token'}</div>
+                    <div className="text-xs text-base-content/60">{token.name || 'Unknown Token'} {formatAddress(token.address)}</div>
                   </div>
                 </div>
               </div>
@@ -326,7 +339,7 @@ const TokenModal: React.FC<TokenModalProps> = ({
 
         {!selectedToken && (
           <div 
-            className="flex justify-between items-center py-2 px-6 hover:bg-black hover:bg-opacity-20 cursor-pointer"
+            className="flex justify-between items-center py-2 px-4 hover:bg-black hover:bg-opacity-20 cursor-pointer"
             onClick={() => handleTokenSelect({
               symbol: 'HSK',
               name: 'HyperSwap Token',

@@ -426,7 +426,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 
           {/* 内容区域 */}
           <div className="flex-1 overflow-y-auto px-2 py-4">
-            {isLoading ? (
+            {isLoading || (tokenBalances.length === 0 && userTokens.length !== 0) ? (
               <TokenSkeleton />
             ) : (
               <>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Geist, Geist_Mono } from "next/font/google";
+import { Sora } from "next/font/google";
 import "./globals.css";
 import { Provider } from 'react-redux';
 import { AuthCoreContextProvider } from '@particle-network/auth-core-modal';
@@ -14,14 +14,10 @@ import { Suspense } from "react";
 import ChatAgent from '@/components/ChatAgent';
 import { ToastProvider } from "@/components/ToastContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const sora = Sora({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export default function RootLayout({
@@ -36,7 +32,7 @@ export default function RootLayout({
           <title>Hyper Index</title>
           <meta name="description" content="Hyper Index: The premier decentralized exchange (DEX) on HashKey Chain offering seamless trading, liquidity provision, and DeFi services. Experience low fees, high security, and advanced trading tools for the HashKey ecosystem." />
         </head>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen`}>
+        <body className={`${sora.className} antialiased min-h-screen`}>
           <Theme dataTheme="dark">
             <ToastProvider>
               <AuthCoreContextProvider

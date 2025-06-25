@@ -198,21 +198,19 @@ export default function Header() {
   
   // const chainId = useChainId();
   const { isConnected, address } = useAccount();
-  
   // 检查网络并在需要时自动切换
   useEffect(() => {
     const switchNetwork = async () => {
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       const chainIdInt = parseInt(chainId || '0', 16);
 
-      const changeChaindId = process.env.NODE_ENV === 'development' ? TESTNET_CHAIN_ID : MAINNET_CHAIN_ID;
+      const changeChaindId = process.env.BUILD_ENV === 'test' ? TESTNET_CHAIN_ID : MAINNET_CHAIN_ID;
    
       if (chainIdInt !== changeChaindId) {
         setIsWrongNetwork(true);
         try {
           await switchChain(wagmiConfig, { chainId: changeChaindId });
           setIsWrongNetwork(false);
-          console.log(`链切换成功到链ID ${changeChaindId}`);
         } catch (error) {
           console.error('切换链失败：', error);
         }

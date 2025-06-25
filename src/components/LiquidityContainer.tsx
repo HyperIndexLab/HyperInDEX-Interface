@@ -154,6 +154,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     if (tokens.length === 0) {
       return;
     }
+
     tokens.forEach(token => {
       if (token.address === token1) {
         const tokenData: TokenData = {
@@ -730,7 +731,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
     return (
       <button
-        className="w-full bg-base-300/50 hover:bg-base-300/70 rounded-full py-4 px-6 
+        className="w-full bg-base-content/30 hover:bg-base-300/70 rounded-full py-4 px-6 
           flex justify-between items-center transition-all border border-transparent 
           hover:border-base-content/10"
         onClick={() => {
@@ -759,7 +760,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   };
 
   return (
-    <div className="w-full max-w-[860px] px-4 sm:px-6 lg:px-0">
+    <div className="w-full max-w-[960px] px-4 sm:px-6 lg:px-0">
       <div className="flex w-full flex-col lg:flex-row gap-8">
         <div className="hidden lg:block w-[360px] flex-shrink-0">
           <StepIndicator currentStep={step} />
@@ -767,7 +768,19 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         <div className="flex-1">
           {step === 1 ? (
             <div className="bg-base-200/30 backdrop-blur-sm rounded-2xl p-6">
-              <h2 className="text-xl font-bold mb-3">Select Pair</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold mb-3">Select Pair</h2>
+
+                <div className="dropdown dropdown-end">
+                  <div tabIndex={0} role="button" className="btn btn-sm rounded-xl bg-[#1c1d22] hover:bg-[#2c2d33] border border-white/5">
+                    <span>V2 Position</span>
+                    <ChevronDownIcon className="w-4 h-4 ml-1" />
+                  </div>
+                  <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-[#1c1d22] rounded-xl w-40 border border-white/5">
+                    <li><a href={`/liquidity/v3?inputCurrency=${token1Data?.address}&outputCurrency=${token2Data?.address}`} className="text-base-content/60 hover:bg-[#2c2d33] rounded-lg">V3 Position</a></li>
+                  </ul>
+                </div>
+              </div>
               <p className="text-md text-base-content/60 mb-8">
                 Select a pair of tokens you want to provide liquidity for.
               </p>

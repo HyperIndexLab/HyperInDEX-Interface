@@ -1,6 +1,6 @@
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
-import { getPools, getTokens, Pool, Token } from "@/request/explore";
+import { getPools, getPoolsByVersion, getTokens, Pool, Token } from "@/request/explore";
 import { formatUnits } from "viem";
 import { formatNumber } from "@/utils";
 import Image from "next/image";
@@ -139,7 +139,8 @@ export default function Explore({ activeTab }: { activeTab: number }) {
     setLoading(true);
     try {
       const pools = await getPools();
-      setPoolData(pools);
+      const poolsv3 = await getPoolsByVersion('v3');
+      setPoolData([...pools, ...poolsv3]);
     } catch (error) {
       console.error("Failed to fetch pool list:", error);
     } finally {
@@ -150,11 +151,10 @@ export default function Explore({ activeTab }: { activeTab: number }) {
   useEffect(() => {
     if (activeTab === 1 && tokenData.length === 0) {
       fetchTokens();
-    } else if (activeTab === 2 && poolData.length === 0) {
+    } else if (activeTab === 2) {
       fetchPools();
     }
-  }, [activeTab, tokenData.length, poolData.length]);
-
+  }, [activeTab]);
 
   // 添加上升下降指示器组件
   const PriceChangeIndicator = ({ value }: { value: string }) => {
@@ -249,6 +249,11 @@ export default function Explore({ activeTab }: { activeTab: number }) {
               </Link>
             ))}
           </div>
+          {activeTab === 2 && (
+            <Link href="/liquidity/v3" className="btn btn-sm btn-primary rounded-md ml-6">
+              Add Liquidity
+            </Link>
+          )}
         </div>
 
         {/* Table Card */}
@@ -298,7 +303,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                     tokenData.map((row) => (
                       <tr
                         key={row.id}
-                        className="hover:bg-base-200/30 transition-colors duration-200 cursor-pointer"
+                        className="hover:bg-base-content/10 transition-colors duration-200 cursor-pointer"
                         onClick={() => {
                           window.location.href = `/explore/tokens/${row.address}`;
                         }}
@@ -367,7 +372,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
 
                   {/* Pools */}
                   {poolData.length > 0 && activeTab === 2 && poolData.map(row => (
-                    <tr key={row.id} className="hover:bg-base-200/30 transition-colors duration-200">
+                    <tr key={row.pairsAddress} className="hover:bg-base-content/10 transition-colors duration-200">
                       <td className="font-mono text-sm text-base-content/70">{row.id}</td>
                       <td>
                         <Link href={`/explore/pools/${row.pairsAddress}`} className="flex items-center gap-3">
@@ -400,7 +405,23 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                               })()}
                             </div>
                             <div>
-                              <div className="font-medium text-base">{row.pairsName}</div>
+                              <div className="font-medium text-base flex items-center gap-2">
+                                <span>{row.pairsName}</span>
+                                {row.feeTier ? (
+                                  <>
+                                    <span className="px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
+                                        V3 
+                                      </span>
+                                    <span className="px-2 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
+                                      {parseInt(row.feeTier) / 10000}%
+                                    </span>
+                                  </>
+                                ) : (
+                                  <span className="px-2 py-0.5 text-xs rounded-full bg-secondary/20 text-secondary">
+                                    V2
+                                  </span>
+                                )}
+                              </div>
                               <div className="text-xs text-base-content/60">Pool</div>
                             </div>
                           </div>

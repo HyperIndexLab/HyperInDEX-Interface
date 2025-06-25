@@ -7,8 +7,9 @@ import Image from 'next/image';
 import Chart from '@/components/Chart';
 import { getTokens, getTokenPriceData, Token, TokenPriceData } from '@/request/explore';
 import dayjs from 'dayjs';
-import SwapContainer from '@/components/SwapContainer';
+// import SwapContainer from '@/components/SwapContainer';
 import { formatTradeVolume } from '@/components/Explore';
+import SwapContainerV3 from '@/components/SwapContainerV3';
 
 
 export default function TokenPage() {
@@ -46,7 +47,7 @@ export default function TokenPage() {
             fetchTokenData();
             fetchTokenPriceData(1);
         }
-    }, [hash]);
+    }, [hash, fetchTokenData, fetchTokenPriceData]);
 
 
     useEffect(() => {
@@ -120,7 +121,8 @@ export default function TokenPage() {
                       </button>
                       	{/* Swap容器 */}
                       <div className={`mt-6 transition-all duration-300 ease-in-out ${showSwap ? 'opacity-100 max-h-[500px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
-                        <SwapContainer  token2={token?.address} />
+                        {/* <SwapContainer  token2={token?.address} /> */}
+                        <SwapContainerV3 token2={token?.address} />
                       </div>
                       <div className="grid grid-cols-1 gap-4">
                           <div className="stat bg-base-200 rounded-box p-4">

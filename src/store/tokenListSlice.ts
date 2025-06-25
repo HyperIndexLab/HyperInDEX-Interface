@@ -43,7 +43,7 @@ export const fetchTokenList = createAsyncThunk(
       let hasMoreData = true;
       
       while (hasMoreData) {
-        const response = await fetch(`${newBaseUrl}/api/tokenlist?page=${page}&pageSize=${pageSize}`);
+        const response = await fetch(`${newBaseUrl}${TOKEN_PATH}?page=${page}&pageSize=${pageSize}`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -61,13 +61,118 @@ export const fetchTokenList = createAsyncThunk(
           page++;
         }
       }
-      
+
+      const jsonData = [
+          {
+              "token": {
+                  "address": "0x60EFCa24B785391C6063ba37fF917Ff0edEb9f4a",
+                  "circulating_market_cap": null,
+                  "decimals": "6",
+                  "exchange_rate": null,
+                  "holders": "44",
+                  "icon_url": null,
+                  "name": "TEST USDT",
+                  "symbol": "USDT",
+                  "total_supply": "400001000001070280001000000",
+                  "type": "ERC-20",
+                  "volume_24h": null
+              },
+              "token_id": null,
+              "token_instance": null,
+              "value": "199999999999869498548041311"
+          },
+          {
+              "token": {
+                  "address": "0xB5876E245a48De8df9E3C9Bd2CD55996965eBfad",
+                  "circulating_market_cap": null,
+                  "decimals": "18",
+                  "exchange_rate": null,
+                  "holders": "5",
+                  "icon_url": null,
+                  "name": "StableSwap Pool (TEST DAI, TEST USDT)",
+                  "symbol": "StableSwap LP: DAI-USDT",
+                  "total_supply": "212349247690394177328770006",
+                  "type": "ERC-20",
+                  "volume_24h": null
+              },
+              "token_id": null,
+              "token_instance": null,
+              "value": "85783643057545127056170477"
+          },
+          {
+              "token": {
+                  "address": "0x15f95a11537e17024b25F5F5377c8bc03562e310",
+                  "circulating_market_cap": null,
+                  "decimals": "18",
+                  "exchange_rate": null,
+                  "holders": "4",
+                  "icon_url": null,
+                  "name": "StableSwap Pool (TEST HongKong Dollar A, TEST HongKong Dollar B)",
+                  "symbol": "StableSwap LP: HKDA-HKDB",
+                  "total_supply": "58700490534227185219425802",
+                  "type": "ERC-20",
+                  "volume_24h": null
+              },
+              "token_id": null,
+              "token_instance": null,
+              "value": "28764995805968466573835570"
+          },
+          {
+              "token": {
+                  "address": "0xE8bbE0E706EbDaB3Be224edf2FE6fFff16df1AC1",
+                  "circulating_market_cap": null,
+                  "decimals": "18",
+                  "exchange_rate": null,
+                  "holders": "11",
+                  "icon_url": null,
+                  "name": "TEST HongKong Dollar A",
+                  "symbol": "HKDA",
+                  "total_supply": "1050000000000050000000000000",
+                  "type": "ERC-20",
+                  "volume_24h": null
+              },
+              "token_id": null,
+              "token_instance": null,
+              "value": "18968271712540045741956482"
+          },
+          {
+              "token": {
+                  "address": "0x779CA066b69F4B39cD77bA1a1C4d3c5c097A441e",
+                  "circulating_market_cap": null,
+                  "decimals": "18",
+                  "exchange_rate": null,
+                  "holders": "8",
+                  "icon_url": null,
+                  "name": "TEST HongKong Dollar B",
+                  "symbol": "HKDB",
+                  "total_supply": "1050000000000000000000000000",
+                  "type": "ERC-20",
+                  "volume_24h": null
+              },
+              "token_id": null,
+              "token_instance": null,
+          },
+      ];
+
+
+      if (process.env.BUILD_ENV === 'test') {
+        // 提取所有 ERC-20 类型的 token
+        const erc20Tokens = jsonData
+            .filter((item: { token: { type: string } }) => item.token.type === 'ERC-20')
+          .map((item: { token: any }) => item.token);
+
+        // 将提取出的 token 添加到 allTokens
+        allTokens = [...allTokens, ...erc20Tokens];
+      }
+
       return allTokens;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : '获取token列表失败');
     }
   }
 );
+
+const TOKEN_PATH =  process.env.BUILD_ENV === 'test'  ?  '/api/tokenlist/test-tokenlist' : '/api/tokenlist'
 
 // 添加手动刷新action
 export const refreshTokenList = createAsyncThunk(
@@ -80,7 +185,7 @@ export const refreshTokenList = createAsyncThunk(
     let hasMoreData = true;
     
     while (hasMoreData) {
-      const response = await fetch(`${newBaseUrl}/api/tokenlist?page=${page}&pageSize=${pageSize}`);
+      const response = await fetch(`${newBaseUrl}${TOKEN_PATH}?page=${page}&pageSize=${pageSize}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }

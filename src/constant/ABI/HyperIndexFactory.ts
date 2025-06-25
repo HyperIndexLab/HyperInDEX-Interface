@@ -1,4 +1,4 @@
-export const FACTORY_CONTRACT_ADDRESS = process.env.NODE_ENV === "development" 
+export const FACTORY_CONTRACT_ADDRESS = process.env.BUILD_ENV === 'test' 
   ? '0xCDF5BbeBcFaf0f0A05aB8D9B73DB1468a64652c3'
   : '0x09ee9eCc6E2B458508E05Da7f90E324AE54620D2';
 
