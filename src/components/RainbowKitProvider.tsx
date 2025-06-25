@@ -18,6 +18,8 @@ import {
 } from "@tanstack/react-query";
 import { particleWallet, particleGoogleWallet, particleTwitterWallet } from './ParticleWallet';
 
+console.log(process.env.BUILD_ENV, 'process.env.BUILD_ENV');
+
 export const MAINNET_CHAIN_ID = 177;
 export const TESTNET_CHAIN_ID = 133;
 const hashkeyMainnet = {

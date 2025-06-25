@@ -1,4 +1,5 @@
 import { parseUnits, formatUnits, Address } from 'viem';
+import BigNumber from 'bignumber.js';
 import { SWAP_V3_POOL_ABI as POOL_ABI } from '@/constant/ABI/HyperIndexSwapV3Pool';
 import { QUOTE_CONTRACT_ADDRESS, QUOTE_ABI } from '../constant/ABI/HyperIndexV3Quote';
 import { PAIR_ABI } from '@/constant/ABI/HyperIndexPair';
@@ -416,11 +417,21 @@ async function calculateV2Swap(
     
     // 计算价格影响
     let priceImpactValue = '0';
-    if (tokenInReserve > BigInt(0) && tokenOutReserve > BigInt(0)) {
-      const currentPrice = (tokenInReserve * BigInt(10000)) / tokenOutReserve;
-      const executionPrice = (amountIn * BigInt(10000)) / amountOut;
-      const priceImpactBps = ((executionPrice - currentPrice) * BigInt(10000)) / currentPrice;
-      priceImpactValue = (Number(priceImpactBps) / 100).toFixed(2);
+    if (tokenInReserve > BigInt(0) && tokenOutReserve > BigInt(0) && amountOut > BigInt(0)) {
+      // 使用BigNumber进行精确计算
+      const currentPriceBN = new BigNumber(formatUnits(tokenInReserve, token1.decimals))
+                             .dividedBy(new BigNumber(formatUnits(tokenOutReserve, token2.decimals)));
+      const executionPriceBN = new BigNumber(formatUnits(amountIn, token1.decimals))
+                               .dividedBy(new BigNumber(formatUnits(amountOut, token2.decimals)));
+      
+      // 计算价格影响百分比
+      if (currentPriceBN.gt(0) && executionPriceBN.gt(0)) {
+        const priceImpactPercent = executionPriceBN.minus(currentPriceBN)
+                                   .dividedBy(currentPriceBN)
+                                   .multipliedBy(100)
+                                   .abs();
+        priceImpactValue = priceImpactPercent.toFixed(2);
+      }
     }
 
     return {

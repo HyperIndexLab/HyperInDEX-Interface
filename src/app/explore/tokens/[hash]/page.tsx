@@ -58,10 +58,12 @@ export default function TokenPage() {
     }, [hash, tokenData])
 
     const formatPriceData = useCallback(() => {
-        return priceData.map((item) => ({
-            time: dayjs(item.timestamp).format('MM-DD HH:mm'),
-            price: Number(item.price)
-        }));
+        return priceData
+            .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+            .map((item) => ({
+                time: dayjs(item.timestamp).format('MM-DD HH:mm'),
+                price: Number(item.price)
+            }));
     }, [priceData]);
 
 

@@ -126,8 +126,8 @@ export function useRemoveLiquidity() {
         const token0Address = isToken0WHSK ? params.token1Address : params.token0Address;
         const token1Address = isToken0WHSK ? params.token0Address : params.token1Address;
         const lpAmount = params.lpAmount;
-        const amountAMin = params.amount0;
-        const amountBMin = params.amount1;
+        const amountAMin = (params.amount0 * 99n) / 100n;
+        const amountBMin = (params.amount1 * 99n) / 100n;
         const userAddress = params.userAddress;
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
 

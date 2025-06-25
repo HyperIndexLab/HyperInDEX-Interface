@@ -256,10 +256,14 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
   const handleRemove = async () => {
     if (!amounts || !poolData) return;
     
+    const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
+    const amount0 = BigNumber(amounts.token0Amount.toString()).multipliedBy(percentage).dividedBy(100).integerValue();
+    const amount1 = BigNumber(amounts.token1Amount.toString()).multipliedBy(percentage).dividedBy(100).integerValue();
 
     // 设置滑点
     const slippage = 0.005; // 0.5%
 
+    console.log(amount0.toString(), amount1.toString(), '2xxxx===');
 
     let removeParams;
     if (pool.isV3) {
@@ -267,8 +271,8 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         isV3: true,
         tokenId: pool.tokenId,
         lpAmount: (pool.liquidity! * BigInt(percentage)) / 100n,
-        amount0: BigInt(amounts.token0Amount.toString()),
-        amount1: BigInt(amounts.token1Amount.toString()),
+        amount0: BigInt(amount0.toString()),
+        amount1: BigInt(amount1.toString()),
         userAddress: pool.userAddress,
         position: amounts.constructPosition,
         percentage: percentage,
@@ -303,8 +307,8 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         token1Address: pool.token1Address,
         userAddress: pool.userAddress,
         lpAmount,
-        amount0: BigInt(amount0),
-        amount1: BigInt(amount1),
+        amount0: BigInt(amount0.toString()),
+        amount1: BigInt(amount1.toString()),
         pairAddress: pool.pairAddress,
       }
     }
