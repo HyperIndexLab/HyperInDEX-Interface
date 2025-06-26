@@ -264,7 +264,6 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     // 设置滑点
     const slippage = 0.005; // 0.5%
 
-    console.log(amount0.toString(), amount1.toString(), '2xxxx===');
 
     let removeParams;
     if (pool.isV3) {
