@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import TokenModal from "./TokenModal";
 import {
   PlusIcon,
   ChevronDownIcon,
   ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
-import { useAccount, useBalance, useWriteContract } from "wagmi";
+import { useAccount, useBalance, useWriteContract, useReadContract, useWaitForTransactionReceipt } from "wagmi";
 import { WHSK } from "@/constant/value";
 import {
   ROUTER_CONTRACT_ADDRESS,
@@ -29,6 +29,7 @@ import { readContract, simulateContract } from "wagmi/actions";
 import { wagmiConfig } from "./RainbowKitProvider";
 import BigNumber from "bignumber.js";
 import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
+import { erc20Abi } from "viem";
 
 interface LiquidityContainerProps {
   token1?: string;
@@ -43,6 +44,11 @@ interface TokenData {
   balance?: string;
   decimals?: string | null;
 }
+
+// 判断是否为原生 HSK 的函数 - 只有真正的原生 HSK 地址为 0x0000000000000000000000000000000000000000
+const isNativeHSK = (token: TokenData | null): boolean => {
+  return token?.symbol === "HSK" && token?.address === "0x0000000000000000000000000000000000000000";
+};
 
 const DEFAULT_HSK_TOKEN: TokenData = {
   symbol: "HSK",
@@ -79,14 +85,26 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const [amount1, setAmount1] = useState("");
   const [amount2, setAmount2] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [isSuccessHandled, setIsSuccessHandled] = useState(false);
   const {
     writeContract,
     isPending: isWritePending,
     isSuccess: isWriteSuccess,
     isError: isWriteError,
     error: writeError,
+    data: transactionHash,
   } = useWriteContract();
+  
+  // 等待交易确认
+  const { 
+    isLoading: isConfirming, 
+    isSuccess: isConfirmed 
+  } = useWaitForTransactionReceipt({
+    hash: transactionHash,
+  });
+  
   const { toast } = useToast();
+  
   const [poolShare, setPoolShare] = useState("0.00");
   const [calculationTimeout, setCalculationTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -104,17 +122,17 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     data: token1Balance, 
   } = useBalance({
     address: userAddress,
-    token: token1Data?.symbol !== 'HSK' ? token1Data?.address as `0x${string}` : undefined,
+    token: !isNativeHSK(token1Data) ? token1Data?.address as `0x${string}` : undefined,
     query: {
-      enabled: !!userAddress && !!token1Data && token1Data.symbol !== 'HSK',
+      enabled: !!userAddress && !!token1Data && !isNativeHSK(token1Data),
     },
   });
 
   const { data: token2Balance } = useBalance({
     address: userAddress,
-    token: token2Data?.symbol !== 'HSK' ? token2Data?.address as `0x${string}` : undefined,
+    token: !isNativeHSK(token2Data) ? token2Data?.address as `0x${string}` : undefined,
     query: {
-      enabled: !!userAddress && !!token2Data && token2Data.symbol !== 'HSK',
+      enabled: !!userAddress && !!token2Data && !isNativeHSK(token2Data),
     },
   });
 
@@ -129,6 +147,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     amount2,
     userAddress
   );
+
+
 
   useEffect(() => {
     if (!token1Data && token1 === "HSK") {
@@ -181,16 +201,44 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
   const canContinue = token1Data && token2Data;
 
+  const calculationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   const handleAmountChange = async (value: string, isToken1: boolean) => {
-    if (isCalculating) return;
+    // 立即更新输入值，不被计算状态阻塞
+    if (isToken1) {
+      setAmount1(value);
+    } else {
+      setAmount2(value);
+    }
+
+    // 如果是首次提供流动性，不需要计算比例
     if (isFirstProvider) {
-      if (isToken1) {
-        setAmount1(value);
-      } else {
-        setAmount2(value);
-      }
-    } else if (poolInfo) {
+      return;
+    }
+
+    // 如果没有池子信息，直接返回
+    if (!poolInfo) {
+      return;
+    }
+
+    // 清除之前的计算定时器
+    if (calculationTimeoutRef.current) {
+      clearTimeout(calculationTimeoutRef.current);
+    }
+
+    // 防抖延迟计算
+    calculationTimeoutRef.current = setTimeout(async () => {
       const amount = parseFloat(value);
+      if (!amount || amount <= 0) {
+        // 如果输入为空或0，清空另一个输入框
+        if (isToken1) {
+          setAmount2("");
+        } else {
+          setAmount1("");
+        }
+        return;
+      }
+
       setIsCalculating(true);
 
       try {
@@ -201,52 +249,29 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
         
         const isOrderMatched = token1Data?.address === token0Address;
+        const token1Decimals = Number(token1Data?.decimals || '18');
+        const token2Decimals = Number(token2Data?.decimals || '18');
+        
+        const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
+        const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
 
         if (isToken1) {
-          setAmount1(value);
-          if (amount > 0) {
-            const token1Decimals = Number(token1Data?.decimals || '18');
-            const token2Decimals = Number(token2Data?.decimals || '18');
-            
-            const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
-            const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
-        
-            const ratio = isOrderMatched
-              ? reserve1 / reserve0
-              : reserve0 / reserve1;
-
-            const adjustedAmount = amount * ratio;
-            const formattedAmount = adjustedAmount.toFixed(Number(token2Data?.decimals || 18));
-            setAmount2(formattedAmount);
-          } else {
-            setAmount2("");
-          }
+          const ratio = isOrderMatched ? reserve1 / reserve0 : reserve0 / reserve1;
+          const adjustedAmount = amount * ratio;
+          const formattedAmount = adjustedAmount.toFixed(Number(token2Data?.decimals || 18));
+          setAmount2(formattedAmount);
         } else {
-          setAmount2(value);
-          if (amount > 0) {
-            const token1Decimals = Number(token1Data?.decimals || '18');
-            const token2Decimals = Number(token2Data?.decimals || '18');
-            
-            const reserve0 = Number(poolInfo.reserve0) / Math.pow(10, isOrderMatched ? token1Decimals : token2Decimals);
-            const reserve1 = Number(poolInfo.reserve1) / Math.pow(10, isOrderMatched ? token2Decimals : token1Decimals);
-            
-            const ratio = isOrderMatched
-              ? reserve0 / reserve1
-              : reserve1 / reserve0;
-            
-            const adjustedAmount = amount * ratio;
-            const formattedAmount = adjustedAmount.toFixed(Number(token1Data?.decimals || 18));
-            setAmount1(formattedAmount);
-          } else {
-            setAmount1("");
-          }
+          const ratio = isOrderMatched ? reserve0 / reserve1 : reserve1 / reserve0;
+          const adjustedAmount = amount * ratio;
+          const formattedAmount = adjustedAmount.toFixed(Number(token1Data?.decimals || 18));
+          setAmount1(formattedAmount);
         }
       } catch (error) {
         console.error("Error calculating amount:", error);
       } finally {
         setIsCalculating(false);
       }
-    }
+    }, 300); // 300ms 防抖延迟
   };
 
   useEffect(() => {
@@ -256,7 +281,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
     const timeoutId = setTimeout(() => {
       calculatePoolShare();
-    }, 300);
+    }, 800); // 增加防抖延迟，减少计算频率
 
     setCalculationTimeout(timeoutId);
 
@@ -378,6 +403,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
     try {
       setIsPending(true);
+      setIsSuccessHandled(false);
        // 根据代币的小数位数计算金额
       const token1Decimals = Number(token1Data.decimals || '18');
       const token2Decimals = Number(token2Data.decimals || '18');
@@ -385,8 +411,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       const amount1Big = BigInt(Math.floor(parseFloat(amount1) * Math.pow(10, token1Decimals)));
       const amount2Big = BigInt(Math.floor(parseFloat(amount2) * Math.pow(10, token2Decimals)));
       // 计算最小接收数量
-      const minAmount1 = (amount1Big * BigInt(99)) / BigInt(100);
-      const minAmount2 = (amount2Big * BigInt(99)) / BigInt(100);
+      const minAmount1 = (amount1Big * BigInt(85)) / BigInt(100);
+      const minAmount2 = (amount2Big * BigInt(85)) / BigInt(100);
       // 判断是否包含 HSK
       const isToken1HSK = token1Data.symbol === "HSK";
       const isToken2HSK = token2Data.symbol === "HSK";
@@ -443,21 +469,22 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   };
 
   useEffect(() => {
-    if (isWriteSuccess && !isWritePending) {
-      setTimeout(() => {
-        refreshPool();
-        setAmount1("");
-        setAmount2("");
-        setStep(1);
-        setIsPending(false);
-        toast({
-          type: 'success',
-          message: 'Successfully added liquidity!',
-          isAutoClose: true
-        });   
-      }, 3000);
+    if (isConfirmed && !isSuccessHandled) {
+      setIsSuccessHandled(true);
+      refreshPool();
+      setAmount1("");
+      setAmount2("");
+      setStep(1);
+      setIsPending(false);
+      toast({
+        type: 'success',
+        message: 'Liquidity added successfully!',
+        isAutoClose: true
+      });   
     }
+  }, [isConfirmed, isSuccessHandled, refreshPool, toast]);
 
+  useEffect(() => {
     if (isWriteError && writeError) {
       setIsPending(false);
       let errorMessage = "add liquidity failed, please try again.";
@@ -475,6 +502,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             errorMessage = "transaction deadline, please try again.";
           } else if (message.includes("slippage")) {
             errorMessage = "slippage too high, please adjust the slippage tolerance or reduce the transaction amount.";
+          } else if (message.includes("transfer_from_failed")) {
+            errorMessage = "transfer failed. please check your token balance and allowance.";
           }
         }
       }
@@ -485,8 +514,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         isAutoClose: false
       });
     }
-
-  }, [isWriteSuccess, isWritePending]);
+  }, [isWriteError, writeError, toast]);
 
   const clearStep2Data = () => {
     setAmount1("");
@@ -549,9 +577,10 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     };
 
     const needsApproval = needApprove.token1 || needApprove.token2;
-    const isButtonDisabled = !amount1 || !amount2 || isPending || isWritePending || isApproving;
+    const isButtonDisabled = !amount1 || !amount2 || isPending || isWritePending || isApproving || isConfirming;
 
     const getButtonText = () => {
+      if (isConfirming) return "Confirming...";
       if (isPending || isWritePending) return "Processing...";
       if (isApproving) return "Approving...";
       if (needApprove.token1) return `Approve ${token1Data?.symbol}`;
@@ -569,6 +598,64 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         });
         return;
       }
+      
+      // 检查余额
+      if (token1Data && token2Data && amount1 && amount2) {
+        const token1Decimals = Number(token1Data.decimals || '18');
+        const token2Decimals = Number(token2Data.decimals || '18');
+        
+        const amount1Required = BigInt(Math.floor(parseFloat(amount1) * Math.pow(10, token1Decimals)));
+        const amount2Required = BigInt(Math.floor(parseFloat(amount2) * Math.pow(10, token2Decimals)));
+
+        // 检查 token1 余额
+        if (!isNativeHSK(token1Data)) {
+          const token1Bal = token1Balance?.value || BigInt(0);
+          if (token1Bal < amount1Required) {
+            toast({
+              type: 'error',
+              message: `Insufficient ${token1Data.symbol} balance. Required: ${amount1}, Available: ${formatTokenBalance(token1Bal.toString(), token1Data.decimals || '18')}`,
+              isAutoClose: true
+            });
+            return;
+          }
+        } else {
+          // 原生 HSK 使用 hskBalance
+          const hskBal = hskBalance?.value || BigInt(0);
+          if (hskBal < amount1Required) {
+            toast({
+              type: 'error',
+              message: `Insufficient HSK balance. Required: ${amount1}, Available: ${formatTokenBalance(hskBal.toString(), '18')}`,
+              isAutoClose: true
+            });
+            return;
+          }
+        }
+
+        // 检查 token2 余额
+        if (!isNativeHSK(token2Data)) {
+          const token2Bal = token2Balance?.value || BigInt(0);
+          if (token2Bal < amount2Required) {
+            toast({
+              type: 'error',
+              message: `Insufficient ${token2Data.symbol} balance. Required: ${amount2}, Available: ${formatTokenBalance(token2Bal.toString(), token2Data.decimals || '18')}`,
+              isAutoClose: true
+            });
+            return;
+          }
+        } else {
+          // 原生 HSK 使用 hskBalance
+          const hskBal = hskBalance?.value || BigInt(0);
+          if (hskBal < amount2Required) {
+            toast({
+              type: 'error',
+              message: `Insufficient HSK balance. Required: ${amount2}, Available: ${formatTokenBalance(hskBal.toString(), '18')}`,
+              isAutoClose: true
+            });
+            return;
+          }
+        }
+      }
+      
       if (needsApproval) {
         await handleApprove(needApprove.token1);
       } else {
@@ -633,7 +720,13 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             </div>
             <div className="flex justify-end items-center mt-2">
               <span className="text-sm text-base-content/60">
-                Balance: {token1Balance ? formatTokenBalance(token1Balance.value.toString(), token1Data?.decimals || '18') : '0'} {token1Data ? token1Data.symbol : token1}
+                Balance: {
+                  isNativeHSK(token1Data) && hskBalance 
+                    ? formatTokenBalance(hskBalance.value.toString(), '18')
+                    : token1Balance 
+                      ? formatTokenBalance(token1Balance.value.toString(), token1Data?.decimals || '18') 
+                      : '0'
+                } {token1Data ? token1Data.symbol : token1}
               </span>
             </div>
           </div>
@@ -682,7 +775,13 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             </div>
             <div className="flex justify-end items-center mt-2">
             <span className="text-sm text-base-content/60">
-              Balance: {token2Balance ? formatTokenBalance(token2Balance.value.toString(), token2Data?.decimals || '18') : '0'} {token2Data ? token2Data.symbol : token2}
+              Balance: {
+                isNativeHSK(token2Data) && hskBalance 
+                  ? formatTokenBalance(hskBalance.value.toString(), '18')
+                  : token2Balance 
+                    ? formatTokenBalance(token2Balance.value.toString(), token2Data?.decimals || '18') 
+                    : '0'
+              } {token2Data ? token2Data.symbol : token2}
             </span>
           </div>
           </div>
