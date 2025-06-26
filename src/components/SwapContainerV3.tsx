@@ -122,6 +122,19 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     },
   });
 
+  // 为 token2Balance 添加 useBalance hook
+  const { 
+    data: token2Balance, 
+    refetch: refetchToken2Balance 
+  } = useBalance({
+    address: userAddress,
+    token: token2Data?.symbol !== 'HSK' ? token2Data?.address as `0x${string}` : undefined,
+    query: {
+      enabled: !!userAddress && !!token2Data && token2Data.symbol !== 'HSK',
+    },
+  });
+
+
   // 处理代币选择，特别处理 HSK/WHSK
   const handleTokenSelect = (tokenData: TokenData) => {
     if (modalType === 'token1') {
@@ -549,6 +562,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         setTimeout(() => {
           refetchHskBalance();
           refetchToken1Balance();
+          refetchToken2Balance();
         }, 1000);
     }
 
@@ -592,7 +606,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
       setTxStatus('failed');
     }
-  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchHskBalance, refetchToken1Balance, refetchAllowance, swapSuccessed]);
+  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchHskBalance, refetchToken1Balance, refetchToken2Balance, refetchAllowance, swapSuccessed]);
 
 
   // 2. 检查余额是否足够
@@ -947,6 +961,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         // 刷新余额
         await refetchHskBalance();
         await refetchToken1Balance();
+        await refetchToken2Balance();
       }
       
       // 其他代币对的常规 swap 逻辑
@@ -1491,7 +1506,17 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           <div className="flex justify-between items-center mt-2">
             <span className='text-base-content/60'>{token2Price !== '-' ? `$${formatNumberWithCommas(token2Price)}` : '-'}</span>
             <span className="text-sm text-base-content/60">
-              Balance: {formatBalance(token2Data?.balance, token2Data?.decimals)} {displaySymbol(token2Data)}
+              {token2Data ? (
+                <>
+                  Balance: {
+                    token2Data.symbol === 'HSK' 
+                      ? formatTokenBalance(hskBalance?.value?.toString() || '0', '18')
+                      : formatTokenBalance(token2Balance?.value?.toString() || '0', token2Data.decimals || '18')
+                  } {displaySymbol(token2Data)}
+                </>
+              ) : (
+                'Balance: -'
+              )}
             </span>
           </div>
         </div>
