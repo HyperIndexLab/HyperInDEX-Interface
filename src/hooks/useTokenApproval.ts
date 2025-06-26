@@ -7,10 +7,6 @@ import { useToast } from "@/components/ToastContext";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { wagmiConfig } from "@/components/RainbowKitProvider";
 
-// 判断是否为原生 HSK 的函数
-const isNativeHSK = (token: TokenData | null): boolean => {
-  return token?.symbol === "HSK" && token?.address === "0x0000000000000000000000000000000000000000";
-};
 
 export function useTokenApproval(
   token1Data: TokenData | null,
@@ -70,11 +66,9 @@ export function useTokenApproval(
 
       setNeedApprove({
         token1:
-          !isNativeHSK(token1Data) &&
           allowance1 !== undefined &&
           BigInt(allowance1.toString()) < amount1Big,
         token2:
-          !isNativeHSK(token2Data) &&
           allowance2 !== undefined &&
           BigInt(allowance2.toString()) < amount2Big,
       });
