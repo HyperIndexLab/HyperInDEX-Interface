@@ -13,6 +13,9 @@ const withMDX = createMDX({
 
 const nextConfig: NextConfig = {
   /* config options here */
+  env: {
+    BUILD_ENV: process.env.BUILD_ENV || 'production',
+  },
   images: {
     remotePatterns: [
       {

@@ -123,15 +123,14 @@ export function useRemoveLiquidity() {
         const isToken0WHSK = params.token0Address === WHSK;
         const isToken1WHSK = params.token1Address === WHSK;
 
-        const token0Address = isToken0WHSK ? params.token1Address : params.token0Address;
-        const token1Address = isToken0WHSK ? params.token0Address : params.token1Address;
+        const token0Address = params.token0Address;
+        const token1Address = params.token1Address;
         const lpAmount = params.lpAmount;
         const amountAMin = (params.amount0 * 99n) / 100n;
         const amountBMin = (params.amount1 * 99n) / 100n;
         const userAddress = params.userAddress;
         const deadline = BigInt(Math.floor(Date.now() / 1000) + 1800);
 
-        
         // V2: 调用 Router 的 removeLiquidity 方法
         hash = await writeV2Router({
           address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,

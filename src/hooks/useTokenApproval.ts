@@ -7,6 +7,7 @@ import { useToast } from "@/components/ToastContext";
 import { waitForTransactionReceipt } from "wagmi/actions";
 import { wagmiConfig } from "@/components/RainbowKitProvider";
 
+
 export function useTokenApproval(
   token1Data: TokenData | null,
   token2Data: TokenData | null,
@@ -56,16 +57,18 @@ export function useTokenApproval(
     if (!amount1 || !amount2) return;
 
     try {
-      const amount1Big = BigInt(Math.floor(parseFloat(amount1) * 1e18));
-      const amount2Big = BigInt(Math.floor(parseFloat(amount2) * 1e18));
+      // 使用每个代币的实际小数位数
+      const token1Decimals = Number(token1Data?.decimals || '18');
+      const token2Decimals = Number(token2Data?.decimals || '18');
+      
+      const amount1Big = BigInt(Math.floor(parseFloat(amount1) * Math.pow(10, token1Decimals)));
+      const amount2Big = BigInt(Math.floor(parseFloat(amount2) * Math.pow(10, token2Decimals)));
 
       setNeedApprove({
         token1:
-          token1Data?.symbol !== "HSK" &&
           allowance1 !== undefined &&
           BigInt(allowance1.toString()) < amount1Big,
         token2:
-          token2Data?.symbol !== "HSK" &&
           allowance2 !== undefined &&
           BigInt(allowance2.toString()) < amount2Big,
       });
