@@ -116,8 +116,9 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
       const token0Decimals = pool.token0Symbol === "USDT" ? 6 : 18;
       const token1Decimals = pool.token1Symbol === "USDT" ? 6 : 18;
   
-      const token0Amount = reserve0.multipliedBy(userBalance).dividedBy(totalSupply);
-      const token1Amount = reserve1.multipliedBy(userBalance).dividedBy(totalSupply);
+      const token0Amount = reserve0.multipliedBy(userBalance).dividedBy(totalSupply).toFixed(0);
+      const token1Amount = reserve1.multipliedBy(userBalance).dividedBy(totalSupply).toFixed(0);
+
       
       const token0Formatted = formatTokenAmount(reserve0, token0Decimals);
       const token1Formatted = formatTokenAmount(reserve1, token1Decimals);
@@ -257,8 +258,8 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
     if (!amounts || !poolData) return;
     
     const lpAmount = (poolData.userBalance * BigInt(percentage)) / 100n;
-    const amount0 = BigNumber(amounts.token0Amount.toString()).multipliedBy(percentage).dividedBy(100).integerValue();
-    const amount1 = BigNumber(amounts.token1Amount.toString()).multipliedBy(percentage).dividedBy(100).integerValue();
+    const amount0 = BigNumber(amounts.token0Amount.toString()).multipliedBy(percentage).dividedBy(100).toFixed(0);
+    const amount1 = BigNumber(amounts.token1Amount.toString()).multipliedBy(percentage).dividedBy(100).toFixed(0);
 
     // 设置滑点
     const slippage = 0.005; // 0.5%
