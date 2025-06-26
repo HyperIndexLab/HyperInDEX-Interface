@@ -86,19 +86,24 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const [v2Enabled, setV2Enabled] = useState(true);
 
 
-  // 检查授权额度
+  // 检查授权额度 - 根据当前选择的版本检查对应路由合约的授权
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: token1Data?.address as `0x${string}`,
+    address: token1Data?.symbol === 'HSK' ? WHSK as `0x${string}` : token1Data?.address as `0x${string}`,
     abi: erc20Abi,
     functionName: 'allowance',
     args: userAddress && token1Data ? [
       userAddress,
-      ROUTER_CONTRACT_V3_ADDRESS       
+      isV3 ? ROUTER_CONTRACT_V3_ADDRESS : ROUTER_CONTRACT_ADDRESS       
     ] : undefined,
     query: {
-      enabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
+      enabled: !!(userAddress && token1Data),
+      // 确保在授权过程中定期刷新数据
+      refetchInterval: txStatus === 'pending' && currentTx === 'approve' ? 2000 : false,
     },
   });
+
+  
+
   // 修改 useBalance hook 的调用,解构出 refetch 函数
   const { 
     data: hskBalance, 
@@ -160,6 +165,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     setToken2Amount('');
     setMinimumReceived('0');
     setPriceImpact('0');
+    setIsApproved(false);
     setShowModal(false);
     setSwapSuccessed(false);
   };
@@ -226,9 +232,24 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     if (allowance && token1Amount && token1Data) {
       const amountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
       const isApprovedNow = allowance >= amountBigInt;
+   
       setIsApproved(isApprovedNow);
+    } else {
+      setIsApproved(false);
     }
   }, [allowance, token1Amount, token1Data, userAddress]);
+
+  // 当交易状态从pending变为success且是approve交易时，强制刷新授权状态
+  useEffect(() => {
+    if (txStatus === 'success' && currentTx === 'none') {
+      // 可能是刚刚完成的approve交易，延迟刷新授权状态
+      const timer = setTimeout(() => {
+        refetchAllowance();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [txStatus, currentTx, refetchAllowance]);
 
   // 添加处理百分比点击的函数
   const handlePercentageClick = (percentage: number) => {
@@ -444,8 +465,25 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     setToken2Amount('');
     setMinimumReceived('0');
     setPriceImpact('0');
+    setIsApproved(false);
     setSwapSuccessed(false);
   };
+
+
+  // 添加一个专门的刷新余额函数
+  const refreshAllBalances = useCallback(async () => {
+    console.log('刷新所有余额...');
+    try {
+      await Promise.all([
+        refetchHskBalance(),
+        refetchToken1Balance(),
+        refetchToken2Balance(),
+      ]);
+      console.log('余额刷新完成');
+    } catch (error) {
+      console.error('刷新余额失败:', error);
+    }
+  }, [refetchHskBalance, refetchToken1Balance, refetchToken2Balance]);
 
   // 使用useCallback和防抖处理计算交换信息
   const calculateSwap = useCallback(async () => {
@@ -534,36 +572,33 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         return;
     }
 
-    if (isWriteSuccess && currentTx === 'swap' && hash) {
-        toast({
-          type: 'info',
-          message: 'Transaction submitted!',
-          isAutoClose: true
-        });
-    }
+    // if (isWriteSuccess && currentTx === 'swap' && hash) {
+    //     toast({
+    //       type: 'info',
+    //       message: 'Transaction submitted!',
+    //       isAutoClose: true
+    //     });
+    // }
 
-    if (currentTx === 'swap' && swapSuccessed) {
-        toast({
-          type: 'success',
-          message: 'Swap completed successfully!',
-          isAutoClose: true
-        });
-        
-        // 重置状态
-        setToken1Amount('');
-        setToken2Amount('');
-        setMinimumReceived('0');
-        setPriceImpact('0');
-        setPoolFee('0');
-        setTxStatus('success');
-        setCurrentTx('none');
+    // 交易确认后直接刷新余额
+    if (isTxConfirmed && currentTx === 'swap') {
+      toast({
+        type: 'success',
+        message: 'Swap completed successfully!',
+        isAutoClose: true
+      });
+      
+      // 重置状态
+      setToken1Amount('');
+      setToken2Amount('');
+      setMinimumReceived('0');
+      setPriceImpact('0');
+      setPoolFee('0');
+      setTxStatus('success');
+      setCurrentTx('none');
 
-        // 重新获取余额
-        setTimeout(() => {
-          refetchHskBalance();
-          refetchToken1Balance();
-          refetchToken2Balance();
-        }, 1000);
+      refreshAllBalances();
+      setTimeout(() => refreshAllBalances(), 2000);
     }
 
     if (isTxConfirmed && currentTx === 'approve') {
@@ -574,7 +609,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       });
       setCurrentTx('none');
       setTxStatus('success');
-      refetchAllowance();
+      
+      setTimeout(() => refetchAllowance(), 1000);
     }
 
     if (isWriteError) {
@@ -606,7 +642,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
       setTxStatus('failed');
     }
-  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchHskBalance, refetchToken1Balance, refetchToken2Balance, refetchAllowance, swapSuccessed]);
+  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchAllowance, refreshAllBalances]);
 
 
   // 2. 检查余额是否足够
@@ -629,6 +665,54 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const handleApprove = async () => {
     if (!token1Data || !token1Amount) return;
 
+    // 如果token1是HSK，需要先deposit为WHSK再授权
+    if (token1Data.symbol === 'HSK') {
+      try {
+        setError(null);
+        setCurrentTx('approve');
+        setTxStatus('pending');
+
+        // 1. 先 deposit HSK 为 WHSK
+        toast({
+          type: 'info',
+          message: 'Converting HSK to WHSK...',
+          isAutoClose: true
+        });
+
+        const depositSuccess = await depositHskToWhsk(token1Amount);
+        if (!depositSuccess) {
+          setTxStatus('failed');
+          return;
+        }
+
+        // 2. 授权 WHSK
+        toast({
+          type: 'info',
+          message: 'Approving WHSK...',
+          isAutoClose: true
+        });
+
+        const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+        
+        const params = {
+          address: WHSK as `0x${string}`,
+          abi: erc20Abi,
+          functionName: 'approve' as const,
+          args: [isV3 ? ROUTER_CONTRACT_V3_ADDRESS as `0x${string}` : ROUTER_CONTRACT_ADDRESS as `0x${string}`, amountToApprove] as const,
+        };
+
+        writeContract(params);
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Approval failed');
+        setTxStatus('none');
+        toast({
+          type: 'error',
+          message: 'Approval failed, please try again'
+        });
+      }
+      return;
+    }
 
     if (isV3) {
       try {
@@ -765,7 +849,17 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       };
     }
 
-    if (token1Data.symbol !== 'HSK' && !isApproved) {
+    // 需要授权的情况
+    const needsApproval = token1Data && token2Data && (
+      // HSK → 其他代币：需要授权WHSK
+      (token1Data.symbol === 'HSK' && token2Data.symbol !== 'WHSK') ||
+      // WHSK → 其他代币：需要授权
+      (token1Data.symbol === 'WHSK' && token2Data.symbol !== 'HSK') ||
+      // 其他代币 → 任何代币：需要授权
+      (token1Data.symbol !== 'HSK' && token1Data.symbol !== 'WHSK')
+    );
+    
+    if (needsApproval && !isApproved) {
       return {
         text: 'Approve',
         disabled: false,
@@ -819,7 +913,28 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         setCurrentTx('swap');
         setTxStatus('pending');
         
-        await writeContract(params);
+        const txHash = await writeContractAsync(params);
+        
+        // 等待交易确认
+        if (txHash) {
+          const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+          if (receipt.status === 'success') {
+            // 立即刷新余额
+            await refreshAllBalances();
+            
+            // toast({
+            //   type: 'success',
+            //   message: 'HSK to WHSK conversion completed!',
+            //   isAutoClose: true
+            // });
+            
+            // 重置状态
+            setToken1Amount('');
+            setToken2Amount('');
+            setTxStatus('success');
+            setCurrentTx('none');
+          }
+        }
         return true;
       }
 
@@ -844,7 +959,28 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         setCurrentTx('swap');
         setTxStatus('pending');
         
-        await writeContract(params);
+        const txHash = await writeContractAsync(params);
+        
+        // 等待交易确认
+        if (txHash) {
+          const receipt = await waitForTransactionReceipt(wagmiConfig, { hash: txHash });
+          if (receipt.status === 'success') {
+            // 立即刷新余额
+            await refreshAllBalances();
+            
+            toast({
+              type: 'success',
+              message: 'WHSK to HSK conversion completed!',
+              isAutoClose: true
+            });
+            
+            // 重置状态
+            setToken1Amount('');
+            setToken2Amount('');
+            setTxStatus('success');
+            setCurrentTx('none');
+          }
+        }
         return true;
       }
 
@@ -943,15 +1079,16 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       const isHskWhskSwap = await handleHskWhskSwap(token1Data, token2Data, token1Amount);
       if (isHskWhskSwap) return;
 
-      // 如果输入代币是 HSK，先进行 deposit
+      // 如果输入代币是 HSK，需要特殊处理：deposit + swap
       if (token1Data.symbol === 'HSK') {
         setTxStatus('pending');
         toast({
           type: 'info',
-          message: 'Depositing HSK to WHSK...',
+          message: 'Processing HSK to WHSK conversion...',
           isAutoClose: true
         });
 
+        // 1. 先 deposit HSK 为 WHSK
         const depositSuccess = await depositHskToWhsk(token1Amount);
         if (!depositSuccess) {
           setTxStatus('failed');
@@ -1056,9 +1193,9 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       const mintTx = await sendTransaction(wagmiConfig, transaction);
       const mintReceipt = await waitForTransactionReceipt(wagmiConfig, { hash: mintTx });
 
-      if (mintReceipt) {
+      if (mintReceipt && mintReceipt.status === 'success') {
         // 如果输出代币是 HSK，在 swap 完成后自动提取 WHSK
-        if (token2Data.symbol === 'HSK' && mintReceipt.status === 'success') {
+        if (token2Data.symbol === 'HSK') {
           toast({
             type: 'info',
             message: 'Withdrawing WHSK to HSK...',
@@ -1075,7 +1212,23 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           }
         }
 
-        setSwapSuccessed(true);
+        // 立即刷新余额
+        await refreshAllBalances();
+        
+        toast({
+          type: 'success',
+          message: 'Swap completed successfully!',
+          isAutoClose: true
+        });
+        
+        // 重置状态
+        setToken1Amount('');
+        setToken2Amount('');
+        setMinimumReceived('0');
+        setPriceImpact('0');
+        setPoolFee('0');
+        setTxStatus('success');
+        setCurrentTx('none');
       }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'unknown error';
@@ -1112,6 +1265,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           setTxStatus('pending');
           
           await writeContract(params);
+          setSwapSuccessed(true);
           return;
         }
   
@@ -1138,6 +1292,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           setTxStatus('pending');
           
           await writeContract(params);
+          setSwapSuccessed(true);
           return;
         }
   
@@ -1189,6 +1344,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         setTxStatus('pending');
         
         await writeContract(params);
+        
+        setSwapSuccessed(true);
       } catch (error) {
         console.error('Swap failed:', error);
         // 显示更详细的错误信息
@@ -1227,6 +1384,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       setIsV3(false);
     }
   }, [v3Enabled]);
+
 
   return (
     <>

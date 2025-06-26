@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "cross-env BUILD_ENV=test next dev",
+    "dev": "cross-env BUILD_ENV=production next dev",
     "build": "cross-env BUILD_ENV=production next build",
     "build:test": "cross-env BUILD_ENV=test next build",
     "build:prod": "cross-env BUILD_ENV=production next build",
