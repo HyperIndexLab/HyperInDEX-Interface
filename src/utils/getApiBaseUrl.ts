@@ -1,7 +1,7 @@
 export const getApiBaseUrl = () => {
   return process.env.BUILD_ENV === 'test' 
     ? 'https://hashkeychain-testnet-explorer.alt.technology'
-    : 'https://explorer.hsk.xyz';
+    : 'https://hashkey.blockscout.com';
 }; 
 
 export const getNewApiBaseUrl = () => {
