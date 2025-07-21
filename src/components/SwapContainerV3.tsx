@@ -7,6 +7,7 @@ import { useAccount, useBalance, useReadContract, useWaitForTransactionReceipt, 
 import { ArrowsUpDownIcon, ChevronDownIcon, Cog6ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { estimateAndCheckGas, formatNumberWithCommas } from '@/utils';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
+import { useGasEstimation } from '@/hooks/useGasEstimation';
 import { usePoolAddress } from '@/hooks/usePoolAddress';
 import { fetchTokenList, selectTokens } from '@/store/tokenListSlice';
 import { useDispatch, useSelector } from 'react-redux';
@@ -15,7 +16,7 @@ import { WHSK } from '@/constant/value';
 import { getSwapInfo } from '@/hooks/useSwapInfo';
 import { getTokens, Token } from '@/request/explore';
 import { erc20Abi, parseUnits } from 'viem';
-import { ROUTER_CONTRACT_V3_ADDRESS } from '@/constant/ABI/HyperindexV3Router';;
+import { ROUTER_CONTRACT_V3_ADDRESS, ROUTER_CONTRACT_V3_ABI } from '@/constant/ABI/HyperindexV3Router';;
 import { useToast } from '@/components/ToastContext';
 import { WETH_ABI } from '@/constant/ABI/weth';
 import { Token as UniToken, CurrencyAmount, Percent, TradeType } from '@uniswap/sdk-core'
@@ -77,10 +78,18 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const [poolFee, setPoolFee] = useState<string>('0');
   const [poolInfo, setPoolInfo] = useState<any>(null);
   const [swapSuccessed, setSwapSuccessed] = useState<boolean>(false);
-
+  const [gasWarning, setGasWarning] = useState<string>('');
 
   const { address: userAddress } = useAccount();
   const { getPoolAddress } = usePoolAddress();
+  
+  // 使用 gas 估算 hook
+  const {
+    checkHskGasAndBalance,
+    buildV2SwapParams,
+    buildV3SwapParams,
+    hskBalance: gasHskBalance
+  } = useGasEstimation();
 
   const [v3Enabled, setV3Enabled] = useState(true);
   const [v2Enabled, setV2Enabled] = useState(true);
@@ -252,23 +261,95 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   }, [txStatus, currentTx, refetchAllowance]);
 
   // 添加处理百分比点击的函数
-  const handlePercentageClick = (percentage: number) => {
-  if (!token1Data) return;
+  const handlePercentageClick = async (percentage: number) => {
+    if (!token1Data) return;
 
-  setIsCalculating(true);
-  
-  const balance = token1Data.symbol === 'HSK' 
-    ? hskBalance?.value?.toString() || '0'
-    : token1Balance?.value?.toString() || '0';
+    setIsCalculating(true);
     
-  try {
-    const balanceBigInt = BigInt(balance);
-    const amount = (balanceBigInt * BigInt(percentage)) / BigInt(100);
-    const decimals = Number(token1Data.decimals || '18');
-    const formattedAmount = formatTokenBalance(amount.toString(), decimals.toString());
-    setToken1Amount(formattedAmount);
+    const balance = token1Data.symbol === 'HSK' 
+      ? hskBalance?.value?.toString() || '0'
+      : token1Balance?.value?.toString() || '0';
+      
+    try {
+      const balanceBigInt = BigInt(balance);
+      const amount = (balanceBigInt * BigInt(percentage)) / BigInt(100);
+      const decimals = Number(token1Data.decimals || '18');
+      const formattedAmount = formatTokenBalance(amount.toString(), decimals.toString());
+      
+      // 如果是 HSK 且选择高百分比，检查 gas 费用
+      if (token1Data.symbol === 'HSK' && percentage >= 90 && token2Data) {
+        try {
+          // 构建交易参数进行 gas 估算
+          let txParams;
+          if (isV3) {
+            // V3 swap 参数构建
+            if (gasHskBalance?.value) {
+              const v3TxParams = buildV3SwapParams(
+                token1Data,
+                token2Data,
+                formattedAmount,
+                '0', // 暂时用 0，因为这时还没计算 token2Amount
+                slippage,
+                deadline,
+                Number(poolFee) || 3000, // 默认 0.3% 手续费
+                ROUTER_CONTRACT_V3_ADDRESS,
+                ROUTER_CONTRACT_V3_ABI,
+                WHSK
+              );
+              
+              const gasCheck = await checkHskGasAndBalance(formattedAmount, v3TxParams);
+              
+              if (!gasCheck.canProceed && gasCheck.suggestedAmount) {
+                setToken1Amount(gasCheck.suggestedAmount);
+                setGasWarning(`Max swappable: ${gasCheck.suggestedAmount} HSK (after gas)`);
+              
+                setIsCalculating(false);
+                return;
+              }
+            }
+          } else {
+            // V2 swap
+            if (token2Data && gasHskBalance?.value) {
+              txParams = buildV2SwapParams(
+                token1Data,
+                token2Data,
+                formattedAmount,
+                '0', // 暂时用 0，实际会在交易时计算
+                slippage,
+                deadline,
+                ROUTER_CONTRACT_ADDRESS,
+                ROUTER_ABI,
+                WHSK
+              );
+              
+              const gasCheck = await checkHskGasAndBalance(formattedAmount, txParams);
+              
+              if (!gasCheck.canProceed && gasCheck.suggestedAmount) {
+                setToken1Amount(gasCheck.suggestedAmount);
+                setGasWarning(`Max swappable: ${gasCheck.suggestedAmount} HSK (after gas)`);
+                toast({
+                  type: 'info',
+                  message: `Max swappable: ${gasCheck.suggestedAmount} HSK (after gas)`,
+                  isAutoClose: true
+                });
+                setIsCalculating(false);
+                return;
+              }
+            }
+          }
+        } catch (gasError) {
+          console.error('Gas estimation failed:', gasError);
+          // 如果 gas 估算失败，继续使用原始金额但显示警告
+          setGasWarning('Gas estimation failed, please ensure enough HSK for gas');
+        }
+      }
+      
+      setToken1Amount(formattedAmount);
+      setGasWarning('');
     } catch (error) {
       console.error('Error calculating percentage:', error);
+    } finally {
+      setIsCalculating(false);
     }
   };
 
@@ -287,7 +368,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   };
 
    // 修改 handleAmountChange 函数
-  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAmountChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       // 立即更新输入值
@@ -299,6 +380,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         setMinimumReceived('0');
         setPriceImpact('0');
         setIsCalculating(false);
+        setGasWarning('');
         
         // 清除任何正在进行的计算
         if (calculationTimeoutRef.current) {
@@ -306,6 +388,69 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           calculationTimeoutRef.current = null;
         }
         return;
+      }
+
+      // 如果是 HSK，先检查余额，再检查 gas 费用
+      if (token1Data?.symbol === 'HSK' && gasHskBalance?.value && token2Data) {
+        try {
+          // 首先检查输入金额是否超过余额
+          const inputAmount = parseUnits(value, 18);
+          const userBalance = gasHskBalance.value;
+          
+          if (inputAmount > userBalance) {
+            // 如果输入金额超过余额，不进行 gas 估算，直接提示
+            setGasWarning(`Amount exceeds balance`);
+          } else {
+            // 如果余额足够，继续进行 gas 估算
+            // 构建交易参数进行 gas 估算
+            let txParams;
+            if (isV3) {
+              // V3 swap 参数构建
+              txParams = buildV3SwapParams(
+                token1Data,
+                token2Data,
+                value,
+                '0', // 暂时用 0，因为这时还没计算 token2Amount
+                slippage,
+                deadline,
+                Number(poolFee) || 3000, // 默认 0.3% 手续费
+                ROUTER_CONTRACT_V3_ADDRESS,
+                ROUTER_CONTRACT_V3_ABI,
+                WHSK
+              );
+            } else {
+              // V2 swap
+              txParams = buildV2SwapParams(
+                token1Data,
+                token2Data,
+                value,
+                '0',
+                slippage,
+                deadline,
+                ROUTER_CONTRACT_ADDRESS,
+                ROUTER_ABI,
+                WHSK
+              );
+            }
+            
+            const gasCheck = await checkHskGasAndBalance(value, txParams);
+            
+            if (!gasCheck.canProceed) {
+              if (gasCheck.suggestedAmount) {
+                setGasWarning(`Max swappable: ${gasCheck.suggestedAmount} HSK (after gas)`);
+              } else {
+                setGasWarning('Insufficient balance for gas fees');
+              }
+            } else {
+              setGasWarning('');
+            }
+          }
+        } catch (gasError) {
+          console.error('Gas estimation failed:', gasError);
+          setGasWarning('Gas estimation failed, please ensure enough HSK for gas');
+        }
+      } else {
+        setGasWarning('');
       }
 
       // 检查是否是 HSK 和 WHSK 的交易对
@@ -467,6 +612,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     setPriceImpact('0');
     setIsApproved(false);
     setSwapSuccessed(false);
+    setGasWarning('');
   };
 
 
@@ -1105,14 +1251,45 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       // const expectedAmount = parseUnits(token2Amount, Number(token2Data.decimals || '18'));
       // const slippagePercent = Number(slippage);
 
-      // 使用封装的 gas 检查函数
-      const canProceed = await estimateAndCheckGas(hskBalance);
-      if (!canProceed) {
-        toast({
-          type: 'error',
-          message: 'Insufficient gas, please deposit HSK first'
-        });
-        return;
+      // 检查 HSK 余额是否足够支付 gas 费用
+      if (token1Data.symbol === 'HSK' && gasHskBalance?.value) {
+        try {
+          // 构建实际的交易参数进行精确的 gas 估算
+          const txParams = buildV3SwapParams(
+            token1Data,
+            token2Data,
+            token1Amount,
+            token2Amount || '0',
+            slippage,
+            deadline,
+            Number(poolFee) || 3000,
+            ROUTER_CONTRACT_V3_ADDRESS,
+            ROUTER_CONTRACT_V3_ABI,
+            WHSK
+          );
+          
+          const gasCheck = await checkHskGasAndBalance(token1Amount, txParams);
+          
+          if (!gasCheck.canProceed) {
+            toast({
+              type: 'error',
+              message: gasCheck.suggestedAmount 
+              
+                ? `余额不足，建议最大兑换金额: ${gasCheck.suggestedAmount} HSK`
+                : '余额不足，请充值 HSK 作为 gas 费用',
+              isAutoClose: false
+            });
+            return;
+          }
+        } catch (gasError) {
+          console.error('Gas estimation failed:', gasError);
+          // 如果 gas 估算失败，显示通用警告
+          toast({
+            type: 'warning',
+            message: 'Gas 估算失败，请确保有足够的 HSK 支付手续费',
+            isAutoClose: true
+          });
+        }
       }
 
       setTxStatus('pending');
@@ -1311,7 +1488,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           path = [token1Data.address, token2Data.address];
         }
   
-        const params = {
+                const params = {
           address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
           abi: ROUTER_ABI,
           functionName: token1Data.symbol === 'HSK' ? 'swapExactETHForTokens' : token2Data.symbol === 'HSK' ? 'swapExactTokensForETH' : 'swapExactTokensForTokens',
@@ -1329,15 +1506,31 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           ],
           value: token1Data.symbol === 'HSK' ? parseUnits(token1Amount, 18) : undefined,
         };
-  
-        // 使用封装的 gas 检查函数
-        const canProceed = await estimateAndCheckGas(params);
-        if (!canProceed) {
-          toast({
-            type: 'error',
-            message: 'Insufficient gas, please deposit HSK first'
-          });
-          return;
+
+        // 检查 HSK 余额是否足够支付 gas 费用
+        if (token1Data.symbol === 'HSK' && gasHskBalance?.value) {
+          try {
+            const gasCheck = await checkHskGasAndBalance(token1Amount, params);
+            
+            if (!gasCheck.canProceed) {
+              toast({
+                type: 'error',
+                message: gasCheck.suggestedAmount 
+                  ? `余额不足，建议最大兑换金额: ${gasCheck.suggestedAmount} HSK`
+                  : '余额不足，请充值 HSK 作为 gas 费用',
+                isAutoClose: false
+              });
+              return;
+            }
+          } catch (gasError) {
+            console.error('Gas estimation failed:', gasError);
+            // 如果 gas 估算失败，显示通用警告
+            toast({
+              type: 'warning',
+              message: 'Gas 估算失败，请确保有足够的 HSK 支付手续费',
+              isAutoClose: true
+            });
+          }
         }
   
         setCurrentTx('swap');
@@ -1612,6 +1805,17 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
               } {token1Data ? token1Data.symbol : token1}
             </span>
           </div>
+          {/* Gas 警告提示 */}
+          {gasWarning && (
+            <div className="mt-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+              <div className="flex items-center gap-2 text-amber-400 text-xs">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                  <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clipRule="evenodd" />
+                </svg>
+                <span>{gasWarning}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 交换按钮 */}

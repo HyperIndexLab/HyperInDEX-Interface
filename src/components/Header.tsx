@@ -179,6 +179,25 @@ const MENU_MAP: MenuItem[] = [
           </svg>
         ),
       },
+      {
+        path: "/activity/history",
+        label: "Transaction History 📊",
+        icon: (
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        ),
+      },
     ],
   },
 ];
@@ -284,7 +303,7 @@ export default function Header() {
                     
                     {/* 简化的二级菜单 */}
                     <div className="absolute left-[-8px] top-full pt-2">  {/* 增加 padding 确保鼠标移动时不会失去 hover */}
-                      <div className="bg-black/90 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden w-52 hidden group-hover:block border border-gray-800">
+                      <div className="bg-black/90 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden w-60 hidden group-hover:block border border-gray-800">
                         {item.children.map((child) => (
                           <Link
                             key={child.path}
