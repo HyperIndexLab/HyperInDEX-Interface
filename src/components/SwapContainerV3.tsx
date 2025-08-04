@@ -665,82 +665,84 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const handleApprove = async () => {
     if (!token1Data || !token1Amount) return;
 
-    // 如果token1是HSK，需要先deposit为WHSK再授权
-    if (token1Data.symbol === 'HSK') {
-      try {
-        setError(null);
-        setCurrentTx('approve');
-        setTxStatus('pending');
-
-        // 1. 先 deposit HSK 为 WHSK
-        toast({
-          type: 'info',
-          message: 'Converting HSK to WHSK...',
-          isAutoClose: true
-        });
-
-        const depositSuccess = await depositHskToWhsk(token1Amount);
-        if (!depositSuccess) {
-          setTxStatus('failed');
-          return;
-        }
-
-        // 2. 授权 WHSK
-        toast({
-          type: 'info',
-          message: 'Approving WHSK...',
-          isAutoClose: true
-        });
-
-        const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-        
-        const params = {
-          address: WHSK as `0x${string}`,
-          abi: erc20Abi,
-          functionName: 'approve' as const,
-          args: [isV3 ? ROUTER_CONTRACT_V3_ADDRESS as `0x${string}` : ROUTER_CONTRACT_ADDRESS as `0x${string}`, amountToApprove] as const,
-        };
-
-        writeContract(params);
-
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Approval failed');
-        setTxStatus('none');
-        toast({
-          type: 'error',
-          message: 'Approval failed, please try again'
-        });
-      }
-      return;
-    }
 
     if (isV3) {
-      try {
-        setError(null);
-        
-      const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
-      
-      const params = {
-        address: token1Data.address as `0x${string}`,
-        abi: erc20Abi,
-        functionName: 'approve' as const,
-        args: [ROUTER_CONTRACT_V3_ADDRESS as `0x${string}`, amountToApprove] as const,
-      };
+       // 如果token1是HSK，需要先deposit为WHSK再授权
+      if (token1Data.symbol === 'HSK') {
+        try {
+          setError(null);
+          setCurrentTx('approve');
+          setTxStatus('pending');
 
-      // 使用封装的 gas 检查函数
-      const canProceed = await estimateAndCheckGas(params);
-      if (!canProceed) {
-        toast({
-          type: 'error',
-          message: 'Insufficient gas, please deposit HSK first'
-        });
+          // 1. 先 deposit HSK 为 WHSK
+          toast({
+            type: 'info',
+            message: 'Converting HSK to WHSK...',
+            isAutoClose: true
+          });
+
+          const depositSuccess = await depositHskToWhsk(token1Amount);
+          if (!depositSuccess) {
+            setTxStatus('failed');
+            return;
+          }
+
+          // 2. 授权 WHSK
+          toast({
+            type: 'info',
+            message: 'Approving WHSK...',
+            isAutoClose: true
+          });
+
+          const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+          
+          const params = {
+            address: WHSK as `0x${string}`,
+            abi: erc20Abi,
+            functionName: 'approve' as const,
+            args: [isV3 ? ROUTER_CONTRACT_V3_ADDRESS as `0x${string}` : ROUTER_CONTRACT_ADDRESS as `0x${string}`, amountToApprove] as const,
+          };
+
+          writeContract(params);
+
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Approval failed');
+          setTxStatus('none');
+          toast({
+            type: 'error',
+            message: 'Approval failed, please try again'
+          });
+        }
         return;
       }
       
-      writeContract(params);
-      
-      setCurrentTx('approve');
-      setTxStatus('pending');
+      try {
+        setError(null);
+        
+        const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+        
+        const params = {
+          address: token1Data.address as `0x${string}`,
+          abi: erc20Abi,
+          functionName: 'approve' as const,
+          args: [ROUTER_CONTRACT_V3_ADDRESS as `0x${string}`, amountToApprove] as const,
+        };
+
+        // 使用封装的 gas 检查函数
+        const canProceed = await estimateAndCheckGas(params);
+        if (!canProceed) {
+          toast({
+            type: 'error',
+            message: 'Insufficient gas, please deposit HSK first'
+          });
+          return;
+        }
+        
+        writeContract(params);
+        
+        setCurrentTx('approve');
+        setTxStatus('pending');
+        return;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Approval failed');
         setTxStatus('none');
@@ -750,6 +752,13 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         });
       }
     } else {
+      // V2 逻辑：HSK 作为原生代币不需要授权，直接跳过
+      if (token1Data.symbol === 'HSK') {
+        console.log('HSK in V2: No approval needed, skipping...');
+        setTxStatus('none');
+        return;
+      }
+
       try {
         setError(null);
         
@@ -761,6 +770,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           functionName: 'approve' as const,
           args: [ROUTER_CONTRACT_ADDRESS as `0x${string}`, amountToApprove] as const,
         };
+
   
         // 使用封装的 gas 检查函数
         const canProceed = await estimateAndCheckGas(params);
@@ -859,6 +869,23 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       (token1Data.symbol !== 'HSK' && token1Data.symbol !== 'WHSK')
     );
     
+    // V2 中 HSK 不需要授权，直接显示 Swap 按钮
+    if (!isV3 && token1Data?.symbol === 'HSK') {
+      const priceImpactNum = Number(priceImpact);
+      if (priceImpactNum >= 5) {
+        return {
+          text: 'Swap anyway',
+          disabled: false,
+          onClick: handleSwap
+        };
+      }
+      return {
+        text: 'Swap',
+        disabled: false,
+        onClick: handleSwap
+      };
+    }
+
     if (needsApproval && !isApproved) {
       return {
         text: 'Approve',
