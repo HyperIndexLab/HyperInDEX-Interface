@@ -31,7 +31,7 @@ const getTokenIcon = (symbol: string): string => {
     'usdc.e': '/img/usdc.e.svg'
   };
 
-  return localIcons[symbol.toLowerCase()] || 'https://hyperindex.4everland.store/index-coin.jpg';
+  return localIcons[symbol.toLowerCase()] || '/img/index-coin.jpg';
 };
 
 // 添加获取池子代币图标的函数

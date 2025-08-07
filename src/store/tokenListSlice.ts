@@ -194,6 +194,8 @@ export const refreshTokenList = createAsyncThunk(
       const filteredItems = data.items.filter((token: Token) => 
         token.address.toLowerCase() !== stHSK_DEL.toLowerCase()
       );
+
+      
       allTokens = [...allTokens, ...filteredItems];
       
       // 检查是否还有更多数据
@@ -225,14 +227,21 @@ const tokenListSlice = createSlice({
         const filteredTokens = action.payload.filter((token: Token) => 
           token.name !== null && token.type === 'ERC-20'
         ).map((token: Token) => {
-          // 为USDC.e和WETH设置默认本地图标
-          if ((token.symbol === 'USDC.e' || token.symbol === 'WETH') && !token.icon_url) {
-            return {
-              ...token,
-              icon_url: `/img/${token.symbol.toLowerCase()}.svg`
-            };
+          // 替换特定的 icon_url
+          let iconUrl = token.icon_url;
+          if (iconUrl === 'https://hyperindex.4everland.store/tether-usdt.png') {
+            iconUrl = '/img/tether-usdt-logo.png';
           }
-          return token;
+          
+          // 为USDC.e和WETH设置默认本地图标
+          if ((token.symbol === 'USDC.e' || token.symbol === 'WETH') && !iconUrl) {
+            iconUrl = `/img/${token.symbol.toLowerCase()}.svg`;
+          }
+          
+          return {
+            ...token,
+            icon_url: iconUrl
+          };
         });
         
         // 对tokens进行排序，将USDT、USDC、WETH排在前面
@@ -262,14 +271,21 @@ const tokenListSlice = createSlice({
         const filteredTokens = action.payload.filter((token: Token) => 
           token.name !== null && token.type === 'ERC-20'
         ).map((token: Token) => {
-          // 为USDC.e和WETH设置默认本地图标
-          if ((token.symbol === 'USDC.e' || token.symbol === 'WETH') && !token.icon_url) {
-            return {
-              ...token,
-              icon_url: `/img/${token.symbol.toLowerCase()}.svg`
-            };
+          // 替换特定的 icon_url
+          let iconUrl = token.icon_url;
+          if (iconUrl === 'https://hyperindex.4everland.store/tether-usdt.png') {
+            iconUrl = '/img/tether-usdt-logo.png';
           }
-          return token;
+          
+          // 为USDC.e和WETH设置默认本地图标
+          if ((token.symbol === 'USDC.e' || token.symbol === 'WETH') && !iconUrl) {
+            iconUrl = `/img/${token.symbol.toLowerCase()}.svg`;
+          }
+          
+          return {
+            ...token,
+            icon_url: iconUrl
+          };
         });
         
         // 对tokens进行排序，将USDT、USDC、WETH排在前面

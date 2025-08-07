@@ -72,8 +72,25 @@ export const fetchUserTokens = createAsyncThunk(
         value: balanceData.coin_balance || "0",
       };
 
+      // 处理其他token的icon_url
+      const processedItems = (data.items || []).map((item: UserToken) => {
+        // 替换特定的 icon_url
+        let iconUrl = item.token.icon_url;
+        if (iconUrl === 'https://hyperindex.4everland.store/tether-usdt.png') {
+          iconUrl = '/img/tether-usdt-logo.png';
+        }
+        
+        return {
+          ...item,
+          token: {
+            ...item.token,
+            icon_url: iconUrl
+          }
+        };
+      });
+
       // 将HSK放在列表第一位
-      return [hskToken, ...(data.items || [])];
+      return [hskToken, ...processedItems];
     } catch (error) {
       console.error('API error:', error);
       throw error;
@@ -116,8 +133,25 @@ export const refreshUserTokens = createAsyncThunk(
         value: balanceData.coin_balance || "0",
       };
 
+      // 处理其他token的icon_url
+      const processedItems = (data.items || []).map((item: UserToken) => {
+        // 替换特定的 icon_url
+        let iconUrl = item.token.icon_url;
+        if (iconUrl === 'https://hyperindex.4everland.store/tether-usdt.png') {
+          iconUrl = '/img/tether-usdt-logo.png';
+        }
+        
+        return {
+          ...item,
+          token: {
+            ...item.token,
+            icon_url: iconUrl
+          }
+        };
+      });
+
       // 将HSK放在列表第一位
-      return [hskToken, ...(data.items || [])];
+      return [hskToken, ...processedItems];
     } catch (error) {
       console.error('API error:', error);
       throw error;
