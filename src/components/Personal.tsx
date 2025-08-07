@@ -281,7 +281,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
                 <div className="flex items-center justify-between px-4">
                   <div className="flex items-center justify-center gap-2 rounded-full">
                     <img 
-                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      src="/img/index-coin.jpg" 
                       alt="HyperIndex Logo" 
                       className="w-6 h-6 rounded-full" 
                     />
@@ -334,7 +334,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
               <div className="relative">
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-purple-700">
                   <Image 
-                    src="https://hyperindex.4everland.store/index-coin.jpg" 
+                    src="/img/index-coin.jpg" 
                     alt="User Avatar" 
                     width={32} 
                     height={32}

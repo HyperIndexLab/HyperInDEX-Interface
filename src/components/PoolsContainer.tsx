@@ -39,12 +39,12 @@ const PoolsContainer: React.FC = () => {
         <div className="flex items-center gap-3">
           <div className="relative w-12 h-6">
             <img 
-              src="https://hyperindex.4everland.store/index-coin.jpg" 
+              src="/img/index-coin.jpg" 
               alt={pool.token0Symbol}
               className="w-6 h-6 rounded-full absolute left-0"
             />
             <img 
-              src="https://hyperindex.4everland.store/index-coin.jpg" 
+              src="/img/index-coin.jpg" 
               alt={pool.token1Symbol}
               className="w-6 h-6 rounded-full absolute left-4"
             />
@@ -124,12 +124,12 @@ const PoolsContainer: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="relative w-12 h-6">
                     <img 
-                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      src="/img/index-coin.jpg" 
                       alt={pool.token0Symbol}
                       className="w-6 h-6 rounded-full absolute left-0"
                     />
                     <img 
-                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      src="/img/index-coin.jpg" 
                       alt={pool.token1Symbol}
                       className="w-6 h-6 rounded-full absolute left-4"
                     />
@@ -174,12 +174,12 @@ const PoolsContainer: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className="relative w-12 h-6">
                     <img 
-                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      src="/img/index-coin.jpg" 
                       alt={pool.token0Symbol}
                       className="w-6 h-6 rounded-full absolute left-0"
                     />
                     <img 
-                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      src="/img/index-coin.jpg" 
                       alt={pool.token1Symbol}
                       className="w-6 h-6 rounded-full absolute left-4"
                     />

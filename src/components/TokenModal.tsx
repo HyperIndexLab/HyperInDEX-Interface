@@ -12,7 +12,7 @@ import { ArrowPathIcon, CircleStackIcon } from '@heroicons/react/24/outline';
 import { StarIcon, XMarkIcon } from '@heroicons/react/24/solid';
 import BigNumber from 'bignumber.js';
 
-export const DEFAULT_TOKEN_ICON = 'https://hyperindex.4everland.store/index-coin.jpg';
+export const DEFAULT_TOKEN_ICON = '/img/index-coin.jpg';
 
 interface Token {
   symbol: string | null;
@@ -344,13 +344,13 @@ const TokenModal: React.FC<TokenModalProps> = ({
               symbol: 'HSK',
               name: 'HyperSwap Token',
               address: '0x0000000000000000000000000000000000000000',  // HSK 的地址
-              icon_url: "https://hyperindex.4everland.store/index-coin.jpg",
+              icon_url: "/img/index-coin.jpg",
               decimals: '18',
             })}
           >
             <div className="flex items-center">
               <img 
-                src="https://hyperindex.4everland.store/index-coin.jpg"
+                src="/img/index-coin.jpg"
                 alt="HSK" 
                 className="w-8 h-8 mr-3 rounded-full" 
               />

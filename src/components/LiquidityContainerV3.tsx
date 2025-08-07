@@ -70,7 +70,7 @@ export const getDefaultTokenIcon = (tokenData: TokenData | null) => {
   }
   
   // 其他 ERC20 代币使用通用图标
-  return "https://hyperindex.4everland.store/index-coin.jpg";
+      return "/img/index-coin.jpg";
 };
 
 const LiquidityContainer: React.FC<LiquidityContainerProps> = ({

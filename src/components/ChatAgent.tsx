@@ -745,7 +745,7 @@ const ChatAgent: React.FC = () => {
             <div className="flex items-center">
               <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                 <Image 
-                  src="https://hyperindex.4everland.store/index-coin.jpg" 
+                  src="/img/index-coin.jpg" 
                   alt="HyperIndex Logo" 
                   width={32} 
                   height={32}
@@ -777,7 +777,7 @@ const ChatAgent: React.FC = () => {
                 {message.sender === 'agent' && (
                   <div className="w-8 h-8 rounded-full bg-purple-700/20 flex-shrink-0 flex items-center justify-center overflow-hidden">
                     <Image 
-                      src="https://hyperindex.4everland.store/index-coin.jpg" 
+                      src="/img/index-coin.jpg" 
                       alt="HyperIndex Logo" 
                       width={24} 
                       height={24}
