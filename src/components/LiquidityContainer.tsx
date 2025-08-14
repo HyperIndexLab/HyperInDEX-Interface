@@ -128,6 +128,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     },
   });
 
+
   const { data: token2Balance } = useBalance({
     address: userAddress,
     token: !isNativeHSK(token2Data) ? token2Data?.address as `0x${string}` : undefined,
@@ -147,7 +148,6 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     amount2,
     userAddress
   );
-
 
 
   useEffect(() => {

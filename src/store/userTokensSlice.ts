@@ -84,6 +84,8 @@ export const fetchUserTokens = createAsyncThunk(
           ...item,
           token: {
             ...item.token,
+            // @ts-ignore 忽略类型错误 因为token.address_hash是string类型  hashkey的接口变了
+            address: item.token.address_hash,
             icon_url: iconUrl
           }
         };
