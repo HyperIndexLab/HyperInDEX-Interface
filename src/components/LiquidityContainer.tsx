@@ -49,11 +49,11 @@ interface TokenData {
 const isNativeHSK = (token: TokenData | null): boolean => {
   return token?.symbol === "HSK" && token?.address === "0x0000000000000000000000000000000000000000";
 };
-
+// 用户选择hsk的时候，需要模拟成whsk使用
 const DEFAULT_HSK_TOKEN: TokenData = {
   symbol: "HSK",
   name: "HyperSwap Token",
-  address: WHSK,
+  address: '0x0000000000000000000000000000000000000000',
   icon_url: "/img/HSK-LOGO.png",
   decimals: "18",
 };
@@ -248,7 +248,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           functionName: "token0"
         });
         
-        const isOrderMatched = token1Data?.address === token0Address;
+        const isOrderMatched = token1Data?.symbol === "HSK" ? true : token1Data?.address === token0Address;
         const token1Decimals = Number(token1Data?.decimals || '18');
         const token2Decimals = Number(token2Data?.decimals || '18');
         
@@ -514,7 +514,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         isAutoClose: false
       });
     }
-  }, [isWriteError, writeError, toast]);
+  }, [isWriteError, writeError]);
 
   const clearStep2Data = () => {
     setAmount1("");
@@ -546,7 +546,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       const pool = poolData.find(pool => pool.pairsAddress === poolInfo.pairAddress);
      
       if (pool) {
-        if (token1Data?.address === pool.token0) {
+        if (token1Data?.address === pool.token0 || token1Data?.address === '0x0000000000000000000000000000000000000000') {
           token0Symbol = token1Data.symbol || "";
           token1Symbol = token2Data?.symbol || "";
           const token0Decimals = Number(token1Data?.decimals || '18');
@@ -554,17 +554,20 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
           
           const reserve0 = new BigNumber(poolInfo.reserve0.toString()).div(new BigNumber(10).pow(token0Decimals));
           const reserve1 = new BigNumber(poolInfo.reserve1.toString()).div(new BigNumber(10).pow(token1Decimals));
+
           
           price1 = reserve1.div(reserve0).toFixed(6);
           price2 = reserve0.div(reserve1).toFixed(6);
         } else {
           token0Symbol = token2Data?.symbol || "";
           token1Symbol = token1Data?.symbol || "";
+         
           const token0Decimals = Number(token2Data?.decimals || '18');
           const token1Decimals = Number(token1Data?.decimals || '18');
           
           const reserve0 = new BigNumber(poolInfo.reserve0.toString()).div(new BigNumber(10).pow(token0Decimals));
           const reserve1 = new BigNumber(poolInfo.reserve1.toString()).div(new BigNumber(10).pow(token1Decimals));
+;
           
           price1 = reserve0.div(reserve1).toFixed(6);
           price2 = reserve1.div(reserve0).toFixed(6);
