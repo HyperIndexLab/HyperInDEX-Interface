@@ -238,10 +238,10 @@ const tokenListSlice = createSlice({
             iconUrl = `/img/${token.symbol.toLowerCase()}.svg`;
           }
           
-          return {
-            ...token,
+            return {
+              ...token,
             icon_url: iconUrl
-          };
+            };
         });
         
         // 对tokens进行排序，将USDT、USDC、WETH排在前面
@@ -282,10 +282,10 @@ const tokenListSlice = createSlice({
             iconUrl = `/img/${token.symbol.toLowerCase()}.svg`;
           }
           
-          return {
-            ...token,
+            return {
+              ...token,
             icon_url: iconUrl
-          };
+            };
         });
         
         // 对tokens进行排序，将USDT、USDC、WETH排在前面
