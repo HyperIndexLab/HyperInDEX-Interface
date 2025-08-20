@@ -347,7 +347,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-100/60">
       <div className="bg-base-100 rounded-3xl w-full max-w-md p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -466,7 +466,7 @@ const RemoveLiquidityModal: React.FC<RemoveLiquidityModalProps> = ({
         {/* Network Fee */}
         <div className="flex justify-between text-sm opacity-70">
           <span>Network fee:</span>
-          <span>{networkFee} HSK</span>
+          <span>{networkFee} OKB</span>
         </div>
 
         {/* Confirm Button */}

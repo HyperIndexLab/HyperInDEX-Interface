@@ -196,7 +196,7 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
     return (
         <div className="w-full relative">
              {loading && (
-                <div className="absolute inset-0 bg-black/20 backdrop-blur-sm z-10 flex items-center justify-center">
+                <div className="absolute inset-0 bg-base-300/60 backdrop-blur-sm z-10 flex items-center justify-center">
                     <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
                 </div>
             )}
@@ -246,14 +246,14 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
                 </div>
             )}
             <div className="mt-4 flex">
-                <div className="flex p-1 bg-white/10 rounded-lg">
+                <div className="flex p-1 bg-primary/20 rounded-lg">
                     <button
                         onClick={() => handleRangeChange('1d')}
                         className={`
                             min-w-[40px] px-2 py-0.5 text-sm rounded-md
                             transition-all duration-300 ease-in-out
                             ${activeRange === '1d' 
-                                ? 'bg-white/20 text-white' 
+                                ? 'bg-primary/30 text-white' 
                                 : 'bg-transparent text-white/60 hover:text-white/80'
                             }
                         `}
@@ -266,7 +266,7 @@ export default function Chart({ token0, token1, data, type = 'token', onRangeCha
                             min-w-[40px] px-2 py-0.5 text-sm rounded-md
                             transition-all duration-300 ease-in-out
                             ${activeRange === '1w' 
-                                ? 'bg-white/20 text-white' 
+                                ? 'bg-primary/30 text-white' 
                                 : 'bg-transparent text-white/60 hover:text-white/80'
                             }
                         `}

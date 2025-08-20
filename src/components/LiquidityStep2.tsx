@@ -346,7 +346,7 @@ const LiquidityStep2: React.FC<LiquidityStep2Props> = ({
             />
             {/* 当前价格气泡 */}
             <div className="absolute left-1/2 top-[-38px] z-30 transform -translate-x-1/2">
-              <div className="bg-black text-white text-xs px-3 py-1 rounded-lg shadow font-medium">
+              <div className="bg-base-300 text-white text-xs px-3 py-1 rounded-lg shadow font-medium">
                 Current Price {currentPrice}
               </div>
             </div>

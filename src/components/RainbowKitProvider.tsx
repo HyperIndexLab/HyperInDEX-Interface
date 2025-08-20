@@ -20,28 +20,27 @@ import { particleWallet, particleGoogleWallet, particleTwitterWallet } from './P
 
 console.log(process.env.BUILD_ENV, 'process.env.BUILD_ENV');
 
-export const MAINNET_CHAIN_ID = 177;
-export const TESTNET_CHAIN_ID = 133;
-const hashkeyMainnet = {
+export const MAINNET_CHAIN_ID = 196;
+const OKXMainnet = {
 	id: MAINNET_CHAIN_ID,
-	name: 'Hashkey Mainnet',
+	name: 'X Layer Mainnet',
 	nativeCurrency: {
 		decimals: 18,
-		name: 'Hashkey',
-		symbol: 'HSK',
+		name: 'OKX',
+		symbol: 'OKB',
 	},
 	rpcUrls: {
 		default: {
-			http: ['https://mainnet.hsk.xyz'],
+			http: ['https://endpoints.omniatech.io/v1/xlayer/mainnet/public'],
 		},
 		public: {
-			http: ['https://mainnet.0xhsk.xyz'],
+			http: ['https://xlayerrpc.okx.com'],
 		}
 	},
 	blockExplorers: {
 		default: {
-			name: 'HashKey Chain Explorer',
-			url: 'https://explorer.hsk.xyz',
+			name: 'OKX Layer Explorer',
+			url: 'https://web3.okx.com/zh-hans/explorer/x-layer',
 		},
 	},
 }
@@ -62,15 +61,12 @@ const wagmiConfig = getDefaultConfig({
 		},
 	],
 	chains: [
-		process.env.BUILD_ENV === 'test' ? hashkeyTestnet : hashkeyMainnet,
+		process.env.BUILD_ENV === 'test' ? OKXMainnet : OKXMainnet,
 	],
 	transports: {
-		[hashkeyMainnet.id]: fallback([
-			http('https://mainnet.hsk.xyz'),
-			http('https://mainnet.0xhsk.xyz'),
-		]),
-		[hashkeyTestnet.id]: fallback([
-			http('https://testnet.hsk.xyz'),
+		[OKXMainnet.id]: fallback([
+			http('https://endpoints.omniatech.io/v1/xlayer/mainnet/public'),
+			http('https://xlayerrpc.okx.com'),
 		]),
 	},
 	ssr: true,
@@ -78,24 +74,6 @@ const wagmiConfig = getDefaultConfig({
 		
 const RainbowKitWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 	const queryClient = new QueryClient();
-
-	// 自定义一个网络
-	// const hashkeyMainnet = {
-	// 	id: 10000,
-	// 	name: 'Hashkey Mainnet',
-	// 	iconUrl: 'https://hashkey.com/favicon.ico',
-	// 	nativeCurrency: {
-	// 		decimals: 18,
-	// 		name: 'Hashkey',
-	// 		symbol: 'HK',
-	// 	},
-	// 	rpcUrls: {
-	// 		default: {
-	// 			http: ['https://mainnet.hashkey.com'],
-	// 		},
-	// 	},
-	// } as const satisfies Chain;
-
 	return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>

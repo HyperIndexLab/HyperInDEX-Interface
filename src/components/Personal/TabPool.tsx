@@ -28,22 +28,22 @@ interface TabPoolProps extends PoolInfo {
 const PoolSkeleton = () => (
   <div className="mt-4 space-y-4 animate-pulse">
     {[...Array(3)].map((_, i) => (
-      <div key={i} className="bg-white/[0.08] rounded-xl p-4 space-y-4">
+      <div key={i} className="bg-base-200/50 rounded-xl p-4 space-y-4">
         {/* Token Pair */}
         <div className="flex items-center">
           <div className="relative w-12 h-6">
-            <div className="w-6 h-6 rounded-full bg-white/[0.12] absolute left-0" />
-            <div className="w-6 h-6 rounded-full bg-white/[0.12] absolute left-4" />
+            <div className="w-6 h-6 rounded-full bg-base-content/20 absolute left-0" />
+            <div className="w-6 h-6 rounded-full bg-base-content/20 absolute left-4" />
           </div>
-          <div className="h-4 w-20 bg-white/[0.12] rounded ml-2" />
-          <div className="h-6 w-12 bg-white/[0.12] rounded-full ml-2" />
+          <div className="h-4 w-20 bg-base-content/20 rounded ml-2" />
+          <div className="h-6 w-12 bg-base-content/20 rounded-full ml-2" />
         </div>
 
         {/* Position Value */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <div className="h-3 w-16 bg-white/[0.12] rounded mb-2" />
-            <div className="h-5 w-24 bg-white/[0.12] rounded" />
+            <div className="h-3 w-16 bg-base-content/20 rounded mb-2" />
+            <div className="h-5 w-24 bg-base-content/20 rounded" />
           </div>
         </div>
       </div>
@@ -182,11 +182,11 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
             : (_pool.token1 && typeof _pool.token1.decimals === 'number' ? _pool.token1.decimals : 18);
           return (
             <div
-              className="bg-[#131629]/60 border border-[#2a2f42] rounded-xl p-5 mb-4 hover:bg-[#1a1f36]/80 transition-all duration-300 cursor-pointer relative overflow-hidden"
+              className="bg-base-200/60 border border-violet-900/30 rounded-xl p-5 mb-4 hover:bg-base-300/80 transition-all duration-300 cursor-pointer relative overflow-hidden"
               key={`${_pool.version}-${Math.random()}`}
             >
               {/* Background subtle gradients for DeFi look */}
-              <div className="absolute -right-20 -top-20 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
+              <div className="absolute -right-20 -top-20 w-40 h-40 bg-primary/10 rounded-full blur-3xl"></div>
               <div className="absolute -left-20 -bottom-20 w-40 h-40 bg-purple-500/10 rounded-full blur-3xl"></div>
               {/* Content with better layout */}
               <div className="relative">
@@ -212,21 +212,21 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
                     <div className="text-sm font-bold ml-2">
                       {_pool.token0Symbol}/{_pool.token1Symbol}
                     </div>
-                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-[#2a2f42] text-[#8c93b8]">
+                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-base-300 text-base-content/70">
                       {_pool.version}
                     </span>
-                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-[#2a2f42] text-[#8c93b8]">
+                    <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-base-300 text-base-content/70">
                       {_pool.fee}
                     </span>
                   </div>
                 </div>
                 {/* Middle section with details in a grid */}
                 <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="bg-[#141830]/80 rounded-lg p-3">
+                  <div className="bg-base-300/80 rounded-lg p-3">
                     <div className="text-xs text-[#8c93b8] mb-1">Your LP Tokens</div>
                     <div className="font-bold text-[17px]">{formatDisplayNumber(_pool.userLPBalance, 8)}</div>
                   </div>
-                  <div className="bg-[#141830]/80 rounded-lg p-3">
+                  <div className="bg-base-300/80 rounded-lg p-3">
                     <div className="text-xs text-[#8c93b8] mb-1">Rate</div>
                     <div className="font-medium text-sm">
                       1 {_pool.token0Symbol} = <span className="text-white">{formatV3Price(_pool.rate, token0Decimals, token1Decimals, 8)}</span> {_pool.token1Symbol}
@@ -253,11 +253,11 @@ export default function TabPool({ tokenData }: { tokenData: Token[] }) {
           );
         })
       ) : (
-        <div className="flex flex-col items-center justify-center mt-10 py-10 bg-[#131629]/60 border border-[#2a2f42] rounded-xl">
+        <div className="flex flex-col items-center justify-center mt-10 py-10 bg-base-200/60 border border-violet-900/30 rounded-xl">
           <span className="text-[#8c93b8]">No pools yet</span>
           <Link 
             href="/liquidity/v3" 
-            className="mt-4 bg-[#2172e5] hover:bg-[#1a66d6] text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center transition-colors"
+            className="mt-4 bg-primary hover:bg-primary-focus text-white rounded-lg py-2 px-4 text-sm font-medium flex items-center transition-colors"
           >
             <PlusIcon className="w-4 h-4 mr-1" />
             New position

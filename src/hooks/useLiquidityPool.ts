@@ -6,7 +6,7 @@ import {
   FACTORY_CONTRACT_ADDRESS,
 } from "@/constant/ABI/HyperIndexFactory";
 import { PAIR_ABI } from "@/constant/ABI/HyperIndexPair";
-import { WHSK } from "@/constant/value";
+import { WOKB } from "@/constant/value";
 
 export function useLiquidityPool(
   token1Data: TokenData | null,
@@ -28,8 +28,8 @@ export function useLiquidityPool(
     args:
       token1Data && token2Data
         ? [
-            token1Data.symbol === "HSK" ? WHSK : token1Data.address,
-            token2Data.symbol === "HSK" ? WHSK : token2Data.address,
+            token1Data.symbol === "OKB" ? WOKB : token1Data.address,
+            token2Data.symbol === "OKB" ? WOKB : token2Data.address,
           ]
         : undefined,
   });

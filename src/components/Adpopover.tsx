@@ -16,13 +16,13 @@ const AdPopover = ({ imageUrl, linkUrl, width = 300, height = 160 }: AdPopoverPr
     <>
       {isVisible && (
         <div className="md:fixed md:bottom-12 md:right-12  mx-4 mx-auto max-w-[400px] 
-          md:w-auto z-50 shadow-xl bg-[#1c1d22]/30 bg-opacity-20 border border-white/5 
+          md:w-auto z-50 shadow-xl bg-base-200/50 border border-violet-900/20 
           rounded-lg md:overflow-hidden z-[10]">
           {/* 关闭按钮 */}
           <div className="relative w-full flex justify-end p-2">
             <button 
               onClick={() => setIsVisible(false)}
-              className="bg-gray-800/70 hover:bg-gray-800 
+              className="bg-neutral/70 hover:bg-neutral 
                 rounded-full w-6 h-6 flex items-center justify-center text-white"
             >
               ×

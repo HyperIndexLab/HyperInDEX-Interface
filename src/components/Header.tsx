@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import logo from "../assets/img/logo.png";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -12,12 +11,11 @@ import { useConnect as useParticleConnect } from '@particle-network/auth-core-mo
 import { AuthCoreEvent, getLatestAuthType, isSocialAuthType, particleAuth, SocialAuthType } from "@particle-network/auth-core";
 import { particleWagmiWallet } from "./ParticleWallet/particleWagmiWallet";
 import { switchChain } from '@wagmi/core'
-import { MAINNET_CHAIN_ID, TESTNET_CHAIN_ID, wagmiConfig } from "./RainbowKitProvider";
+import { MAINNET_CHAIN_ID, wagmiConfig } from "./RainbowKitProvider";
 
 type MenuItem = {
   path: string;
   label: string;
-  icon: React.ReactNode;
   target?: string;
   rel?: string;
   children?: MenuItem[];
@@ -27,159 +25,18 @@ const MENU_MAP: MenuItem[] = [
   {
     path: "/",
     label: "Trade",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-        />
-      </svg>
-    ),
   },
   {
-    path: "/explore",
-    label: "Explore",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
-        />
-      </svg>
-    ),
-    children: [
-      {
-        path: "/explore/tokens",
-        label: "Tokens",
-        icon: (
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-          </svg>
-        ),
-      },
-      {
-        path: "/explore/pools",
-        label: "Pool",
-        icon: (
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
-          </svg>
-        ),
-      },
-	  {
-        path: "/user/liquidity",
-        label: "My Pool",
-        icon: (
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
-            />
-          </svg>
-        ),
-      },
-    ],
+    path: "/explore/pools",
+    label: "Pools",
   },
   {
-    path: "/news",
-    label: "News",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2.5 2.5 0 00-2.5-2.5H15"
-        />
-      </svg>
-    ),
-    rel: "noopener noreferrer",
-  },
+    path: "/explore/tokens",
+      label: "Tokens",
+    },
   {
-    path: "/activity",
-    label: "Activity",
-    icon: (
-      <svg
-        className="w-4 h-4"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
-        />
-      </svg>
-    ),
-    children: [
-      {
-        path: "/activity",
-        label: "Gift 🎁",
-        icon: (
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"
-            />
-          </svg>
-        ),
-      },
-    ],
+    path: "/user/liquidity",
+    label: "My Pool",
   },
 ];
 
@@ -204,7 +61,7 @@ export default function Header() {
       const chainId = await window.ethereum.request({ method: 'eth_chainId' });
       const chainIdInt = parseInt(chainId || '0', 16);
 
-      const changeChaindId = process.env.BUILD_ENV === 'test' ? TESTNET_CHAIN_ID : MAINNET_CHAIN_ID;
+      const changeChaindId = process.env.BUILD_ENV === 'test' ? MAINNET_CHAIN_ID : MAINNET_CHAIN_ID;
    
       if (chainIdInt !== changeChaindId) {
         setIsWrongNetwork(true);
@@ -245,16 +102,16 @@ export default function Header() {
   return (
     <div className="w-full top-0 z-50 font-sora">
       <div className="navbar h-14 max-w-[1200px] mx-auto px-4">
-        {/* Logo 部分 */}
-        <div className="flex-1">
-          <Link href="/" className="flex items-center">
-            <Image src={logo} alt="logo" width={60} height={24} />
+        {/* Logo 部分 - 在最左侧 */}
+        <div className="flex-none">
+          <Link href="/" className="flex items-center mr-8">
+            <Image src={'/img/logo.png'} alt="logo" width={60} height={60} />
           </Link>
         </div>
 
-        {/* 菜单部分 */}
+        {/* 菜单部分 - 在logo右侧 */}
         <div className="flex-none hidden lg:block">
-          <ul className="menu menu-horizontal gap-1 font-sora">
+          <ul className="flex items-center gap-1 font-sora">
             {MENU_MAP.map((item) => (
               <li key={item.path} className="relative">
                 {!item.children ? (
@@ -262,40 +119,35 @@ export default function Header() {
                     href={item.path}
                     target={item.target}
                     rel={item.rel}
-                    className={`px-3 flex items-center gap-2 transition-colors ${
+                    className={`px-4 py-2 transition-colors ${
                       pathname === item.path 
                         ? "text-white font-medium" 
                         : "text-gray-400 hover:text-gray-200"
                     }`}
                   >
-                    <span className="flex items-center gap-2">
-                      {item.icon}
-                      {item.label}
-                    </span>
+                    {item.label}
                   </Link>
                 ) : (
                   <div className="group">
                     <button
-                      className="flex items-center gap-2 px-3 text-gray-400 hover:text-gray-200"
+                      className="px-4 py-2 text-gray-400 hover:text-gray-200"
                     >
-                      {item.icon}
                       {item.label}
                     </button>
                     
-                    {/* 简化的二级菜单 */}
-                    <div className="absolute left-[-8px] top-full pt-2">  {/* 增加 padding 确保鼠标移动时不会失去 hover */}
-                      <div className="bg-black/90 backdrop-blur-md rounded-2xl shadow-lg overflow-hidden w-52 hidden group-hover:block border border-gray-800">
+                    {/* 简化的二级菜单 - 类似图片风格 */}
+                    <div className="absolute left-0 top-full pt-2">
+                      <div className="bg-base-200/95 backdrop-blur-sm rounded-2xl shadow-lg overflow-hidden w-48 hidden group-hover:block border border-gray-700/30">
                         {item.children.map((child) => (
                           <Link
                             key={child.path}
                             href={child.path}
                             target={child.target}
                             rel={child.rel}
-                            className={`flex items-center gap-3 px-6 py-3 hover:bg-gray-800/30 transition-colors ${
+                            className={`block px-4 py-2.5 hover:bg-gray-700/20 transition-colors ${
                               pathname === child.path ? "text-white font-medium" : "text-gray-400"
                             }`}
                           >
-                            {child.icon}
                             {child.label}
                           </Link>
                         ))}
@@ -307,6 +159,9 @@ export default function Header() {
             ))}
           </ul>
         </div>
+
+        {/* 空白填充区域 */}
+        <div className="flex-1"></div>
 
         {/* 钱包按钮 */}
         <div className="flex-none flex items-center gap-4 ml-4">
@@ -338,7 +193,7 @@ export default function Header() {
                   return (
                     <button
                       onClick={openConnectModal}
-                      className="font-sora bg-[#243056] hover:bg-[#384f80] text-white rounded-full px-5 h-10 text-sm font-medium transition-colors flex items-center justify-center"
+                      className="font-sora bg-primary hover:bg-primary-focus text-white rounded-full px-5 h-10 text-sm font-medium transition-colors flex items-center justify-center"
                     >
                       Connect Wallet
                     </button>
@@ -348,9 +203,9 @@ export default function Header() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setOpen(true)}
-                      className="font-sora bg-[#1a1f2a] hover:bg-[#2c3340] text-white rounded-full px-5 h-10 text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                      className="font-sora bg-neutral hover:bg-neutral-focus text-white rounded-full px-5 h-10 text-sm font-medium transition-colors flex items-center justify-center gap-2"
                     >
-                      <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                      <div className="w-2 h-2 rounded-full bg-success"></div>
                       {account.displayName}
                     </button>
                     {isWrongNetwork && (
@@ -378,7 +233,7 @@ export default function Header() {
         />
         <div className="drawer-side z-[100]">
           <label htmlFor="my-drawer" className="drawer-overlay"></label>
-          <div className="w-full max-w-[320px] min-h-screen bg-black/90 backdrop-blur-md text-gray-300 font-sora">
+          <div className="w-full max-w-[320px] min-h-screen bg-base-200/90 backdrop-blur-md text-base-content font-sora">
             {/* 关闭按钮 */}
             <div className="sticky top-0 flex justify-between items-center p-4 border-b border-gray-800">
               <span className="text-lg font-medium text-white">Menu</span>
@@ -411,29 +266,27 @@ export default function Header() {
                     {!item.children ? (
                       <Link
                         href={item.path}
-                        className={`flex items-center gap-3 p-3 text-base transition-colors ${
+                        className={`block p-3 text-base transition-colors ${
                           pathname === item.path
                             ? "text-white font-medium"
                             : "text-gray-400 hover:text-gray-200"
                         }`}
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
-                        {item.icon}
-                        <span>{item.label}</span>
+                        {item.label}
                       </Link>
                     ) : (
                       <details className="group">
                         <summary
-                          className={`w-full flex items-center gap-3 p-3 text-base transition-colors cursor-pointer ${
+                          className={`w-full p-3 text-base transition-colors cursor-pointer ${
                             pathname === item.path
                               ? "text-white font-medium"
                               : "text-gray-400 hover:text-gray-200"
                           }`}
                         >
-                          {item.icon}
-                          <span>{item.label}</span>
+                          {item.label}
                           <svg
-                            className="w-4 h-4 ml-auto"
+                            className="w-4 h-4 ml-auto inline-block"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -453,15 +306,14 @@ export default function Header() {
                                 href={child.path}
                                 target={child.target}
                                 rel={child.rel}
-                                className={`flex items-center gap-3 p-3 text-base transition-colors ${
+                                className={`block p-3 text-base transition-colors ${
                                   pathname === child.path
                                     ? "text-white font-medium"
                                     : "text-gray-400 hover:text-gray-200"
                                 }`}
                                 onClick={() => setIsMobileMenuOpen(false)}
                               >
-                                {child.icon}
-                                <span>{child.label}</span>
+                                {child.label}
                               </Link>
                             </li>
                           ))}

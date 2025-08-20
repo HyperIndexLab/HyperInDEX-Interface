@@ -13,7 +13,7 @@ const BASE_SYSTEM_PROMPT = `You are an AI assistant for HyperIndex, a DeFi platf
 Key information about HyperIndex:
 - HyperIndex is a decentralized exchange (DEX) platform
 - It allows users to swap tokens, provide liquidity, and earn rewards
-- HyperIndex uses HSK as its native token
+- HyperIndex uses OKB as its native token
 - Users can create and manage liquidity pools
 - The platform supports various blockchain wallets for connection
 

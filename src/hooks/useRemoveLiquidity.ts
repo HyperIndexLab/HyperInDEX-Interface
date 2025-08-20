@@ -9,7 +9,7 @@ import { Position } from '@uniswap/v3-sdk';
 import { waitForTransactionReceipt, writeContract } from 'wagmi/actions';
 import { wagmiConfig } from '@/components/RainbowKitProvider';
 import { PAIR_ABI } from '../constant/ABI/HyperIndexPair';
-import { WHSK } from '@/constant/value';
+import { WOKB} from '@/constant/value';
 
 interface RemoveLiquidityParams {
   lpAmount: bigint;

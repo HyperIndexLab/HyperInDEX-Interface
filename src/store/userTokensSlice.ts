@@ -42,7 +42,7 @@ export const fetchUserTokens = createAsyncThunk(
   'userTokens/fetch',
   async (address: string) => {
     try {
-      // 先获取HSK余额
+      // 先获取OKB余额
       const baseUrl = getApiBaseUrl();
       const balanceResponse = await fetch(`${baseUrl}/api/v2/addresses/${address}`);
       if (!balanceResponse.ok) {
@@ -57,15 +57,15 @@ export const fetchUserTokens = createAsyncThunk(
       }
       const data = await response.json();
       
-      // 构造HSK token数据
-      const hskToken = {
+      // 构造OKB token数据
+      const OKBToken = {
         token: {
           address: "0x0000000000000000000000000000000000000000",
           decimals: "18",
-          name: "HashKey Chain",
-          symbol: "HSK",
+          name: "X Layer",
+          symbol: "OKB",
           type: "NATIVE",
-          icon_url: "/img/HSK-LOGO.png",
+          icon_url: "/img/okb.png",
         },
         token_id: null,
         token_instance: null,
@@ -91,8 +91,8 @@ export const fetchUserTokens = createAsyncThunk(
         };
       });
 
-      // 将HSK放在列表第一位
-      return [hskToken, ...processedItems];
+      // 将OKB放在列表第一位
+      return [OKBToken, ...processedItems];
     } catch (error) {
       console.error('API error:', error);
       throw error;
@@ -105,7 +105,7 @@ export const refreshUserTokens = createAsyncThunk(
   'userTokens/refresh',
   async (address: string) => {
     try {
-      // 先获取HSK余额
+      // 先获取OKB余额
       const baseUrl = getApiBaseUrl();
       const balanceResponse = await fetch(`${baseUrl}/api/v2/addresses/${address}`);
       if (!balanceResponse.ok) {
@@ -120,15 +120,15 @@ export const refreshUserTokens = createAsyncThunk(
       }
       const data = await response.json();
       
-      // 构造HSK token数据
-      const hskToken = {
+      // 构造OKB token数据
+      const OKBToken = {
         token: {
           address: "0x0000000000000000000000000000000000000000",
           decimals: "18",
-          name: "HashKey Chain",
-          symbol: "HSK",
+          name: "X layer",
+          symbol: "OKB",
           type: "NATIVE",
-          icon_url: "/img/HSK-LOGO.png",
+          icon_url: "/img/OKB.png",
         },
         token_id: null,
         token_instance: null,
@@ -152,8 +152,8 @@ export const refreshUserTokens = createAsyncThunk(
         };
       });
 
-      // 将HSK放在列表第一位
-      return [hskToken, ...processedItems];
+      // 将OKB放在列表第一位
+      return [OKBToken, ...processedItems];
     } catch (error) {
       console.error('API error:', error);
       throw error;

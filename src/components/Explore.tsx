@@ -26,7 +26,7 @@ export const formatTradeVolume = (
 const getTokenIcon = (symbol: string): string => {
   const localIcons: Record<string, string> = {
     'usdt': '/img/usdt.svg',
-    'whsk': '/img/HSK-LOGO.png',
+    'wokb': '/img/okb.png',
     'weth': '/img/weth.svg',
     'usdc.e': '/img/usdc.e.svg'
   };
@@ -382,7 +382,7 @@ export default function Explore({ activeTab }: { activeTab: number }) {
                               {(() => {
                                 const [icon0, icon1] = getPoolTokenIcons(row.pairsName);
                                 const [token0, token1] = row.pairsName.split('/');
-                                const specialTokens = ['usdt', 'whsk', 'weth', 'usdc.e'];
+                                const specialTokens = ['usdt', 'wokb', 'weth', 'usdc.e'];
                                 
                                 return (
                                   <>

@@ -17,10 +17,6 @@ export default function Home() {
       <div className="flex justify-center items-center min-h-[calc(100vh-12rem)] sm:min-h-[calc(100vh-3.5rem)]  pt-14 px-4">
         <SwapContainerV3 token1={inputCurrency} token2={outputCurrency} />
       </div>
-      {/* <AdPopover 
-        imageUrl={Competition.src}
-        linkUrl="https://happy.hyperindex.trade/"
-      /> */}
     </>
   );
 }

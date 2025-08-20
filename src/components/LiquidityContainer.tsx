@@ -8,7 +8,7 @@ import {
   ChevronLeftIcon,
 } from "@heroicons/react/24/outline";
 import { useAccount, useBalance, useWriteContract, useReadContract, useWaitForTransactionReceipt } from "wagmi";
-import { WHSK } from "@/constant/value";
+import { WOKB } from "@/constant/value";
 import {
   ROUTER_CONTRACT_ADDRESS,
   ROUTER_ABI,
@@ -45,25 +45,25 @@ interface TokenData {
   decimals?: string | null;
 }
 
-// 判断是否为原生 HSK 的函数 - 只有真正的原生 HSK 地址为 0x0000000000000000000000000000000000000000
-const isNativeHSK = (token: TokenData | null): boolean => {
-  return token?.symbol === "HSK" && token?.address === "0x0000000000000000000000000000000000000000";
+// 判断是否为原生 OKB 的函数 - 只有真正的原生 OKB 地址为 0x0000000000000000000000000000000000000000
+const isNativeOKB = (token: TokenData | null): boolean => {
+  return token?.symbol === "OKB" && token?.address === "0x0000000000000000000000000000000000000000";
 };
 
-const DEFAULT_HSK_TOKEN: TokenData = {
-  symbol: "HSK",
-  name: "HyperSwap Token",
-  address: WHSK,
-  icon_url: "/img/HSK-LOGO.png",
+const DEFAULT_OKB_TOKEN: TokenData = {
+  symbol: "OKB",
+  name: "XgenSwap Token",
+  address: WOKB,
+  icon_url: "/img/okb.png",
   decimals: "18",
 };
 
 const getDefaultTokenIcon = (tokenData: TokenData | null) => {
-  if (!tokenData) return "/img/HSK-LOGO.png";
+  if (!tokenData) return "/img/okb.png";
   
-  // 如果是 HSK，使用 HSK 图标
-  if (tokenData.symbol === "HSK") {
-    return "/img/HSK-LOGO.png";
+  // 如果是 OKb OKB 图标
+  if (tokenData.symbol === "OKB") {
+    return "/img/okb.png";
   }
   
   // 其他 ERC20 代币使用通用图标
@@ -71,7 +71,7 @@ const getDefaultTokenIcon = (tokenData: TokenData | null) => {
 };
 
 const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
-  token1 = "HSK",
+  token1 = "OKB",
   token2 = "Select token",
 }) => {
   const tokens = useSelector(selectTokens);
@@ -110,7 +110,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const [isCalculating, setIsCalculating] = useState(false);
 
   const { 
-    data: hskBalance,
+    data: okbBalance,
   } = useBalance({
     address: userAddress,
     query: {
@@ -122,18 +122,18 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     data: token1Balance, 
   } = useBalance({
     address: userAddress,
-    token: !isNativeHSK(token1Data) ? token1Data?.address as `0x${string}` : undefined,
+    token: !isNativeOKB(token1Data) ? token1Data?.address as `0x${string}` : undefined,
     query: {
-      enabled: !!userAddress && !!token1Data && !isNativeHSK(token1Data),
+      enabled: !!userAddress && !!token1Data && !isNativeOKB(token1Data),
     },
   });
 
 
   const { data: token2Balance } = useBalance({
     address: userAddress,
-    token: !isNativeHSK(token2Data) ? token2Data?.address as `0x${string}` : undefined,
+    token: !isNativeOKB(token2Data) ? token2Data?.address as `0x${string}` : undefined,
     query: {
-      enabled: !!userAddress && !!token2Data && !isNativeHSK(token2Data),
+      enabled: !!userAddress && !!token2Data && !isNativeOKB(token2Data),
     },
   });
 
@@ -151,8 +151,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
 
 
   useEffect(() => {
-    if (!token1Data && token1 === "HSK") {
-      setToken1Data(DEFAULT_HSK_TOKEN);
+    if (!token1Data && token1 === "OKB") {
+      setToken1Data(DEFAULT_OKB_TOKEN);
     }
   }, [token1, token1Data]);
 
@@ -320,21 +320,21 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       // 计算最小接收数量
       const minAmount1 = (amount1Big * BigInt(99)) / BigInt(100);
       const minAmount2 = (amount2Big * BigInt(99)) / BigInt(100);
-      // 判断是否包含 HSK
-      const isToken1HSK = token1Data.symbol === "HSK";
-      const isToken2HSK = token2Data.symbol === "HSK";
+      // 判断是否包含 OKB
+      const isToken1OKB = token1Data.symbol === "OKB";
+      const isToken2OKB = token2Data.symbol === "OKB";
 
-      if (isToken1HSK || isToken2HSK) {
-        const tokenAddress = isToken1HSK
+      if (isToken1OKB || isToken2OKB) {
+        const tokenAddress = isToken1OKB
           ? token2Data.address
           : token1Data.address;
-        const tokenAmount = isToken1HSK ? amount2Big : amount1Big;
-        const ethAmount = isToken1HSK ? amount1Big : amount2Big;
-        const minTokenAmount = isToken1HSK ? minAmount2 : minAmount1;
-        const minEthAmount = isToken1HSK ? minAmount1 : minAmount2;
+        const tokenAmount = isToken1OKB ? amount2Big : amount1Big;
+        const ethAmount = isToken1OKB ? amount1Big : amount2Big;
+        const minTokenAmount = isToken1OKB ? minAmount2 : minAmount1;
+        const minEthAmount = isToken1OKB ? minAmount1 : minAmount2;
        
         try { 
-           // 如果其中一个是 HSK，使用 addLiquidityETH
+           // 如果其中一个是 OKB addLiquidityETH
           result = await simulateContract(wagmiConfig, {
               address: ROUTER_CONTRACT_ADDRESS,
               abi: ROUTER_ABI,
@@ -356,7 +356,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         }
       } else {
         try {
-           // 如果都不是 HSK，使用 addLiquidity
+           // 如果都不是 OKB addLiquidity
           result = await simulateContract(wagmiConfig, {
             address: ROUTER_CONTRACT_ADDRESS,
             abi: ROUTER_ABI,
@@ -413,18 +413,18 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
       // 计算最小接收数量
       const minAmount1 = (amount1Big * BigInt(85)) / BigInt(100);
       const minAmount2 = (amount2Big * BigInt(85)) / BigInt(100);
-      // 判断是否包含 HSK
-      const isToken1HSK = token1Data.symbol === "HSK";
-      const isToken2HSK = token2Data.symbol === "HSK";
+      // 判断是否包含 OKB
+      const isToken1OKB = token1Data.symbol === "OKB";
+      const isToken2OKB = token2Data.symbol === "OKB";
 
-      if (isToken1HSK || isToken2HSK) {
-        const tokenAddress = isToken1HSK
+      if (isToken1OKB || isToken2OKB) {
+        const tokenAddress = isToken1OKB
           ? token2Data.address
           : token1Data.address;
-        const tokenAmount = isToken1HSK ? amount2Big : amount1Big;
-        const ethAmount = isToken1HSK ? amount1Big : amount2Big;
-        const minTokenAmount = isToken1HSK ? minAmount2 : minAmount1;
-        const minEthAmount = isToken1HSK ? minAmount1 : minAmount2;
+        const tokenAmount = isToken1OKB ? amount2Big : amount1Big;
+        const ethAmount = isToken1OKB ? amount1Big : amount2Big;
+        const minTokenAmount = isToken1OKB ? minAmount2 : minAmount1;
+        const minEthAmount = isToken1OKB ? minAmount1 : minAmount2;
 
         await writeContract({
           address: ROUTER_CONTRACT_ADDRESS,
@@ -589,11 +589,11 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     };
 
     const handleButtonClick = async () => {
-      const canProceed = await estimateAndCheckGas(hskBalance);
+      const canProceed = await estimateAndCheckGas(okbBalance);
       if (!canProceed) {
         toast({
           type: 'error',
-          message: 'Insufficient gas, please deposit HSK first',
+          message: 'Insufficient gas, please deposit OKB first',
           isAutoClose: true
         });
         return;
@@ -608,7 +608,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         const amount2Required = BigInt(Math.floor(parseFloat(amount2) * Math.pow(10, token2Decimals)));
 
         // 检查 token1 余额
-        if (!isNativeHSK(token1Data)) {
+        if (!isNativeOKB(token1Data)) {
           const token1Bal = token1Balance?.value || BigInt(0);
           if (token1Bal < amount1Required) {
             toast({
@@ -619,12 +619,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             return;
           }
         } else {
-          // 原生 HSK 使用 hskBalance
-          const hskBal = hskBalance?.value || BigInt(0);
-          if (hskBal < amount1Required) {
+          // 原生 OKB 使用 okbBalance
+          const obkBal = okbBalance?.value || BigInt(0);
+          if (obkBal < amount1Required) {
             toast({
               type: 'error',
-              message: `Insufficient HSK balance. Required: ${amount1}, Available: ${formatTokenBalance(hskBal.toString(), '18')}`,
+              message: `Insufficient OKB balance. Required: ${amount1}, Available: ${formatTokenBalance(obkBal.toString(), '18')}`,
               isAutoClose: true
             });
             return;
@@ -632,7 +632,7 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
         }
 
         // 检查 token2 余额
-        if (!isNativeHSK(token2Data)) {
+        if (!isNativeOKB(token2Data)) {
           const token2Bal = token2Balance?.value || BigInt(0);
           if (token2Bal < amount2Required) {
             toast({
@@ -643,12 +643,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             return;
           }
         } else {
-          // 原生 HSK 使用 hskBalance
-          const hskBal = hskBalance?.value || BigInt(0);
-          if (hskBal < amount2Required) {
+          // 原生 OKB 使用 okbBalance
+          const okbBal = okbBalance?.value || BigInt(0);
+          if (okbBal < amount2Required) {
             toast({
               type: 'error',
-              message: `Insufficient HSK balance. Required: ${amount2}, Available: ${formatTokenBalance(hskBal.toString(), '18')}`,
+              message: `Insufficient OKB balance. Required: ${amount2}, Available: ${formatTokenBalance(okbBal.toString(), '18')}`,
               isAutoClose: true
             });
             return;
@@ -721,8 +721,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             <div className="flex justify-end items-center mt-2">
               <span className="text-sm text-base-content/60">
                 Balance: {
-                  isNativeHSK(token1Data) && hskBalance 
-                    ? formatTokenBalance(hskBalance.value.toString(), '18')
+                  isNativeOKB(token1Data) && okbBalance 
+                    ? formatTokenBalance(okbBalance.value.toString(), '18')
                     : token1Balance 
                       ? formatTokenBalance(token1Balance.value.toString(), token1Data?.decimals || '18') 
                       : '0'
@@ -776,8 +776,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
             <div className="flex justify-end items-center mt-2">
             <span className="text-sm text-base-content/60">
               Balance: {
-                isNativeHSK(token2Data) && hskBalance 
-                  ? formatTokenBalance(hskBalance.value.toString(), '18')
+                isNativeOKB(token2Data) && okbBalance 
+                  ? formatTokenBalance(okbBalance.value.toString(), '18')
                   : token2Balance 
                     ? formatTokenBalance(token2Balance.value.toString(), token2Data?.decimals || '18') 
                     : '0'
@@ -871,12 +871,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 <h2 className="text-xl font-bold mb-3">Select Pair</h2>
 
                 <div className="dropdown dropdown-end">
-                  <div tabIndex={0} role="button" className="btn btn-sm rounded-xl bg-[#1c1d22] hover:bg-[#2c2d33] border border-white/5">
+                  <div tabIndex={0} role="button" className="btn btn-sm rounded-xl bg-base-200 hover:bg-base-300 border border-violet-900/20">
                     <span>V2 Position</span>
                     <ChevronDownIcon className="w-4 h-4 ml-1" />
                   </div>
-                  <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-[#1c1d22] rounded-xl w-40 border border-white/5">
-                    <li><a href={`/liquidity/v3?inputCurrency=${token1Data?.address}&outputCurrency=${token2Data?.address}`} className="text-base-content/60 hover:bg-[#2c2d33] rounded-lg">V3 Position</a></li>
+                  <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-xl w-40 border border-violet-900/20">
+                    <li><a href={`/liquidity/v3?inputCurrency=${token1Data?.address}&outputCurrency=${token2Data?.address}`} className="text-base-content/60 hover:bg-base-300 rounded-lg">V3 Position</a></li>
                   </ul>
                 </div>
               </div>

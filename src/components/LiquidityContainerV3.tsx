@@ -6,7 +6,7 @@ import {
   ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import { useAccount } from "wagmi";
-import { WHSK } from "@/constant/value";
+import { WOKB } from "@/constant/value";
 
 import { useTokenApproval } from "@/hooks/useTokenApproval";
 import { StepIndicator } from "./StepIndicator";
@@ -53,20 +53,20 @@ interface TokenData {
 //   maxTick: number;
 // }
 
-const DEFAULT_HSK_TOKEN: TokenData = {
-  symbol: "HSK",
-  name: "HyperSwap Token",
-  address: WHSK,
-  icon_url: "/img/HSK-LOGO.png",
+const DEFAULT_OKB_TOKEN: TokenData = {
+  symbol: "OKB",
+  name: "XgenSwap Token",
+  address: WOKB,
+  icon_url: "/img/okb.png",
   decimals: "18",
 };
 
 export const getDefaultTokenIcon = (tokenData: TokenData | null) => {
-  if (!tokenData) return "/img/HSK-LOGO.png";
+  if (!tokenData) return "/img/okb.png";
   
-  // 如果是 HSK，使用 HSK 图标
-  if (tokenData.symbol === "HSK") {
-    return "/img/HSK-LOGO.png";
+  // 如果是 okb okb 图标
+  if (tokenData.symbol === "OKB") {
+    return "/img/okb.png";
   }
   
   // 其他 ERC20 代币使用通用图标
@@ -74,7 +74,7 @@ export const getDefaultTokenIcon = (tokenData: TokenData | null) => {
 };
 
 const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
-  token1 = "HSK",
+  token1 = "OKB",
   token2 = "Select token",
   fee = 3000,
 }) => {
@@ -118,8 +118,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
   const [lastModifiedInput, setLastModifiedInput] = useState<'token1' | 'token2'>('token1');
 
   useEffect(() => {
-    if (!token1Data && token1 === "HSK") {
-      setToken1Data(DEFAULT_HSK_TOKEN);
+    if (!token1Data && token1 === "OKB") {
+      setToken1Data(DEFAULT_OKB_TOKEN);
     }
   }, [token1, token1Data]);
 
@@ -182,8 +182,8 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
     }
     
     // 确保地址是有效的
-    const address1 = isValidAddress(token1Data.address) ? token1Data.address : WHSK;
-    const address2 = isValidAddress(token2Data.address) ? token2Data.address : WHSK;
+    const address1 = isValidAddress(token1Data.address) ? token1Data.address : WOKB;
+    const address2 = isValidAddress(token2Data.address) ? token2Data.address : WOKB;
     
     let token0 ;
     let token1;
@@ -707,12 +707,12 @@ const LiquidityContainer: React.FC<LiquidityContainerProps> = ({
                 <h2 className="text-xl font-bold mb-3">Select Pair</h2>
 
                 <div className="dropdown dropdown-end">
-                  <div tabIndex={0} role="button" className="btn btn-sm rounded-xl bg-[#1c1d22] hover:bg-[#2c2d33] border border-white/5">
+                  <div tabIndex={0} role="button" className="btn btn-sm rounded-xl bg-base-200 hover:bg-base-300 border border-violet-900/20">
                     <span>V3 Position</span>
                     <ChevronDownIcon className="w-4 h-4 ml-1" />
                   </div>
-                  <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-[#1c1d22] rounded-xl w-40 border border-white/5">
-                    <li><Link href="/liquidity" className="text-base-content/60 hover:bg-[#2c2d33] rounded-lg">V2 Position</Link></li>
+                  <ul tabIndex={0} className="dropdown-content z-[1] menu p-2 shadow bg-base-200 rounded-xl w-40 border border-violet-900/20">
+                    <li><Link href="/liquidity" className="text-base-content/60 hover:bg-base-300 rounded-lg">V2 Position</Link></li>
                   </ul>
                 </div>
               </div>

@@ -7,7 +7,7 @@ import { formatTokenBalance } from '../utils/formatTokenBalance';
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt, useBalance } from 'wagmi';
 import { ROUTER_ABI, ROUTER_CONTRACT_ADDRESS } from '../constant/ABI/HyperIndexRouter';
 import { parseUnits } from 'viem';
-import { WHSK } from '../constant/value';
+import { WOKB } from '../constant/value';
 import { useAccount } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { useDispatch, useSelector } from 'react-redux';
@@ -36,15 +36,15 @@ interface TokenData {
   decimals?: string | null;
 }
 
-const DEFAULT_HSK_TOKEN: TokenData = {
-  symbol: 'HSK',
+const DEFAULT_OKB_TOKEN: TokenData = {
+  symbol: 'okb',
   name: 'HyperSwap Token',
   address: '0x0000000000000000000000000000000000000000',
-  icon_url: "/img/HSK-LOGO.png",
+  icon_url: "/img/okb.png",
   decimals: '18'
 };
 
-const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 'Select token' }) => {
+const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'okb', token2 = 'Select token' }) => {
   const tokens = useSelector(selectTokens);
   const dispatch = useDispatch<AppDispatch>();
   const [showModal, setShowModal] = useState(false);
@@ -77,7 +77,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       ROUTER_CONTRACT_ADDRESS       // spender (使用常量中定义的Router地址)
     ] : undefined,
     query: {
-      enabled: !!(userAddress && token1Data && token1Data.symbol !== 'HSK'),
+      enabled: !!(userAddress && token1Data && token1Data.symbol !== 'OKB'),
     },
   });
   const { isLoading: isWaitingTx, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({
@@ -85,7 +85,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   });
   // 添加一个辅助函数来获取用于查询的地址
   const getQueryAddress = (token: TokenData) => {
-    return token.symbol === 'HSK' ? WHSK : token.address;
+    return token.symbol === 'OKB' ? WOKB : token.address;
   };
 
   // 1. 修改 useReadContract hook 的调用，添加 enabled 条件的打印
@@ -116,7 +116,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     
   // 在代币选择或金额变化时检查授权
   useEffect(() => {
-    if (token1Data && token1Data.symbol !== 'HSK') {
+    if (token1Data && token1Data.symbol !== 'okb') {
       refetchAllowance();
     }
   }, [token1Data, token1Amount]);
@@ -152,7 +152,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       if (!canProceed) {
         toast({
           type: 'error',
-          message: 'Insufficient gas, please deposit HSK first'
+          message: 'Insufficient gas, please deposit OKB first'
         });
         return;
       }
@@ -171,7 +171,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     }
   };
 
-  // 处理代币选择，特别处理 HSK/WHSK
+  // 处理代币选择，特别处理 OKB/WOKB
   const handleTokenSelect = (tokenData: TokenData) => {
     if (modalType === 'token1') {
       // 如果选择的代币和 token2 相同，则交换位置
@@ -211,14 +211,14 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setToken1Amount(value);
       
-      // 检查是否是 HSK 和 WHSK 的交易对
-      const isHskWhskPair = token1Data && token2Data && (
-        (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') ||
-        (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
+      // 检查是否是 OKB 和 WOKB 的交易对
+      const isokbWokbPair = token1Data && token2Data && (
+        (token1Data.symbol === 'OKB' && token2Data.symbol === 'OKB') ||
+        (token2Data.symbol === 'OKB' && token1Data.symbol === 'OKB')
       );
 
-      if (isHskWhskPair) {
-        // HSK 和 WHSK 的 1:1 交易，直接设置相同的金额
+      if (isokbWokbPair) {
+        // OKB 和 WOKB 的 1:1 交易，直接设置相同的金额
         setToken2Amount(value);
         setMinimumReceived(value);
         setPriceImpact('0');
@@ -277,13 +277,13 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   // 修改价格计算相关的 useEffect
   useEffect(() => {
     if (token1Data && token2Data) {
-      // 检查是否是 HSK 和 WHSK 的交易对 1:1 兑换
-      const isHskWhskPair = (
-        (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') ||
-        (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
+      // 检查是否是 okb 和 Wokb 的交易对 1:1 兑换
+      const isokbWokbPair = (
+        (token1Data.symbol === 'okb' && token2Data.symbol === 'Wokb') ||
+        (token2Data.symbol === 'okb' && token1Data.symbol === 'Wokb')
       );
 
-      if (isHskWhskPair) {
+      if (isokbWokbPair) {
         setToken2Amount(token1Amount);
         setMinimumReceived(token1Amount);
         setPriceImpact('0');
@@ -377,20 +377,20 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
   useEffect(() => {
     if (tokenPrice.length > 0) {
-      // 修改查找逻辑，特殊处理 HSK 和 WHSK
+      // 修改查找逻辑，特殊处理 OKB 和 OKB
       let token1PriceData;
       let token2PriceData;
       
-      if (token1Data?.symbol === 'HSK' || token1Data?.symbol === 'WHSK') {
-        // HSK 和 WHSK 共享相同的价格
-        token1PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
+      if (token1Data?.symbol === 'OKB' || token1Data?.symbol === 'WOKB') {
+        // OKB 和 WOKB 共享相同的价格
+        token1PriceData = tokenPrice.find(t => t.symbol === 'WOKB' || t.symbol === 'OKB');
       } else {
         token1PriceData = tokenPrice.find(t => t.address === token1Data?.address);
       }
       
-      if (token2Data?.symbol === 'HSK' || token2Data?.symbol === 'WHSK') {
-        // HSK 和 WHSK 共享相同的价格
-        token2PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
+      if (token2Data?.symbol === 'OKB' || token2Data?.symbol === 'WOKB') {
+        // OKB 和 WOKB 共享相同的价格
+        token2PriceData = tokenPrice.find(t => t.symbol === 'WOKB' || t.symbol === 'OKB');
       } else {
         token2PriceData = tokenPrice.find(t => t.address === token2Data?.address);
       }
@@ -480,10 +480,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     try {
       if (!token1Data || !token2Data || !userAddress) return;
 
-      // 专门检查是否是 HSK -> WHSK 的情况
-      if (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') {
+      // 专门检查是否是 OKB -> WOKB 的情况
+      if (token1Data.symbol === 'OKB' && token2Data.symbol === 'WOKB') {
         const params = {
-          address: WHSK as `0x${string}`,
+          address: WOKB as `0x${string}`,
           abi: WETH_ABI,
           functionName: 'deposit',
           value: parseUnits(token1Amount, 18),
@@ -494,7 +494,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         if (!canProceed) {
           toast({
             type: 'error',
-            message: 'Insufficient gas, please deposit HSK first'
+            message: 'Insufficient gas, please deposit OKB first'
           });
           return;
         }
@@ -506,10 +506,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         return;
       }
 
-      // 专门检查是否是 WHSK -> HSK 的情况
-      if (token1Data.symbol === 'WHSK' && token2Data.symbol === 'HSK') {
+      // 专门检查是否是 WOKB -> OKB 的情况
+      if (token1Data.symbol === 'WOKB' && token2Data.symbol === 'OKB') {
         const params = {
-          address: WHSK as `0x${string}`,
+          address: WOKB as `0x${string}`,
           abi: WETH_ABI,
           functionName: 'withdraw',
           args: [parseUnits(token1Amount, 18)],
@@ -520,7 +520,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         if (!canProceed) {
           toast({
             type: 'error',
-            message: 'Insufficient gas, please deposit HSK first'
+            message: 'Insufficient gas, please deposit OKB first'
           });
           return;
         }
@@ -539,10 +539,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       const deadlineTime = Math.floor(Date.now() / 1000 + Number(deadline) * 60);
 
       let path: string[];
-      if (token1Data.symbol === 'HSK') {
-        path = [WHSK, token2Data.address];
-      } else if (token2Data.symbol === 'HSK') {
-        path = [token1Data.address, WHSK];
+      if (token1Data.symbol === 'OKB') {
+        path = [WOKB, token2Data.address];
+      } else if (token2Data.symbol === 'OKB') {
+        path = [token1Data.address, WOKB];
       } else {
         path = [token1Data.address, token2Data.address];
       }
@@ -550,8 +550,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       const params = {
         address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
         abi: ROUTER_ABI,
-        functionName: token1Data.symbol === 'HSK' ? 'swapExactETHForTokens' : token2Data.symbol === 'HSK' ? 'swapExactTokensForETH' : 'swapExactTokensForTokens',
-        args: token1Data.symbol === 'HSK' ? [
+        functionName: token1Data.symbol === 'OKB' ? 'swapExactETHForTokens' : token2Data.symbol === 'OKB' ? 'swapExactTokensForETH' : 'swapExactTokensForTokens',
+        args: token1Data.symbol === 'OKB' ? [
           amountOutMin,              // amountOutMin
           path,                      // path
           userAddress,               // to
@@ -563,7 +563,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           userAddress,               // to
           deadlineTime,              // deadline
         ],
-        value: token1Data.symbol === 'HSK' ? parseUnits(token1Amount, 18) : undefined,
+        value: token1Data.symbol === 'OKB' ? parseUnits(token1Amount, 18) : undefined,
       };
 
       // 使用封装的 gas 检查函数
@@ -571,7 +571,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       if (!canProceed) {
         toast({
           type: 'error',
-          message: 'Insufficient gas, please deposit HSK first'
+          message: 'Insufficient gas, please deposit OKB first'
         });
         return;
       }
@@ -596,8 +596,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
   // 修改 useBalance hook 的调用,解构出 refetch 函数
   const { 
-    data: hskBalance, 
-    refetch: refetchHskBalance 
+    data: okbBalance, 
+    refetch: refetchokbBalance 
   } = useBalance({
     address: userAddress,
     query: {
@@ -613,24 +613,24 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
     refetch: refetchToken1Balance 
   } = useBalance({
     address: userAddress,
-    token: token1Data?.symbol !== 'HSK' ? token1Data?.address as `0x${string}` : undefined,
+    token: token1Data?.symbol !== 'OKB' ? token1Data?.address as `0x${string}` : undefined,
     query: {
-      enabled: !!userAddress && !!token1Data && token1Data.symbol !== 'HSK',
+      enabled: !!userAddress && !!token1Data && token1Data.symbol !== 'OKB',
     },
   });
 
 
   const { data: token2Balance, refetch: refetchToken2Balance } = useBalance({
     address: userAddress,
-    token: token2Data?.symbol !== 'HSK' ? token2Data?.address as `0x${string}` : undefined,
+    token: token2Data?.symbol !== 'OKB' ? token2Data?.address as `0x${string}` : undefined,
     query: {
-      enabled: !!userAddress && !!token2Data && token2Data.symbol !== 'HSK',
+      enabled: !!userAddress && !!token2Data && token2Data.symbol !== 'OKB',
     },
   });
 
   // 1. 修复 token 余额更新导致的循环
   useEffect(() => {
-    if (token1Data && token1Data.symbol !== 'HSK' && token1Balance?.value) {
+    if (token1Data && token1Data.symbol !== 'OKB' && token1Balance?.value) {
       // 避免直接修改 token1Data，而是使用函数式更新，并且只在值真正变化时才更新
       setToken1Data(prev => {
         if (prev?.balance === token1Balance.value.toString()) return prev;
@@ -644,7 +644,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
   // 2. 修复 token2 余额更新导致的循环
   useEffect(() => {
-    if (token2Data && token2Data.symbol !== 'HSK' && token2Balance?.value) {
+    if (token2Data && token2Data.symbol !== 'OKB' && token2Balance?.value) {
       // 同样使用函数式更新，并且只在值真正变化时才更新
       setToken2Data(prev => {
         if (prev?.balance === token2Balance.value.toString()) return prev;
@@ -689,7 +689,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
         // 重新获取余额
         setTimeout(() => {
-          refetchHskBalance();
+          refetchokbBalance();
           refetchToken1Balance();
           refetchToken2Balance();
         }, 1000);
@@ -735,15 +735,15 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
 
       setTxStatus('failed');
     }
-  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchHskBalance, refetchToken1Balance, refetchAllowance]);
+  }, [isWriteSuccess, isWritePending, isTxConfirmed, currentTx, hash, isWriteError, writeError, refetchokbBalance, refetchToken1Balance, refetchAllowance]);
 
 
   // 2. 检查余额是否足够
   const hasInsufficientBalance = () => {
     if (!token1Data || !token1Amount) return false;
     
-    const balance = token1Data.symbol === 'HSK' 
-      ? hskBalance?.value?.toString() || '0'
+    const balance = token1Data.symbol === 'OKB' 
+      ? okbBalance?.value?.toString() || '0'
       : token1Balance?.value?.toString() || '0';
       
     try {
@@ -816,7 +816,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       };
     }
 
-    if (token1Data.symbol !== 'HSK' && !isApproved) {
+    if (token1Data.symbol !== 'okb' && !isApproved) {
       return {
         text: 'Approve',
         disabled: false,
@@ -849,11 +849,11 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
       setToken1Data(token2Data);
       setToken2Data(tempToken);
     } else {
-      // token1 是默认的 HSK
+      // token1 是默认的 OKB
       setToken1Data(token2Data);
       setToken2Data({
-        ...DEFAULT_HSK_TOKEN,
-        balance: hskBalance?.value?.toString(),
+        ...DEFAULT_OKB_TOKEN,
+        balance: okbBalance?.value?.toString(),
       });
     }
     
@@ -866,13 +866,13 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   };
 
   useEffect(() => {
-    if (token1 === 'HSK') {
+    if (token1 === 'OKB') {
       setToken1Data({
-        ...DEFAULT_HSK_TOKEN,
-        balance: hskBalance?.value?.toString(),
+        ...DEFAULT_OKB_TOKEN,
+        balance: okbBalance?.value?.toString(),
       });
     }
-  }, [hskBalance, token1]);
+  }, [okbBalance, token1]);
 
   // 添加 ref
   const settingsRef = useRef<HTMLDivElement>(null);
@@ -912,8 +912,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
   const handlePercentageClick = (percentage: number) => {
     if (!token1Data) return;
     
-    const balance = token1Data.symbol === 'HSK' 
-      ? hskBalance?.value?.toString() || '0'
+    const balance = token1Data.symbol === 'ok b' 
+      ? okbBalance?.value?.toString() || '0'
       : token1Balance?.value?.toString() || '0';
       
     try {
@@ -938,7 +938,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
           selectedToken={modalType === 'token2' ? token1Data : token2Data}
         />
       )}
-      <div className="w-[460px] mx-auto rounded-2xl bg-[#1c1d22]/30 bg-opacity-20 p-4 shadow-xl border border-white/5">
+      <div className="w-[460px] mx-auto rounded-2xl bg-base-200/50 p-4 shadow-xl">
         {/* 头部操作栏 */}
         <div className="flex justify-end items-center mb-6">
           <div className="relative">
@@ -953,7 +953,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
             {showSettingsPopup && (
               <div 
                 ref={settingsRef}
-                className="absolute right-0 top-10 w-[320px] bg-[#1c1d22] rounded-2xl p-4 shadow-2xl z-50 border border-gray-800/20"
+                className="absolute right-0 top-10 w-[320px] bg-base-200 rounded-2xl p-4 shadow-2xl z-50 border border-violet-900/30"
               >
                 {/* Slippage Settings */}
                 <div className="mb-5">
@@ -974,8 +974,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
                   <div className="relative">
                     <input
                       type="text"
-                      className={`w-full py-2 px-3 rounded-xl bg-[#242631] text-sm text-white focus:outline-none focus:ring-1 ${
-                        isHighSlippage(slippage) ? 'focus:ring-amber-400' : 'focus:ring-blue-500'
+                      className={`w-full py-2 px-3 rounded-xl bg-base-300 text-sm text-white focus:outline-none focus:ring-1 ${
+                        isHighSlippage(slippage) ? 'focus:ring-amber-400' : 'focus:ring-primary'
                       }`}
                       value={slippage}
                       onChange={(e) => {
@@ -997,10 +997,10 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
                     <div className="absolute right-2 top-1/2 -translate-y-1/2">
                       <span className={`text-xs font-medium px-2 py-1 rounded-lg ${
                         Number(slippage) === 5.5 
-                          ? 'bg-blue-500/20 text-blue-400' 
+                          ? 'bg-primary/20 text-primary' 
                           : isHighSlippage(slippage)
                             ? 'bg-amber-500/20 text-amber-400'
-                            : 'bg-gray-700 text-gray-300'
+                            : 'bg-neutral text-neutral-content'
                       }`}>
                         {Number(slippage) === 5.5 ? 'Auto' : 'Custom'}
                       </span>
@@ -1019,7 +1019,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
                   <div className="relative">
                     <input
                       type="text"
-                      className="w-full py-2 px-3 rounded-xl bg-[#242631] text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full py-2 px-3 rounded-xl bg-base-300 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary"
                       value={deadline}
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^\d.]/g, '');
@@ -1042,7 +1042,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         </div>
 
         {/* Sell 输入框 */}
-        <div className="bg-[#2c2d33]/50 rounded-xl p-4 mb-2">
+        <div className="bg-base-300/50 rounded-xl p-4 mb-2">
           <div className="flex justify-between items-center mb-2">
             <span className="text-base text-base-content/60">Sell</span>
             <div className="flex gap-2">
@@ -1064,7 +1064,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
               >
                 75%
               </button>
-              {token1Data?.symbol === 'HSK' ? (
+              {token1Data?.symbol === 'okb' ? (
                 <div className="tooltip" data-tip="Keep some network token balance to pay for transaction fees">
                   <button 
                     className="btn btn-xs btn-ghost hover:bg-base-200"
@@ -1099,15 +1099,15 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
             >
               {token1Data ? (
                 <>
-                  <img src={token1Data.icon_url || "/img/HSK-LOGO.png"} alt={token1Data.name} className="w-6 h-6 rounded-full" />
+                  <img src={token1Data.icon_url || "/img/okb.png"} alt={token1Data.name} className="w-6 h-6 rounded-full" />
                   <span className="mx-2">{displaySymbol(token1Data)}</span>
                 </>
               ) : (
                 <>
-                  {token1 === 'HSK' ? (
+                  {token1 === 'okb' ? (
                     <>
-                      <img src="/img/HSK-LOGO.png" alt="HSK" className="w-6 h-6 rounded-full" />
-                      <span className="mx-2">HSK</span>
+                      <img src="/img/okb.png" alt="okb" className="w-6 h-6 rounded-full" />
+                      <span className="mx-2">okb</span>
                     </>
                   ) : (
                     <span>{token1}</span>
@@ -1121,8 +1121,8 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
             <span className='text-base-content/60'>{token1Price !== '-' ? `$${formatNumberWithCommas(token1Price)}` : '-'}</span>
             <span className="text-sm text-base-content/60">
               Balance: {
-                token1Data?.symbol === 'HSK' 
-                  ? formatTokenBalance(hskBalance?.value?.toString() || '0', '18')
+                token1Data?.symbol === 'okb' 
+                  ? formatTokenBalance(okbBalance?.value?.toString() || '0', '18')
                   : formatTokenBalance(token1Balance?.value?.toString() || '0', token1Data?.decimals || '18')
               } {token1Data ? token1Data.symbol : token1}
             </span>
@@ -1140,7 +1140,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         </div>
 
         {/* Buy 输入框 */}
-        <div className="bg-base-300 backdrop-blur-md rounded-xl p-4 mb-4 border border-white/[0.02]">
+        <div className="bg-base-300 backdrop-blur-md rounded-xl p-4 mb-4 border border-violet-900/10">
           <div className="flex justify-between items-center mb-2">
             <span className="text-base text-base-content/60">Buy</span>
           </div>
@@ -1160,7 +1160,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
             >
               {token2Data ? (
                 <>
-                  <img src={token2Data.icon_url || "/img/HSK-LOGO.png"} alt={token2Data.name} className="w-6 h-6 rounded-full" />
+                  <img src={token2Data.icon_url || "/img/okb.png"} alt={token2Data.name} className="w-6 h-6 rounded-full" />
                   <span className="mx-2">{token2Data.symbol}</span>
                 </>
               ) : (
@@ -1181,7 +1181,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
         {token1Data && token2Data && token1Amount && (
           <>
             {!pairAddress ? (
-              <div className="bg-[#2c2d33]/20 backdrop-blur-md rounded-xl p-4 mb-4 border border-white/[0.02]">
+              <div className="bg-base-300/20 backdrop-blur-md rounded-xl p-4 mb-4 border border-violet-900/10">
                 <div className="text-center">
                   <p className="text-base-content/60 mb-2">No liquidity pool found</p>
                   <p className="text-sm text-base-content/40 mb-4">
@@ -1190,7 +1190,7 @@ const SwapContainer: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 
                 </div>
               </div>
             ) : (
-              <div className="bg-[#2c2d33]/20 backdrop-blur-md rounded-xl p-4 space-y-3 text-sm mb-4 border border-white/[0.02]">
+              <div className="bg-base-300/20 backdrop-blur-md rounded-xl p-4 space-y-3 text-sm mb-4 border border-violet-900/10">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-1 text-base-content/60">
                     <span>Minimum received</span>

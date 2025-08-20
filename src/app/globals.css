@@ -9,8 +9,8 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0F0B1A;
+    --foreground: #E5E7EB;
   }
 }
 
@@ -98,9 +98,9 @@ ul {
 /* 引用块样式 */
 .markdown-content blockquote {
   padding: 0.5rem 1rem;
-  border-left: 4px solid #444;
-  color: #aaa;
-  background-color: #222;
+  border-left: 4px solid #22C55E;
+  color: #A7F3D0;
+  background-color: #1E2A1E;
 }
 
 .markdown-content blockquote > :first-child {
@@ -116,10 +116,10 @@ ul {
   padding: 0.2em 0.4em;
   margin: 0;
   font-size: 85%;
-  background-color: rgba(200, 200, 200, 0.1);
+  background-color: rgba(34, 197, 94, 0.15);
   border-radius: 3px;
   font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
-  color: #e0e0e0;
+  color: #A7F3D0;
 }
 
 .markdown-content pre {
@@ -127,7 +127,7 @@ ul {
   overflow: auto;
   font-size: 85%;
   line-height: 1.45;
-  background-color: #1a1a1a;
+  background-color: #1A1625;
   border-radius: 3px;
   margin-bottom: 1rem;
 }
@@ -152,25 +152,25 @@ ul {
 
 .markdown-content table th {
   font-weight: 600;
-  background-color: #2a2a4a;
-  border: 1px solid #444;
+  background-color: #22C55E;
+  border: 1px solid #16A34A;
   padding: 0.75rem;
   text-align: left;
   color: #fff;
 }
 
 .markdown-content table td {
-  border: 1px solid #444;
+  border: 1px solid #15803D;
   padding: 0.75rem;
-  color: #e0e0e0;
+  color: #A7F3D0;
 }
 
 .markdown-content table tr:nth-child(2n) {
-  background-color: #222;
+  background-color: #1E2A1E;
 }
 
 .markdown-content table tr:hover {
-  background-color: #333;
+  background-color: #22543D;
 }
 
 /* 水平线样式 */
@@ -178,13 +178,13 @@ ul {
   height: 0.25em;
   padding: 0;
   margin: 24px 0;
-  background-color: #444;
+  background-color: #22C55E;
   border: 0;
 }
 
 /* 链接样式 */
 .markdown-content a {
-  color: #58a6ff;
+  color: #10B981;
   text-decoration: none;
 }
 
@@ -214,4 +214,23 @@ ul {
 
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Custom scrollbar for degen modal */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(34, 197, 94, 0.1);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #22C55E, #34D399);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #16A34A, #10B981);
 }

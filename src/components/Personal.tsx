@@ -19,15 +19,6 @@ export interface TokenBalance {
   balance: string;
 }
 
-// CEX列表数据
-const CEX_LIST = [
-  { name: 'HashKey Global', icon: 'https://hyperindex.4everland.store/hashkey.jpeg', link: 'https://global.hashkey.com/en-US/spot/HSK_USDT' },
-  { name: 'Gate.io', icon: 'https://hyperindex.4everland.store/gate.png', link: 'https://www.gate.io/trade/HSK_USDT' },
-  { name: 'KuCoin', icon: 'https://hyperindex.4everland.store/kucoin.png', link: 'https://www.kucoin.com/trade/HSK-USDT' },
-  { name: 'BitKan', icon: 'https://hyperindex.4everland.store/bitkan.png', link: 'https://bitkan.com/zh/trade/HSK-USDT' },
-  { name: 'MEXC', icon: 'https://hyperindex.4everland.store/mexc.png', link: 'https://www.mexc.com/exchange/HSK_USDT?_from=search' },
-];
-
 // 骨架屏组件
 const TokenSkeleton = () => (
   <div className="animate-pulse space-y-4">
@@ -35,15 +26,15 @@ const TokenSkeleton = () => (
     {[...Array(5)].map((_, i) => (
       <div key={i} className="flex items-center justify-between p-2">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-white/[0.08]" />
+          <div className="w-8 h-8 rounded-full bg-base-content/20" />
           <div className="space-y-2">
-            <div className="h-4 w-24 bg-white/[0.08] rounded" />
-            <div className="h-3 w-16 bg-white/[0.08] rounded" />
+            <div className="h-4 w-24 bg-base-content/20 rounded" />
+            <div className="h-3 w-16 bg-base-content/20 rounded" />
           </div>
         </div>
         <div className="space-y-2">
-          <div className="h-4 w-20 bg-white/[0.08] rounded" />
-          <div className="h-3 w-12 bg-white/[0.08] rounded" />
+          <div className="h-4 w-20 bg-base-content/20 rounded" />
+          <div className="h-3 w-12 bg-base-content/20 rounded" />
         </div>
       </div>
     ))}
@@ -119,17 +110,17 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 			userTokens.forEach(token => {
 				const balance = formatTokenBalance(token.value, token.token.decimals);
 				
-				// 特殊处理HSK和WHSK价格
+				// 特殊处理OKB和WOKB价格
 				let tokenBalance;
 				let price = '0';
 				let icon_url = '';
 				
-				if (token.token.symbol?.toUpperCase() === 'HSK') {
-					// 如果是HSK，查找WHSK的价格
-					tokenBalance = tokenData.find(t => t.symbol?.toUpperCase() === 'WHSK');
+				if (token.token.symbol?.toUpperCase() === 'OKB') {
+					// 如果是OKB，查找WOKB的价格
+					tokenBalance = tokenData.find(t => t.symbol?.toUpperCase() === 'WOKB');
 					price = tokenBalance?.price.replace('$', '') || '0';
-					// HSK使用WHSK的图标
-					icon_url = tokenBalance?.icon_url || '/img/HSK-LOGO.png';
+					// OKB使用WOKB的图标
+					icon_url = tokenBalance?.icon_url || '/img/okb.png';
 				} else {
 					tokenBalance = tokenData.find(t => t.address === token.token.address);
 					price = tokenBalance?.price.replace('$', '') || '0';
@@ -141,10 +132,10 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 				if (!icon_url && symbol) {
 					const iconMap: Record<string, string> = {
 						'usdt': '/img/usdt.svg',
-						'whsk': '/img/HSK-LOGO.png',
+						'wOKB': '/img/ok b.png',
 						'weth': '/img/weth.svg',
 						'usdc.e': '/img/usdc.e.svg',
-						'hsk': '/img/HSK-LOGO.png'
+						'OKB': '/img/okb.png'
 					};
 					
 					icon_url = iconMap[symbol] || '';
@@ -216,17 +207,17 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
       {/* 侧边栏遮罩 */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/60 z-40 transition-opacity"
+          className="fixed inset-0 bg-base-100/60 z-40 transition-opacity"
           onClick={() => setOpen(false)}
         />
       )}
 
       {/* Buy Modal */}
       {showBuyModal && (
-        <div className="fixed inset-0 bg-black/75 z-[100] flex items-center justify-center">
-          <div className="bg-[#121212] border border-gray-800 w-[90%] max-w-md rounded-2xl p-6 shadow-xl">
+        <div className="fixed inset-0 bg-base-100/75 z-[100] flex items-center justify-center">
+          <div className="bg-base-200 border border-violet-900/30 w-[90%] max-w-md rounded-2xl p-6 shadow-xl">
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-extrabold flex items-center gap-2">Buy <img className="w-6 h-6 rounded-full" src="https://hyperindex.4everland.store/HSK-LOGO.png" alt="HSK" /> HSK from this CEX</h2>
+              <h2 className="text-xl font-extrabold flex items-center gap-2">Buy <img className="w-6 h-6 rounded-full" src={'/img/okb.png'} alt="OKB" /> OKB from this CEX</h2>
               <button 
                 className="text-gray-400 hover:text-white"
                 onClick={() => setShowBuyModal(false)}
@@ -235,24 +226,8 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
               </button>
             </div>
             
-            <div className="space-y-4">
-              {CEX_LIST.map((cex, index) => (
-                <a 
-                  key={index} 
-                  href={cex.link} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-4 p-3 bg-[#1E1E1E] hover:bg-[#252525] rounded-xl transition-colors"
-                >
-                  <img src={cex.icon} alt={cex.name} className="w-8 h-8 rounded-full" />
-                  <span className="flex-1">{cex.name}</span>
-                  <ArrowDownCircleIcon className="w-5 h-5 transform rotate-[-135deg] text-gray-400" />
-                </a>
-              ))}
-            </div>
-            
             <div className="mt-6 text-sm text-gray-400 text-center">
-              Select an exchange to buy HSK tokens
+              Select an exchange to buy OKB tokens
             </div>
           </div>
         </div>
@@ -260,8 +235,8 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
 
       {/* Receive Modal */}
       {showReceiveModal && (
-        <div className="fixed inset-0 bg-black/75 z-[100] flex items-center justify-center">
-          <div className="bg-[#121212] border border-gray-800 w-[90%] max-w-md rounded-2xl p-6 shadow-xl">
+        <div className="fixed inset-0 bg-base-100/75 z-[100] flex items-center justify-center">
+          <div className="bg-base-200 border border-violet-900/30 w-[90%] max-w-md rounded-2xl p-6 shadow-xl">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold">Receive crypto</h2>
               <button 
@@ -276,13 +251,13 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
               Fund your wallet by transferring crypto from another wallet or account
             </p>
             
-            <div className="bg-[#1B1B1B] p-2 rounded-2xl mb-6 w-full">
+            <div className="bg-base-300 p-2 rounded-2xl mb-6 w-full">
               {address && (
                 <div className="flex items-center justify-between px-4">
                   <div className="flex items-center justify-center gap-2 rounded-full">
                     <img 
-                      src="/img/index-coin.jpg" 
-                      alt="HyperIndex Logo" 
+                      src="/img/default.png" 
+                      alt="Xgenswap Logo" 
                       className="w-6 h-6 rounded-full" 
                     />
                     <p className="text-gray-400 text-base font-extrabold">
@@ -292,7 +267,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
                   
                   <div className="flex items-center justify-center gap-4">
                     <button 
-                      className="w-8 h-8 bg-[#252525] rounded-full flex items-center justify-center hover:bg-[#2a2a2a] transition-colors"
+                      className="w-8 h-8 bg-base-300 rounded-full flex items-center justify-center hover:bg-neutral/30 transition-colors"
                       onClick={() => navigator.clipboard.writeText(address || '')}
                     >
                       <DocumentDuplicateIcon className='w-5 h-5 text-gray-400' />
@@ -303,7 +278,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
             </div>
             
             <div className="text-sm text-gray-400 text-center">
-              Only send assets on HashKey chain to this address
+              Only send assets on X Layer to this address
             </div>
           </div>
         </div>
@@ -314,7 +289,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
         isOpen ? 'translate-x-0 opacity-100' : 'translate-x-8 opacity-0'
       }`}>
         <button 
-          className="btn btn-sm btn-circle bg-[#0D111C] hover:bg-[#0D111C] border border-white/[0.08]"
+          className="btn btn-sm btn-circle bg-base-200 hover:bg-base-200 border border-white/[0.08]"
           onClick={() => setOpen(false)}
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -324,7 +299,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
       </div>
 
       {/* 侧边栏内容 */}
-      <div className={`fixed top-0 right-0 h-screen w-[360px] bg-[#0D111C] z-50 transform transition-transform duration-300 ease-in-out ${
+      <div className={`fixed top-0 right-0 h-screen w-[360px] bg-base-200 z-50 transform transition-transform duration-300 ease-in-out ${
         isOpen ? 'translate-x-0' : 'translate-x-full'
       }`}>
         <div className="flex flex-col w-full px-2 h-full">
@@ -334,7 +309,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
               <div className="relative">
                 <div className="w-8 h-8 rounded-full overflow-hidden bg-purple-700">
                   <Image 
-                    src="/img/index-coin.jpg" 
+                    src="/img/default.png" 
                     alt="User Avatar" 
                     width={32} 
                     height={32}
@@ -366,7 +341,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
           <div className="px-2 py-4">
             <div className="text-sm font-medium text-gray-400 mb-1">Total Balance</div>
             {isLoading ? (
-              <div className="h-8 w-48 bg-white/[0.08] rounded animate-pulse" />
+              <div className="h-8 w-48 bg-base-content/20 rounded animate-pulse" />
             ) : (
               <div className="text-[32px] font-medium tracking-[-0.02em]">
                 <span className="text-white mr-1">$</span>
@@ -374,24 +349,6 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
                 <span className="text-gray-500">{formatBalanceWithDecimals(totalBalance).decimal}</span>
               </div>
             )}
-            
-            {/* Buy 和 Receive 按钮 */}
-            <div className="flex gap-4 mt-4 h-20">
-              <button 
-                className="flex-1 flex flex-col items-start px-6 h-full justify-center rounded-2xl gap-2 transition-all hover:opacity-90 bg-custom-purple"
-                onClick={() => setShowBuyModal(true)}
-              >
-                <BuildingLibraryIcon className="w-5 h-5 text-primary" />
-                <span className="text-primary font-extrabold">Buy</span>
-              </button>
-              <button 
-                className="flex-1 flex flex-col items-start px-6 h-full justify-center rounded-2xl gap-2 transition-all hover:opacity-90 bg-custom-purple"
-                onClick={() => setShowReceiveModal(true)}
-              >
-                <ArrowDownCircleIcon className="w-5 h-5 text-primary"  />
-                <span className="text-primary font-extrabold">Receive</span>
-              </button>
-            </div>
           </div>
 
           {/* 导航切换 */}
@@ -406,7 +363,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
             >
               Tokens
               {activeTab === 'token' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />
               )}
             </button>
             <button
@@ -419,7 +376,7 @@ export default function Personal({ isOpen, setOpen }: { isOpen: boolean, setOpen
             >
               Pools
               {activeTab === 'pool' && (
-                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white rounded-t-full" />
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-t-full" />
               )}
             </button>
           </div>

@@ -69,9 +69,9 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 	return (
 		<div className="mt-4 px-2">
 			{userTokens?.map((token) => {
-				// 特殊处理HSK代币价格，使其与WHSK价格一致
-				const tokenPrice = token.token.symbol === 'HSK' ? 
-					userTokens.find(t => t.token.symbol === 'WHSK')?.price || token.price : 
+				// 特殊处理OKB代币价格，使其与WOKB价格一致
+				const tokenPrice = token.token.symbol === 'OKB' ? 
+					userTokens.find(t => t.token.symbol === 'WOKB')?.price || token.price : 
 					token.price;
 
 				// 计算代币余额
@@ -96,7 +96,7 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 								<div className="flex items-center">
 									<span className="text-base font-medium">{token.token.symbol}</span>
 									<button 
-										className="ml-2 p-1 text-gray-400 hover:text-white rounded-full hover:bg-white/10"
+										className="ml-2 p-1 text-gray-400 hover:text-white rounded-full hover:bg-primary/20"
 										onClick={() => window.open(`https://hashkey.blockscout.com/token/${token.token.address}`, '_blank')}
 									>
 										<ArrowTopRightOnSquareIcon className="w-4 h-4" />
@@ -107,7 +107,7 @@ export default function TabToken({userTokens}: {userTokens: TokenTab[] }) {
 										{formatAddress(token.token.address)}
 									</span>
 									<button 
-										className="p-1 text-gray-400 hover:text-white rounded-full hover:bg-white/10"
+										className="p-1 text-gray-400 hover:text-white rounded-full hover:bg-primary/20"
 										onClick={() => navigator.clipboard.writeText(token.token.address || '')}
 									>
 										<DocumentDuplicateIcon className="w-3 h-3" />

@@ -38,12 +38,12 @@ export const formatNumber = (value: number | string, decimals: number = 2): stri
   return fixedValue.replace(/\.?0+$/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
-export const estimateAndCheckGas = async (hskBalance: any): Promise<boolean> => {
+export const estimateAndCheckGas = async (okbBalance: any): Promise<boolean> => {
   try {
     // const defaultGas = BigInt(21000); // 基本交易的默认 gas
     
     // 检查用户是否有足够的 gas
-    if (hskBalance && hskBalance.value <= 0) {
+    if (okbBalance && okbBalance.value <= 0) {
       return false;
     }
     return true;

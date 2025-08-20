@@ -4,14 +4,14 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import TokenModal from './TokenModal';
 import { TokenData } from '@/types/liquidity';
 import { useAccount, useBalance, useReadContract, useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
-import { ArrowsUpDownIcon, ChevronDownIcon, Cog6ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
+import { ArrowsUpDownIcon, ChevronDownIcon, Cog6ToothIcon, InformationCircleIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { estimateAndCheckGas, formatNumberWithCommas } from '@/utils';
 import { formatTokenBalance } from '@/utils/formatTokenBalance';
 import { usePoolAddress } from '@/hooks/usePoolAddress';
 import { fetchTokenList, selectTokens } from '@/store/tokenListSlice';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch } from '@/store';
-import { WHSK } from '@/constant/value';
+import { WOKB } from '@/constant/value';
 import { getSwapInfo } from '@/hooks/useSwapInfo';
 import { getTokens, Token } from '@/request/explore';
 import { erc20Abi, parseUnits } from 'viem';
@@ -31,16 +31,16 @@ interface SwapContainerProps {
   token2?: string;
 }
 
-const DEFAULT_HSK_TOKEN: TokenData = {
-  symbol: 'HSK',
-  name: 'HyperSwap Token',
+const DEFAULT_OKB_TOKEN: TokenData = {
+  symbol: 'OKB',
+  name: 'XgenSwap Token',
   address: '0x0000000000000000000000000000000000000000',
-  icon_url: "/img/HSK-LOGO.png",
+  icon_url: "/img/okb.png",
   decimals: '18'
 };
 
 
-const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 = 'Select token' }) => {
+const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'OKB', token2 = 'Select token' }) => {
   const tokens = useSelector(selectTokens);
   const dispatch = useDispatch<AppDispatch>();
   const [showModal, setShowModal] = useState(false);
@@ -77,6 +77,12 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const [poolFee, setPoolFee] = useState<string>('0');
   const [poolInfo, setPoolInfo] = useState<any>(null);
   const [swapSuccessed, setSwapSuccessed] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'swap' | 'transfer'>('swap');
+  
+  // Transfer related states
+  const [transferToken, setTransferToken] = useState<TokenData | null>(null);
+  const [transferAmount, setTransferAmount] = useState<string>('');
+  const [transferAddress, setTransferAddress] = useState<string>('');
 
 
   const { address: userAddress } = useAccount();
@@ -88,7 +94,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
   // 检查授权额度 - 根据当前选择的版本检查对应路由合约的授权
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: token1Data?.symbol === 'HSK' ? WHSK as `0x${string}` : token1Data?.address as `0x${string}`,
+    address: token1Data?.symbol === 'WOKB' ? WOKB as `0x${string}` : token1Data?.address as `0x${string}`,
     abi: erc20Abi,
     functionName: 'allowance',
     args: userAddress && token1Data ? [
@@ -106,8 +112,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
   // 修改 useBalance hook 的调用,解构出 refetch 函数
   const { 
-    data: hskBalance, 
-    refetch: refetchHskBalance 
+    data: OKBBalance, 
+    refetch: refetchOKBBalance 
   } = useBalance({
     address: userAddress,
     query: {
@@ -121,9 +127,9 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     refetch: refetchToken1Balance 
   } = useBalance({
     address: userAddress,
-    token: token1Data?.symbol !== 'HSK' ? token1Data?.address as `0x${string}` : undefined,
+    token: token1Data?.symbol !== 'OKB' ? token1Data?.address as `0x${string}` : undefined,
     query: {
-      enabled: !!userAddress && !!token1Data && token1Data.symbol !== 'HSK',
+      enabled: !!userAddress && !!token1Data && token1Data.symbol !== 'OKB',
     },
   });
 
@@ -133,41 +139,49 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     refetch: refetchToken2Balance 
   } = useBalance({
     address: userAddress,
-    token: token2Data?.symbol !== 'HSK' ? token2Data?.address as `0x${string}` : undefined,
+    token: token2Data?.symbol !== 'OKB' ? token2Data?.address as `0x${string}` : undefined,
     query: {
-      enabled: !!userAddress && !!token2Data && token2Data.symbol !== 'HSK',
+      enabled: !!userAddress && !!token2Data && token2Data.symbol !== 'OKB',
     },
   });
 
 
-  // 处理代币选择，特别处理 HSK/WHSK
+  // 处理代币选择，特别处理 OKB/WOKB
   const handleTokenSelect = (tokenData: TokenData) => {
-    if (modalType === 'token1') {
-      // 如果选择的代币和 token2 相同，则交换位置
-      if (token2Data && tokenData.address === token2Data.address) {
-        setToken1Data(token2Data);
-        setToken2Data(token1Data);
-      } else {
-        setToken1Data(tokenData);
-      }
+    if (activeTab === 'transfer') {
+      // Transfer模式下，直接设置transferToken
+      setTransferToken(tokenData);
+      setTransferAmount('');
     } else {
-      // 如果选择的代币和 token1 相同，则交换位置
-      if (token1Data && tokenData.address === token1Data.address) {
-        setToken2Data(token1Data);
-        setToken1Data(token2Data);
+      // Swap模式下的原有逻辑
+      if (modalType === 'token1') {
+        // 如果选择的代币和 token2 相同，则交换位置
+        if (token2Data && tokenData.address === token2Data.address) {
+          setToken1Data(token2Data);
+          setToken2Data(token1Data);
+        } else {
+          setToken1Data(tokenData);
+        }
       } else {
-        setToken2Data(tokenData);
+        // 如果选择的代币和 token1 相同，则交换位置
+        if (token1Data && tokenData.address === token1Data.address) {
+          setToken2Data(token1Data);
+          setToken1Data(token2Data);
+        } else {
+          setToken2Data(tokenData);
+        }
       }
+      
+      // 清空输入金额和相关状态
+      setToken1Amount('');
+      setToken2Amount('');
+      setMinimumReceived('0');
+      setPriceImpact('0');
+      setIsApproved(false);
+      setSwapSuccessed(false);
     }
     
-    // 清空输入金额和相关状态
-    setToken1Amount('');
-    setToken2Amount('');
-    setMinimumReceived('0');
-    setPriceImpact('0');
-    setIsApproved(false);
     setShowModal(false);
-    setSwapSuccessed(false);
   };
 
   const fetchTokenPrices = async () => {
@@ -187,20 +201,20 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
   useEffect(() => {
     if (tokenPrice.length > 0) {
-      // 修改查找逻辑，特殊处理 HSK 和 WHSK
+      // 修改查找逻辑，特殊处理 OKB 和 WOKB
       let token1PriceData;
       let token2PriceData;
       
-      if (token1Data?.symbol === 'HSK' || token1Data?.symbol === 'WHSK') {
-        // HSK 和 WHSK 共享相同的价格
-        token1PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
+      if (token1Data?.symbol === 'OKB' || token1Data?.symbol === 'WOKB') {
+        // OKB 和 WOKB 共享相同的价格
+        token1PriceData = tokenPrice.find(t => t.symbol === 'WOKB' || t.symbol === 'OKB');
       } else {
         token1PriceData = tokenPrice.find(t => t.address === token1Data?.address);
       }
       
-      if (token2Data?.symbol === 'HSK' || token2Data?.symbol === 'WHSK') {
-        // HSK 和 WHSK 共享相同的价格
-        token2PriceData = tokenPrice.find(t => t.symbol === 'WHSK' || t.symbol === 'HSK');
+      if (token2Data?.symbol === 'OKB' || token2Data?.symbol === 'WOKB') {
+        // OKB 和 WOKB 共享相同的价格
+        token2PriceData = tokenPrice.find(t => t.symbol === 'WOKB' || t.symbol === 'OKB');
       } else {
         token2PriceData = tokenPrice.find(t => t.address === token2Data?.address);
       }
@@ -257,8 +271,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
   setIsCalculating(true);
   
-  const balance = token1Data.symbol === 'HSK' 
-    ? hskBalance?.value?.toString() || '0'
+  const balance = token1Data.symbol === 'OKB' 
+    ? OKBBalance?.value?.toString() || '0'
     : token1Balance?.value?.toString() || '0';
     
   try {
@@ -308,14 +322,14 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         return;
       }
 
-      // 检查是否是 HSK 和 WHSK 的交易对
-      const isHskWhskPair = token1Data && token2Data && (
-        (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') ||
-        (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
+      // 检查是否是 OKB 和 WOKB 的交易对
+      const isOKBWOKBPair = token1Data && token2Data && (
+        (token1Data.symbol === 'OKB' && token2Data.symbol === 'WOKB') ||
+        (token2Data.symbol === 'OKB' && token1Data.symbol === 'WOKB')
       );
 
-      if (isHskWhskPair) {
-        // HSK 和 WHSK 的 1:1 交易，直接设置相同的金额
+      if (isOKBWOKBPair) {
+        // OKB 和 WOKB 的 1:1 交易，直接设置相同的金额
         setToken2Amount(value);
         setMinimumReceived(value);
         setPriceImpact('0');
@@ -339,7 +353,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   };
 
   const getQueryAddress = (token: TokenData) => {
-    return token.symbol === 'HSK' ? WHSK : token.address;
+    return token.symbol === 'OKB' ? WOKB : token.address;
   };
 
   // 根据url中的参数设置初始化的token
@@ -370,10 +384,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       }
     });
 
-    if (token1 === 'HSK') {
+    if (token1 === 'OKB') {
       setToken1Data({
-        ...DEFAULT_HSK_TOKEN,
-        balance: hskBalance?.value?.toString(),
+        ...DEFAULT_OKB_TOKEN,
+        balance: OKBBalance?.value?.toString(),
       });
     }
   }, [tokens, token1, token2]);
@@ -389,14 +403,14 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       return;
     }
     
-    // 处理 HSK/WHSK 和 WHSK/HSK 的交易对
-    if (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') {
-      setPairAddress(WHSK);
+    // 处理 OKB/WOKB 和 WOKB/OKB 的交易对
+    if (token1Data.symbol === 'OKB' && token2Data.symbol === 'WOKB') {
+      setPairAddress(WOKB);
       return;
     }
 
-    if (token1Data.symbol === 'WHSK' && token2Data.symbol === 'HSK') {
-      setPairAddress(WHSK);
+    if (token1Data.symbol === 'WOKB' && token2Data.symbol === 'OKB') {
+      setPairAddress(WOKB);
       return;
     }
 
@@ -452,11 +466,11 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       setToken1Data(token2Data);
       setToken2Data(tempToken);
     } else {
-      // token1 是默认的 HSK
+      // token1 是默认的 OKB
       setToken1Data(token2Data);
       setToken2Data({
-        ...DEFAULT_HSK_TOKEN,
-        balance: hskBalance?.value?.toString(),
+        ...DEFAULT_OKB_TOKEN,
+        balance: OKBBalance?.value?.toString(),
       });
     }
     
@@ -475,7 +489,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     console.log('刷新所有余额...');
     try {
       await Promise.all([
-        refetchHskBalance(),
+        refetchOKBBalance(),
         refetchToken1Balance(),
         refetchToken2Balance(),
       ]);
@@ -483,7 +497,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     } catch (error) {
       console.error('刷新余额失败:', error);
     }
-  }, [refetchHskBalance, refetchToken1Balance, refetchToken2Balance]);
+  }, [refetchOKBBalance, refetchToken1Balance, refetchToken2Balance]);
 
   // 使用useCallback和防抖处理计算交换信息
   const calculateSwap = useCallback(async () => {
@@ -494,16 +508,16 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
 
     try {
-      // 创建用于计算的代币对象，HSK 替换为 WHSK
+      // 创建用于计算的代币对象，OKB 替换为 WOKB
       const calculationToken1 = {
-        address: token1Data.symbol === 'HSK' ? WHSK : token1Data.address as `0x${string}`,
-        symbol: token1Data.symbol === 'HSK' ? 'WHSK' : token1Data.symbol,
+        address: token1Data.symbol === 'OKB' ? WOKB : token1Data.address as `0x${string}`,
+        symbol: token1Data.symbol === 'OKB' ? 'WOKB' : token1Data.symbol,
         decimals: Number(token1Data.decimals),
       };
 
       const calculationToken2 = {
-        address: token2Data.symbol === 'HSK' ? WHSK : token2Data.address as `0x${string}`,
-        symbol: token2Data.symbol === 'HSK' ? 'WHSK' : token2Data.symbol,
+        address: token2Data.symbol === 'OKB' ? WOKB : token2Data.address as `0x${string}`,
+        symbol: token2Data.symbol === 'OKB' ? 'WOKB' : token2Data.symbol,
         decimals: Number(token2Data.decimals),
       };
 
@@ -539,13 +553,13 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       clearTimeout(calculationTimeoutRef.current);
     }
 
-    // 如果输入为空或是 HSK/WHSK 交易对，不需要计算
-    const isHskWhskPair = token1Data && token2Data && (
-      (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') ||
-      (token2Data.symbol === 'HSK' && token1Data.symbol === 'WHSK')
+    // 如果输入为空或是 OKB/WOKB 交易对，不需要计算
+    const isOKBWOKBPair = token1Data && token2Data && (
+      (token1Data.symbol === 'OKB' && token2Data.symbol === 'WOKB') ||
+      (token2Data.symbol === 'OKB' && token1Data.symbol === 'WOKB')
     );
 
-    if (!token1Amount || isHskWhskPair || !pairAddress) {
+    if (!token1Amount || isOKBWOKBPair || !pairAddress) {
       setIsCalculating(false);
       return;
     }
@@ -553,7 +567,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     // 设置新的计时器
     calculationTimeoutRef.current = setTimeout(() => {
       // 在开始计算前再次检查输入值是否有效
-      if (token1Amount && !isHskWhskPair && pairAddress) {
+      if (token1Amount && !isOKBWOKBPair && pairAddress) {
         calculateSwap();
       }
     }, 500); // 增加延迟时间到 500ms，减少计算频率
@@ -649,12 +663,29 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
   const hasInsufficientBalance = () => {
     if (!token1Data || !token1Amount) return false;
     
-    const balance = token1Data.symbol === 'HSK' 
-      ? hskBalance?.value?.toString() || '0'
+    const balance = token1Data.symbol === 'OKB' 
+      ? OKBBalance?.value?.toString() || '0'
       : token1Balance?.value?.toString() || '0';
       
     try {
       const amountBigInt = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
+      const balanceBigInt = BigInt(balance);
+      return amountBigInt > balanceBigInt;
+    } catch {
+      return false;
+    }
+  };
+
+  // 检查transfer余额是否足够
+  const hasInsufficientTransferBalance = () => {
+    if (!transferToken || !transferAmount) return false;
+    
+    const balance = transferToken.symbol === 'OKB' 
+      ? OKBBalance?.value?.toString() || '0'
+      : token1Balance?.value?.toString() || '0';
+      
+    try {
+      const amountBigInt = parseUnits(transferAmount, Number(transferToken.decimals || '18'));
       const balanceBigInt = BigInt(balance);
       return amountBigInt > balanceBigInt;
     } catch {
@@ -667,37 +698,37 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
 
     if (isV3) {
-       // 如果token1是HSK，需要先deposit为WHSK再授权
-      if (token1Data.symbol === 'HSK') {
+       // 如果token1是OKB，需要先deposit为WOKB再授权
+      if (token1Data.symbol === 'OKB') {
         try {
           setError(null);
           setCurrentTx('approve');
           setTxStatus('pending');
 
-          // 1. 先 deposit HSK 为 WHSK
+          // 1. 先 deposit OKB 为 WOKB
           toast({
             type: 'info',
-            message: 'Converting HSK to WHSK...',
+            message: 'Converting OKB to WOKB...',
             isAutoClose: true
           });
 
-          const depositSuccess = await depositHskToWhsk(token1Amount);
+          const depositSuccess = await depositOKBToWOKB(token1Amount);
           if (!depositSuccess) {
             setTxStatus('failed');
             return;
           }
 
-          // 2. 授权 WHSK
+          // 2. 授权 WOKB
           toast({
             type: 'info',
-            message: 'Approving WHSK...',
+            message: 'Approving WOKB...',
             isAutoClose: true
           });
 
           const amountToApprove = parseUnits(token1Amount, Number(token1Data.decimals || '18'));
           
           const params = {
-            address: WHSK as `0x${string}`,
+            address: WOKB as `0x${string}`,
             abi: erc20Abi,
             functionName: 'approve' as const,
             args: [isV3 ? ROUTER_CONTRACT_V3_ADDRESS as `0x${string}` : ROUTER_CONTRACT_ADDRESS as `0x${string}`, amountToApprove] as const,
@@ -733,7 +764,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         if (!canProceed) {
           toast({
             type: 'error',
-            message: 'Insufficient gas, please deposit HSK first'
+            message: 'Insufficient gas, please deposit OKB first'
           });
           return;
         }
@@ -752,9 +783,9 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         });
       }
     } else {
-      // V2 逻辑：HSK 作为原生代币不需要授权，直接跳过
-      if (token1Data.symbol === 'HSK') {
-        console.log('HSK in V2: No approval needed, skipping...');
+      // V2 逻辑：OKB 作为原生代币不需要授权，直接跳过
+      if (token1Data.symbol === 'OKB') {
+        console.log('OKB in V2: No approval needed, skipping...');
         setTxStatus('none');
         return;
       }
@@ -777,7 +808,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         if (!canProceed) {
           toast({
             type: 'error',
-            message: 'Insufficient gas, please deposit HSK first'
+            message: 'Insufficient gas, please deposit OKB first'
           });
           return;
         }
@@ -797,6 +828,58 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
   };
 
+
+  // 获取transfer按钮状态
+  const getTransferButtonState = () => {
+    if (!transferToken) {
+      return {
+        text: 'Select a token',
+        disabled: true
+      };
+    }
+
+    if (!transferAmount || Number(transferAmount) === 0) {
+      return {
+        text: 'Enter an amount',
+        disabled: true
+      };
+    }
+
+    if (!transferAddress || transferAddress.trim() === '') {
+      return {
+        text: 'Enter recipient address',
+        disabled: true
+      };
+    }
+
+    // 检查地址格式（简单验证）
+    if (!transferAddress.startsWith('0x') || transferAddress.length !== 42) {
+      return {
+        text: 'Invalid address format',
+        disabled: true
+      };
+    }
+
+    if (hasInsufficientTransferBalance()) {
+      return {
+        text: 'Insufficient balance',
+        disabled: true
+      };
+    }
+
+    return {
+      text: 'Transfer',
+      disabled: false,
+      onClick: () => {
+        // TODO: Implement transfer logic
+        console.log('Transfer:', {
+          token: transferToken,
+          amount: transferAmount,
+          to: transferAddress
+        });
+      }
+    };
+  };
 
    // 3. 修改 getButtonState 函数
    const getButtonState = () => {
@@ -861,16 +944,16 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
 
     // 需要授权的情况
     const needsApproval = token1Data && token2Data && (
-      // HSK → 其他代币：需要授权WHSK
-      (token1Data.symbol === 'HSK' && token2Data.symbol !== 'WHSK') ||
-      // WHSK → 其他代币：需要授权
-      (token1Data.symbol === 'WHSK' && token2Data.symbol !== 'HSK') ||
+      // OKB → 其他代币：需要授权WOKB
+      (token1Data.symbol === 'OKB' && token2Data.symbol !== 'WOKB') ||
+      // WOKB → 其他代币：需要授权
+      (token1Data.symbol === 'WOKB' && token2Data.symbol !== 'OKB') ||
       // 其他代币 → 任何代币：需要授权
-      (token1Data.symbol !== 'HSK' && token1Data.symbol !== 'WHSK')
+      (token1Data.symbol !== 'OKB' && token1Data.symbol !== 'WOKB')
     );
     
-    // V2 中 HSK 不需要授权，直接显示 Swap 按钮
-    if (!isV3 && token1Data?.symbol === 'HSK') {
+    // V2 中 OKB 不需要授权，直接显示 Swap 按钮
+    if (!isV3 && token1Data?.symbol === 'OKB') {
       const priceImpactNum = Number(priceImpact);
       if (priceImpactNum >= 5) {
         return {
@@ -910,8 +993,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     };
   };
 
-  // 添加一个新的辅助函数来处理 HSK/WHSK 转换
-  const handleHskWhskSwap = async (
+  // 添加一个新的辅助函数来处理 OKB/WOKB 转换
+  const handleOKBWOKBSwap = async (
     fromToken: TokenData,
     toToken: TokenData,
     amount: string
@@ -919,10 +1002,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     if (!userAddress) return;
 
     try {
-      // HSK -> WHSK: 调用 deposit
-      if (fromToken.symbol === 'HSK' && toToken.symbol === 'WHSK') {
+      // OKB -> WOKB: 调用 deposit
+      if (fromToken.symbol === 'OKB' && toToken.symbol === 'WOKB') {
         const params = {
-          address: WHSK as `0x${string}`,
+          address: WOKB as `0x${string}`,
           abi: WETH_ABI,
           functionName: 'deposit',
           value: parseUnits(amount, 18),
@@ -932,7 +1015,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         if (!canProceed) {
           toast({
             type: 'error',
-            message: 'Insufficient gas, please deposit HSK first'
+            message: 'Insufficient gas, please deposit OKB first'
           });
           return;
         }
@@ -951,7 +1034,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             
             // toast({
             //   type: 'success',
-            //   message: 'HSK to WHSK conversion completed!',
+            //   message: 'OKB to WOKB conversion completed!',
             //   isAutoClose: true
             // });
             
@@ -965,10 +1048,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         return true;
       }
 
-      // WHSK -> HSK: 调用 withdraw
-      if (fromToken.symbol === 'WHSK' && toToken.symbol === 'HSK') {
+      // WOKB -> OKB: 调用 withdraw
+      if (fromToken.symbol === 'WOKB' && toToken.symbol === 'OKB') {
         const params = {
-          address: WHSK as `0x${string}`,
+          address: WOKB as `0x${string}`,
           abi: WETH_ABI,
           functionName: 'withdraw',
           args: [parseUnits(amount, 18)],
@@ -978,7 +1061,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         if (!canProceed) {
           toast({
             type: 'error',
-            message: 'Insufficient gas, please deposit HSK first'
+            message: 'Insufficient gas, please deposit OKB first'
           });
           return;
         }
@@ -997,7 +1080,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             
             toast({
               type: 'success',
-              message: 'WHSK to HSK conversion completed!',
+              message: 'WOKB to OKB conversion completed!',
               isAutoClose: true
             });
             
@@ -1023,11 +1106,11 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
   };
 
-  // 添加一个新的函数来处理 HSK 到 WHSK 的 deposit
-  const depositHskToWhsk = async (amount: string): Promise<boolean> => {
+  // 添加一个新的函数来处理 OKB 到 WOKB 的 deposit
+  const depositOKBToWOKB = async (amount: string): Promise<boolean> => {
     try {
       const params = {
-        address: WHSK as `0x${string}`,
+        address: WOKB as `0x${string}`,
         abi: WETH_ABI,
         functionName: 'deposit',
         value: parseUnits(amount, 18),
@@ -1060,11 +1143,11 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
     }
   };
 
-  // 添加一个新的函数来处理 WHSK 到 HSK 的提取
-  const withdrawWhskToHsk = async (amount: string): Promise<boolean> => {
+  // 添加一个新的函数来处理 WOKB 到 OKB 的提取
+  const withdrawWOKBToOKB = async (amount: string): Promise<boolean> => {
     try {
       const params = {
-        address: WHSK as `0x${string}`,
+        address: WOKB as `0x${string}`,
         abi: WETH_ABI,
         functionName: 'withdraw',
         args: [parseUnits(amount, 18)],
@@ -1102,28 +1185,28 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       try {
         if (!token1Data || !token2Data || !userAddress) return;
 
-      // 检查是否是 HSK/WHSK 转换
-      const isHskWhskSwap = await handleHskWhskSwap(token1Data, token2Data, token1Amount);
-      if (isHskWhskSwap) return;
+      // 检查是否是 OKB/WOKB 转换
+      const isOKBWOKBSwap = await handleOKBWOKBSwap(token1Data, token2Data, token1Amount);
+      if (isOKBWOKBSwap) return;
 
-      // 如果输入代币是 HSK，需要特殊处理：deposit + swap
-      if (token1Data.symbol === 'HSK') {
+      // 如果输入代币是 OKB，需要特殊处理：deposit + swap
+      if (token1Data.symbol === 'OKB') {
         setTxStatus('pending');
         toast({
           type: 'info',
-          message: 'Processing HSK to WHSK conversion...',
+          message: 'Processing OKB to WOKB conversion...',
           isAutoClose: true
         });
 
-        // 1. 先 deposit HSK 为 WHSK
-        const depositSuccess = await depositHskToWhsk(token1Amount);
+        // 1. 先 deposit OKB 为 WOKB
+        const depositSuccess = await depositOKBToWOKB(token1Amount);
         if (!depositSuccess) {
           setTxStatus('failed');
           return;
         }
 
         // 刷新余额
-        await refetchHskBalance();
+        await refetchOKBBalance();
         await refetchToken1Balance();
         await refetchToken2Balance();
       }
@@ -1133,11 +1216,11 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       // const slippagePercent = Number(slippage);
 
       // 使用封装的 gas 检查函数
-      const canProceed = await estimateAndCheckGas(hskBalance);
+      const canProceed = await estimateAndCheckGas(OKBBalance);
       if (!canProceed) {
         toast({
           type: 'error',
-          message: 'Insufficient gas, please deposit HSK first'
+          message: 'Insufficient gas, please deposit OKB first'
         });
         return;
       }
@@ -1145,21 +1228,21 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       setTxStatus('pending');
       setCurrentTx('swap');
 
-      // 创建 token 实例，使用 WHSK 替代 HSK
+      // 创建 token 实例，使用 WOKB 替代 OKB
       const token1Instance = new UniToken(
         hashkeyTestnet.id,
-        token1Data.symbol === 'HSK' ? WHSK : token1Data.address as `0x${string}`,
+        token1Data.symbol === 'OKB' ? WOKB : token1Data.address as `0x${string}`,
         parseInt(token1Data.decimals || '18'),
-        token1Data.symbol === 'HSK' ? 'WHSK' : token1Data.symbol,
-        token1Data.symbol === 'HSK' ? 'Wrapped HSK' : token1Data.name
+        token1Data.symbol === 'OKB' ? 'WOKB' : token1Data.symbol,
+        token1Data.symbol === 'OKB' ? 'Wrapped OKB' : token1Data.name
       );
 
       const token2Instance = new UniToken(
         hashkeyTestnet.id,
-        token2Data.symbol === 'HSK' ? WHSK : token2Data.address as `0x${string}`,
+        token2Data.symbol === 'OKB' ? WOKB : token2Data.address as `0x${string}`,
         parseInt(token2Data.decimals || '18'),
-        token2Data.symbol === 'HSK' ? 'WHSK' : token2Data.symbol,
-        token2Data.symbol === 'HSK' ? 'Wrapped HSK' : token2Data.name
+        token2Data.symbol === 'OKB' ? 'WOKB' : token2Data.symbol,
+        token2Data.symbol === 'OKB' ? 'Wrapped OKB' : token2Data.name
       );
 
       // 根据排序后的 token 创建 Pool
@@ -1207,7 +1290,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       const transaction = {
         data: params.calldata as `0x${string}`,
         to: ROUTER_CONTRACT_V3_ADDRESS as `0x${string}`,
-        value: BigInt(0), // HSK 已经被 deposit 为 WHSK，所以这里不需要发送 value
+        value: BigInt(0), // OKB 已经被 deposit 为 WOKB，所以这里不需要发送 value
         from: userAddress,
       }
 
@@ -1221,15 +1304,15 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       const mintReceipt = await waitForTransactionReceipt(wagmiConfig, { hash: mintTx });
 
       if (mintReceipt && mintReceipt.status === 'success') {
-        // 如果输出代币是 HSK，在 swap 完成后自动提取 WHSK
-        if (token2Data.symbol === 'HSK') {
+        // 如果输出代币是 OKB，在 swap 完成后自动提取 WOKB
+        if (token2Data.symbol === 'OKB') {
           toast({
             type: 'info',
-            message: 'Withdrawing WHSK to HSK...',
+            message: 'Withdrawing WOKB to OKB...',
             isAutoClose: true
           });
 
-          const withdrawSuccess = await withdrawWhskToHsk(token2Amount);
+          const withdrawSuccess = await withdrawWOKBToOKB(token2Amount);
           if (!withdrawSuccess) {
             toast({
               type: 'warning',
@@ -1269,10 +1352,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
       try {
         if (!token1Data || !token2Data || !userAddress) return;
   
-        // 专门检查是否是 HSK -> WHSK 的情况
-        if (token1Data.symbol === 'HSK' && token2Data.symbol === 'WHSK') {
+        // 专门检查是否是 OKB -> WOKB 的情况
+        if (token1Data.symbol === 'OKB' && token2Data.symbol === 'WOKB') {
           const params = {
-            address: WHSK as `0x${string}`,
+            address: WOKB as `0x${string}`,
             abi: WETH_ABI,
             functionName: 'deposit',
             value: parseUnits(token1Amount, 18),
@@ -1283,7 +1366,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           if (!canProceed) {
             toast({
               type: 'error',
-              message: 'Insufficient gas, please deposit HSK first'
+              message: 'Insufficient gas, please deposit OKB first'
             });
             return;
           }
@@ -1296,10 +1379,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           return;
         }
   
-        // 专门检查是否是 WHSK -> HSK 的情况
-        if (token1Data.symbol === 'WHSK' && token2Data.symbol === 'HSK') {
+        // 专门检查是否是 WOKB -> OKB 的情况
+        if (token1Data.symbol === 'WOKB' && token2Data.symbol === 'OKB') {
           const params = {
-            address: WHSK as `0x${string}`,
+            address: WOKB as `0x${string}`,
             abi: WETH_ABI,
             functionName: 'withdraw',
             args: [parseUnits(token1Amount, 18)],
@@ -1310,7 +1393,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           if (!canProceed) {
             toast({
               type: 'error',
-              message: 'Insufficient gas, please deposit HSK first'
+              message: 'Insufficient gas, please deposit OKB first'
             });
             return;
           }
@@ -1330,10 +1413,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         const deadlineTime = Math.floor(Date.now() / 1000 + Number(deadline) * 60);
   
         let path: string[];
-        if (token1Data.symbol === 'HSK') {
-          path = [WHSK, token2Data.address];
-        } else if (token2Data.symbol === 'HSK') {
-          path = [token1Data.address, WHSK];
+        if (token1Data.symbol === 'OKB') {
+          path = [WOKB, token2Data.address];
+        } else if (token2Data.symbol === 'OKB') {
+          path = [token1Data.address, WOKB];
         } else {
           path = [token1Data.address, token2Data.address];
         }
@@ -1341,8 +1424,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         const params = {
           address: ROUTER_CONTRACT_ADDRESS as `0x${string}`,
           abi: ROUTER_ABI,
-          functionName: token1Data.symbol === 'HSK' ? 'swapExactETHForTokens' : token2Data.symbol === 'HSK' ? 'swapExactTokensForETH' : 'swapExactTokensForTokens',
-          args: token1Data.symbol === 'HSK' ? [
+          functionName: token1Data.symbol === 'OKB' ? 'swapExactETHForTokens' : token2Data.symbol === 'OKB' ? 'swapExactTokensForETH' : 'swapExactTokensForTokens',
+          args: token1Data.symbol === 'OKB' ? [
             amountOutMin,              // amountOutMin
             path,                      // path
             userAddress,               // to
@@ -1354,7 +1437,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             userAddress,               // to
             deadlineTime,              // deadline
           ],
-          value: token1Data.symbol === 'HSK' ? parseUnits(token1Amount, 18) : undefined,
+          value: token1Data.symbol === 'OKB' ? parseUnits(token1Amount, 18) : undefined,
         };
   
         // 使用封装的 gas 检查函数
@@ -1362,7 +1445,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         if (!canProceed) {
           toast({
             type: 'error',
-            message: 'Insufficient gas, please deposit HSK first'
+            message: 'Insufficient gas, please deposit OKB first'
           });
           return;
         }
@@ -1424,12 +1507,27 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           selectedToken={modalType === 'token2' ? token1Data : token2Data}
         />
       )}
-      <div className="w-[460px] mx-auto rounded-2xl bg-[#1c1d22]/30 bg-opacity-20 p-4 shadow-xl border border-white/5">
-        {/* 头部操作栏 */}
-        <div className="flex justify-end items-center mb-6">
+      <div className="w-[460px] mx-auto p-4">
+        {/* Tab导航 */}
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-2">
+            {(['swap', 'transfer'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  activeTab === tab
+                    ? 'bg-base-300/50 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-base-300/20'
+                }`}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
           <div className="relative">
             <button 
-              className="btn btn-sm btn-ghost btn-circle"
+              className="p-2 text-gray-400 hover:text-white hover:bg-base-300/20 rounded-lg transition-all duration-200"
               onClick={() => setShowSettingsPopup(!showSettingsPopup)}
             >
               <Cog6ToothIcon className="w-5 h-5" />
@@ -1439,7 +1537,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             {showSettingsPopup && (
               <div 
                 ref={settingsRef}
-                className="absolute right-0 top-10 w-[320px] bg-[#1c1d22] rounded-2xl p-4 shadow-2xl z-50 border border-gray-800/20"
+                className="absolute right-0 top-10 w-[320px] bg-base-200 rounded-2xl p-4 shadow-2xl z-50 border border-green-900/30"
               >
                 {/* Slippage Settings */}
                 <div className="mb-5">
@@ -1460,8 +1558,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
                   <div className="relative">
                     <input
                       type="text"
-                      className={`w-full py-2 px-3 rounded-xl bg-[#242631] text-sm text-white focus:outline-none focus:ring-1 ${
-                        isHighSlippage(slippage) ? 'focus:ring-amber-400' : 'focus:ring-blue-500'
+                      className={`w-full py-2 px-3 rounded-xl bg-base-300 text-sm text-white focus:outline-none focus:ring-1 ${
+                        isHighSlippage(slippage) ? 'focus:ring-amber-400' : 'focus:ring-primary'
                       }`}
                       value={slippage}
                       onChange={(e) => {
@@ -1483,10 +1581,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
                     <div className="absolute right-2 top-1/2 -translate-y-1/2">
                       <span className={`text-xs font-medium px-2 py-1 rounded-lg ${
                         Number(slippage) === 5.5 
-                          ? 'bg-blue-500/20 text-blue-400' 
+                          ? 'bg-primary/20 text-primary' 
                           : isHighSlippage(slippage)
                             ? 'bg-amber-500/20 text-amber-400'
-                            : 'bg-gray-700 text-gray-300'
+                            : 'bg-neutral text-neutral-content'
                       }`}>
                         {Number(slippage) === 5.5 ? 'Auto' : 'Custom'}
                       </span>
@@ -1505,7 +1603,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
                   <div className="relative">
                     <input
                       type="text"
-                      className="w-full py-2 px-3 rounded-xl bg-[#242631] text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      className="w-full py-2 px-3 rounded-xl bg-base-300 text-sm text-white focus:outline-none focus:ring-1 focus:ring-primary"
                       value={deadline}
                       onChange={(e) => {
                         const value = e.target.value.replace(/[^\d.]/g, '');
@@ -1553,8 +1651,13 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
           </div>
         </div>
 
+        {/* Tab Content */}
+        {activeTab === 'swap' && (
+          <>
         {/* Sell 输入框 */}
-        <div className="bg-[#2c2d33]/50 rounded-xl p-4 mb-2">
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+          <div className="relative bg-gradient-to-br from-base-200/70 to-base-300/70 backdrop-blur-sm rounded-xl p-4 mb-2 border border-green-500/20">
           <div className="flex justify-between items-center mb-2">
             <span className="text-base text-base-content/60">Sell</span>
             <div className="flex gap-2">
@@ -1576,7 +1679,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
               >
                 75%
               </button>
-              {token1Data?.symbol === 'HSK' ? (
+              {token1Data?.symbol === 'OKB' ? (
                 <div className="tooltip" data-tip="Keep some network token balance to pay for transaction fees">
                   <button 
                     className="btn btn-xs btn-ghost hover:bg-base-200"
@@ -1611,15 +1714,15 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             >
               {token1Data ? (
                 <>
-                  <img src={token1Data.icon_url || "/img/HSK-LOGO.png"} alt={token1Data.name} className="w-6 h-6 rounded-full" />
+                  <img src={token1Data.icon_url || "/img/okb.png"} alt={token1Data.name} className="w-6 h-6 rounded-full" />
                   <span className="mx-2">{displaySymbol(token1Data)}</span>
                 </>
               ) : (
                 <>
-                  {token1 === 'HSK' ? (
+                  {token1 === 'OKB' ? (
                     <>
-                      <img src="/img/HSK-LOGO.png" alt="HSK" className="w-6 h-6 rounded-full" />
-                      <span className="mx-2">HSK</span>
+                      <img src="/img/okb.png" alt="OKB" className="w-6 h-6 rounded-full" />
+                      <span className="mx-2">OKB</span>
                     </>
                   ) : (
                     <span>{token1}</span>
@@ -1633,11 +1736,12 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             <span className='text-base-content/60'>{token1Price !== '-' ? `$${formatNumberWithCommas(token1Price)}` : '-'}</span>
             <span className="text-sm text-base-content/60">
               Balance: {
-                token1Data?.symbol === 'HSK' 
-                  ? formatTokenBalance(hskBalance?.value?.toString() || '0', '18')
+                token1Data?.symbol === 'OKB' 
+                  ? formatTokenBalance(OKBBalance?.value?.toString() || '0', '18')
                   : formatTokenBalance(token1Balance?.value?.toString() || '0', token1Data?.decimals || '18')
               } {token1Data ? token1Data.symbol : token1}
             </span>
+          </div>
           </div>
         </div>
 
@@ -1645,14 +1749,16 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
         <div className="relative h-0 flex justify-center">
           <button 
             onClick={handleSwapTokens}
-            className="absolute -top-[20px] -bottom-[20px] btn btn-circle btn-sm btn-primary shadow-lg z-10"
+            className="absolute -top-[20px] -bottom-[20px] btn btn-circle btn-sm bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary border-none shadow-lg z-10 transition-all duration-200"
           >
-            <ArrowsUpDownIcon className="w-4 h-4" />
+            <ArrowsUpDownIcon className="w-4 h-4 text-white" />
           </button>
         </div>
 
         {/* Buy 输入框 */}
-        <div className="bg-base-300 backdrop-blur-md rounded-xl p-4 mb-4 border border-white/[0.02]">
+        <div className="relative group">
+          <div className="absolute inset-0 bg-gradient-to-r from-secondary/20 to-accent/20 rounded-xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+          <div className="relative bg-gradient-to-br from-base-200/70 to-base-300/70 backdrop-blur-sm rounded-xl p-4 mb-4 border border-green-500/20">
           <div className="flex justify-between items-center mb-2">
             <span className="text-base text-base-content/60">Buy</span>
           </div>
@@ -1679,7 +1785,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             >
               {token2Data ? (
                 <>
-                  <img src={token2Data.icon_url || "/img/HSK-LOGO.png"} alt={token2Data.name} className="w-6 h-6 rounded-full" />
+                  <img src={token2Data.icon_url || "/img/okb.png"} alt={token2Data.name} className="w-6 h-6 rounded-full" />
                   <span className="mx-2">{token2Data.symbol}</span>
                 </>
               ) : (
@@ -1694,8 +1800,8 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
               {token2Data ? (
                 <>
                   Balance: {
-                    token2Data.symbol === 'HSK' 
-                      ? formatTokenBalance(hskBalance?.value?.toString() || '0', '18')
+                    token2Data.symbol === 'OKB' 
+                      ? formatTokenBalance(OKBBalance?.value?.toString() || '0', '18')
                       : formatTokenBalance(token2Balance?.value?.toString() || '0', token2Data.decimals || '18')
                   } {displaySymbol(token2Data)}
                 </>
@@ -1704,13 +1810,14 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
               )}
             </span>
           </div>
+          </div>
         </div>
 
         {/* 交易详情 */}
         {token1Data && token2Data && token1Amount && (
           <>
             {!pairAddress ? (
-              <div className="bg-[#2c2d33]/20 backdrop-blur-md rounded-xl p-4 mb-4 border border-white/[0.02]">
+              <div className="bg-base-300/20 backdrop-blur-md rounded-xl p-4 mb-4 border border-green-900/10">
                 <div className="text-center">
                   <p className="text-base-content/60 mb-2">No liquidity pool found</p>
                   <p className="text-sm text-base-content/40 mb-4">
@@ -1719,7 +1826,7 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
                 </div>
               </div>
             ) : (
-              <div className="bg-[#2c2d33]/20 backdrop-blur-md rounded-xl p-4 space-y-3 text-sm mb-4 border border-white/[0.02]">
+              <div className="bg-base-300/20 backdrop-blur-md rounded-xl p-4 space-y-3 text-sm mb-4 border border-green-900/10">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-1 text-base-content/60">
                     <span>Minimum received</span>
@@ -1758,8 +1865,10 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             const buttonState = getButtonState();
             return (
               <button 
-                className={`btn w-full h-16 rounded-xl font-medium text-xl ${
-                  buttonState.disabled ? 'btn-disabled' : 'btn-primary'
+                className={`w-full h-16 rounded-xl font-medium text-xl transition-all duration-200 border-none ${
+                  buttonState.disabled 
+                    ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
                 }`}
                 disabled={buttonState.disabled}
                 onClick={buttonState.onClick}
@@ -1769,6 +1878,163 @@ const SwapContainerV3: React.FC<SwapContainerProps> = ({ token1 = 'HSK', token2 
             );
           })()}
         </div>
+          </>
+        )}
+
+        {/* Transfer Tab Content */}
+        {activeTab === 'transfer' && (
+          <>
+            {/* Asset Selection and Amount Input */}
+            <div className="relative group mb-4">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20 rounded-xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+              <div className="relative bg-gradient-to-br from-base-200/70 to-base-300/70 backdrop-blur-sm rounded-xl p-4 border border-green-500/20">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-base text-base-content/60">Asset</span>
+                  <div className="flex gap-2">
+                    <button 
+                      className="btn btn-xs btn-ghost hover:bg-base-200"
+                      onClick={() => {
+                        if (!transferToken) return;
+                        const balance = transferToken.symbol === 'OKB' 
+                          ? OKBBalance?.value?.toString() || '0'
+                          : token1Balance?.value?.toString() || '0';
+                        try {
+                          const balanceBigInt = BigInt(balance);
+                          const amount = (balanceBigInt * BigInt(25)) / BigInt(100);
+                          const decimals = Number(transferToken.decimals || '18');
+                          const formattedAmount = formatTokenBalance(amount.toString(), decimals.toString());
+                          setTransferAmount(formattedAmount);
+                        } catch (error) {
+                          console.error('Error calculating percentage:', error);
+                        }
+                      }}
+                    >
+                      25%
+                    </button>
+                    <button 
+                      className="btn btn-xs btn-ghost hover:bg-base-200"
+                      onClick={() => {
+                        if (!transferToken) return;
+                        const balance = transferToken.symbol === 'OKB' 
+                          ? OKBBalance?.value?.toString() || '0'
+                          : token1Balance?.value?.toString() || '0';
+                        try {
+                          const balanceBigInt = BigInt(balance);
+                          const amount = (balanceBigInt * BigInt(50)) / BigInt(100);
+                          const decimals = Number(transferToken.decimals || '18');
+                          const formattedAmount = formatTokenBalance(amount.toString(), decimals.toString());
+                          setTransferAmount(formattedAmount);
+                        } catch (error) {
+                          console.error('Error calculating percentage:', error);
+                        }
+                      }}
+                    >
+                      50%
+                    </button>
+                    <button 
+                      className="btn btn-xs btn-ghost hover:bg-base-200"
+                      onClick={() => {
+                        if (!transferToken) return;
+                        const balance = transferToken.symbol === 'OKB' 
+                          ? OKBBalance?.value?.toString() || '0'
+                          : token1Balance?.value?.toString() || '0';
+                        try {
+                          const balanceBigInt = BigInt(balance);
+                          const amount = (balanceBigInt * BigInt(100)) / BigInt(100);
+                          const decimals = Number(transferToken.decimals || '18');
+                          const formattedAmount = formatTokenBalance(amount.toString(), decimals.toString());
+                          setTransferAmount(formattedAmount);
+                        } catch (error) {
+                          console.error('Error calculating percentage:', error);
+                        }
+                      }}
+                    >
+                      Max
+                    </button>
+                  </div>
+                </div>
+                <div className="flex justify-between items-center">
+                  <input 
+                    className="bg-transparent text-4xl w-[60%] focus:outline-none"
+                    placeholder="0"
+                    value={transferAmount}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                        setTransferAmount(value);
+                      }
+                    }}
+                  />
+                  <button 
+                    className="btn btn-ghost rounded-full h-10 px-3 hover:bg-base-200"
+                    onClick={() => {
+                      setModalType('token1');
+                      setShowModal(true);
+                    }}
+                  >
+                    {transferToken ? (
+                      <>
+                        <img src={transferToken.icon_url || "/img/okb.png"} alt={transferToken.name} className="w-6 h-6 rounded-full" />
+                        <span className="mx-2">{transferToken.symbol}</span>
+                      </>
+                    ) : (
+                      <span>Select token</span>
+                    )}
+                    <ChevronDownIcon className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className='text-base-content/60'>-</span>
+                  <span className="text-sm text-base-content/60">
+                    Balance: {
+                      transferToken?.symbol === 'OKB' 
+                        ? formatTokenBalance(OKBBalance?.value?.toString() || '0', '18')
+                        : transferToken
+                          ? formatTokenBalance(token1Balance?.value?.toString() || '0', transferToken.decimals || '18')
+                          : '-'
+                    } {transferToken?.symbol || ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Address Input */}
+            <div className="relative group mb-6">
+              <div className="absolute inset-0 bg-gradient-to-r from-secondary/20 to-accent/20 rounded-xl blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
+              <div className="relative bg-gradient-to-br from-base-200/70 to-base-300/70 backdrop-blur-sm rounded-xl p-4 border border-green-500/20">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-base text-base-content/60">Recipient Address</span>
+                </div>
+                <input 
+                  className="w-full bg-transparent text-lg focus:outline-none placeholder-gray-500"
+                  placeholder="Enter wallet address (0x...)"
+                  value={transferAddress}
+                  onChange={(e) => setTransferAddress(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Transfer Button */}
+            <div className="flex justify-center">
+              {(() => {
+                const buttonState = getTransferButtonState();
+                return (
+                  <button 
+                    className={`w-full h-16 rounded-xl font-medium text-xl transition-all duration-200 border-none ${
+                      buttonState.disabled 
+                        ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed' 
+                        : 'bg-gradient-to-r from-primary to-secondary hover:from-secondary hover:to-primary text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02]'
+                    }`}
+                    disabled={buttonState.disabled}
+                    onClick={buttonState.onClick}
+                  >
+                    {buttonState.text}
+                  </button>
+                );
+              })()}
+            </div>
+          </>
+        )}
       </div>
     </>
   );

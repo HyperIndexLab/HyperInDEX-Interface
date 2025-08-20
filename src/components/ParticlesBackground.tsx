@@ -42,7 +42,7 @@ export default function ParticlesBackground() {
     function animate() {
       if (!ctx || !canvas) return;
       
-      ctx.fillStyle = 'rgba(19, 21, 26, 1)';
+      ctx.fillStyle = 'rgba(15, 11, 26, 1)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       particles.forEach((particle, i) => {
@@ -69,6 +69,16 @@ export default function ParticlesBackground() {
           particle.vy *= -1;
         }
 
+        // 绘制发光粒子点
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
+        const gradient = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, 8);
+        gradient.addColorStop(0, 'rgba(139, 92, 246, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.4)');
+        gradient.addColorStop(1, 'rgba(16, 185, 129, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
         particles.slice(i + 1).forEach(other => {
           const dx = other.x - particle.x;
           const dy = other.y - particle.y;
@@ -78,7 +88,7 @@ export default function ParticlesBackground() {
             ctx.beginPath();
             ctx.moveTo(particle.x, particle.y);
             ctx.lineTo(other.x, other.y);
-            ctx.strokeStyle = `rgba(255, 255, 255, ${0.8 * (1 - distance / 150)})`;
+            ctx.strokeStyle = `rgba(139, 92, 246, ${0.8 * (1 - distance / 150)})`;
             ctx.lineWidth = 0.6;
             ctx.stroke();
           }
@@ -100,7 +110,7 @@ export default function ParticlesBackground() {
       <canvas
         ref={canvasRef}
         className="w-full h-full"
-        style={{ background: '#13151a' }}
+        style={{ background: '#0F0B1A' }}
       />
     </div>
   );

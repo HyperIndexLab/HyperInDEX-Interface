@@ -82,7 +82,7 @@ export default function ActiveTaskModal() {
                 <div>
                   <h3 className="card-title">Cross-Chain Bridge</h3>
                   <p className="text-sm text-base-content/60">
-                    Bridge your assets to HashKey Chain
+                    Bridge your assets to X Layer
                   </p>
                 </div>
                 {status?.is_bridge && (

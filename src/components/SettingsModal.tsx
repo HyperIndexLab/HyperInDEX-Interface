@@ -36,7 +36,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-base-100/60">
       <div className="bg-base-200 rounded-2xl w-[400px] p-4">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">

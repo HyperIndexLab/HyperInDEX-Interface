@@ -9,9 +9,7 @@ import RainbowKitWrapper from '../components/RainbowKitProvider';
 import store from '../store';
 import Header from '../components/Header';
 import 'react-toastify/dist/ReactToastify.css';
-import ParticlesBackground from '../components/ParticlesBackground';
 import { Suspense } from "react";
-import ChatAgent from '@/components/ChatAgent';
 import { ToastProvider } from "@/components/ToastContext";
 
 const sora = Sora({
@@ -30,7 +28,7 @@ export default function RootLayout({
       <html lang="en" data-theme="dark">
         <head>
           <title>Hyper Index</title>
-          <meta name="description" content="Hyper Index: The premier decentralized exchange (DEX) on HashKey Chain offering seamless trading, liquidity provision, and DeFi services. Experience low fees, high security, and advanced trading tools for the HashKey ecosystem." />
+          <meta name="description" content="XgenSwap: The premier decentralized exchange (DEX) on X layer offering seamless trading, liquidity provision, and DeFi services. Experience low fees, high security, and advanced trading tools for the HashKey ecosystem." />
         </head>
         <body className={`${sora.className} antialiased min-h-screen`}>
           <Theme dataTheme="dark">
@@ -47,10 +45,6 @@ export default function RootLayout({
               >
                 <RainbowKitWrapper>
                   <Suspense>
-                    <div className="fixed inset-0 z-0">
-                      <ParticlesBackground />
-                    </div>
-                    
                     <div className="relative z-10 min-h-screen flex flex-col">
                       <Header />
                       <main className="flex-1">
@@ -62,7 +56,6 @@ export default function RootLayout({
               </AuthCoreContextProvider>
             </ToastProvider>
           </Theme>
-          <ChatAgent />
         </body>
       </html>
     </Provider>

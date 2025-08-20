@@ -739,11 +739,11 @@ const ChatAgent: React.FC = () => {
 
       {/* 聊天窗口 */}
       {isOpen && (
-        <div className="bg-[#1E2029] rounded-2xl shadow-2xl flex flex-col w-80 sm:w-96 h-[500px] transition-all duration-300 border border-gray-800 overflow-hidden animate-fadeIn">
+        <div className="bg-base-200 rounded-2xl shadow-2xl flex flex-col w-80 sm:w-96 h-[500px] transition-all duration-300 border border-violet-900/30 overflow-hidden animate-fadeIn">
           {/* 聊天头部 */}
           <div className="bg-gradient-to-r from-primary to-purple-700 p-4 rounded-t-2xl flex justify-between items-center">
             <div className="flex items-center">
-              <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+              <div className="w-10 h-10 rounded-full bg-primary/20 backdrop-blur-sm flex items-center justify-center overflow-hidden">
                 <Image 
                   src="/img/index-coin.jpg" 
                   alt="HyperIndex Logo" 
@@ -760,7 +760,7 @@ const ChatAgent: React.FC = () => {
             </div>
             <button 
               onClick={toggleChat}
-              className="hover:bg-white/10 rounded-full p-2 transition-colors"
+              className="hover:bg-primary/20 rounded-full p-2 transition-colors"
               aria-label="Close chat"
             >
               <XMarkIcon className="w-5 h-5 text-white" />
@@ -792,8 +792,8 @@ const ChatAgent: React.FC = () => {
                     message.sender === 'user'
                       ? 'bg-gradient-to-r from-primary to-blue-600 text-white rounded-tr-none'
                       : message.content.includes("trouble connecting")
-                        ? 'bg-red-900/30 text-gray-100 rounded-tl-none border border-red-800/50'
-                        : 'bg-[#2A2D39] text-gray-100 rounded-tl-none'
+                        ? 'bg-error/30 text-gray-100 rounded-tl-none border border-error/50'
+                        : 'bg-base-300 text-gray-100 rounded-tl-none'
                   }`}
                 >
                   {message.sender === 'user' ? (
@@ -821,8 +821,8 @@ const ChatAgent: React.FC = () => {
                               h3: ({children, ...props}: any) => <h3 className="text-md font-bold mb-2" {...props}>{children}</h3>,
                               code: ({children, inline, ...props}: any) => 
                                 inline 
-                                  ? <code className="bg-gray-700/50 px-1 py-0.5 rounded text-xs" {...props}>{children}</code>
-                                  : <code className="block bg-gray-700/50 p-2 rounded text-xs my-2 overflow-auto" {...props}>{children}</code>,
+                                  ? <code className="bg-neutral/50 px-1 py-0.5 rounded text-xs" {...props}>{children}</code>
+                                  : <code className="block bg-neutral/50 p-2 rounded text-xs my-2 overflow-auto" {...props}>{children}</code>,
                               pre: ({children, ...props}: any) => <pre className="my-2" {...props}>{children}</pre>
                             }}
                           >
@@ -834,9 +834,9 @@ const ChatAgent: React.FC = () => {
                         </>
                       ) : (
                         <div className="flex space-x-2">
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse"></div>
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                          <div className="w-2 h-2 rounded-full bg-gray-400 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+                          <div className="w-2 h-2 rounded-full bg-neutral animate-pulse"></div>
+                          <div className="w-2 h-2 rounded-full bg-neutral animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                          <div className="w-2 h-2 rounded-full bg-neutral animate-pulse" style={{ animationDelay: '0.4s' }}></div>
                         </div>
                       )}
                     </div>
@@ -844,7 +844,7 @@ const ChatAgent: React.FC = () => {
                 </div>
 
                 {message.sender === 'user' && (
-                  <div className="w-8 h-8 rounded-full bg-blue-600/20 flex-shrink-0 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex-shrink-0 flex items-center justify-center">
                     <UserCircleIcon className="w-6 h-6 text-gray-300" />
                   </div>
                 )}
@@ -860,7 +860,7 @@ const ChatAgent: React.FC = () => {
                     <button
                       key={question.id}
                       onClick={() => handleQuickQuestion(question.text)}
-                      className="bg-[#2A2D39] hover:bg-[#353745] text-left px-4 py-3 rounded-xl text-sm text-gray-200 transition-colors border border-gray-700/30"
+                      className="bg-base-300 hover:bg-neutral/70 text-left px-4 py-3 rounded-xl text-sm text-gray-200 transition-colors border border-violet-900/30"
                     >
                       {question.text}
                     </button>
@@ -874,7 +874,7 @@ const ChatAgent: React.FC = () => {
               <div className="flex justify-center">
                 <button 
                   onClick={retryLastMessage}
-                  className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 py-1 px-3 rounded-full"
+                  className="text-xs bg-neutral hover:bg-neutral-focus text-gray-300 py-1 px-3 rounded-full"
                 >
                   Retry
                 </button>
@@ -885,8 +885,8 @@ const ChatAgent: React.FC = () => {
           </div>
 
           {/* 聊天输入区域 */}
-          <div className="p-4 border-t border-gray-800 bg-[#23242F]">
-            <div className="flex items-center gap-2 bg-[#2A2D39] rounded-xl p-1 pl-4 focus-within:ring-2 focus-within:ring-primary/40">
+          <div className="p-4 border-t border-violet-900/30 bg-base-300">
+            <div className="flex items-center gap-2 bg-base-300 rounded-xl p-1 pl-4 focus-within:ring-2 focus-within:ring-primary/40">
               <textarea
                 ref={inputRef}
                 value={inputValue}
@@ -902,7 +902,7 @@ const ChatAgent: React.FC = () => {
                 disabled={inputValue.trim() === '' || isTyping}
                 className={`p-3 rounded-xl transition-colors ${
                   inputValue.trim() === '' || isTyping
-                    ? 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
+                    ? 'bg-neutral/50 text-gray-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-primary to-blue-600 text-white hover:opacity-90'
                 }`}
                 aria-label="Send message"
